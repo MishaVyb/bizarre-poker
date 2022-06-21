@@ -354,9 +354,20 @@ MigrationBackup/
 # venv
 venv*
 
-# mac os system files
+# macOS system files
 .DS_Store
 
 # tmp files
 Untitled*
+
+# ------- IDE settings -------- #
+
+# Black settings
+pyproject.toml
+
+# flake8 settings
+setup.cfg
+
+# visual studio code settings
+.vscode*
 

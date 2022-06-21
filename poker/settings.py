@@ -25,13 +25,13 @@ SECRET_KEY = 'ba@^+3s*oa^chbrxk3%-gi6r4$&oe7i$^w2p!s!wfcjv^$^lk+'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    # default django apps
+    # default django apps:
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # poker apps
+    # poker apps:
     'games.apps.GamesConfig',
     'core.apps.CoreConfig',
 ]
@@ -56,10 +56,14 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'poker.urls'
 
+# /Users/vybornyy/MISHA/PYTHON/dev/bizare-poker/venv/lib/python3.10/site-packages/django/contrib/admin/templates/registration/login.html
+# /Users/vybornyy/MISHA/PYTHON/dev/bizare-poker/venv/lib/python3.10/site-packages/django/contrib/admin/templates/admin
+
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATES_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
