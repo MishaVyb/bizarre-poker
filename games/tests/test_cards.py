@@ -142,7 +142,7 @@ def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
     pytest.param(
         '0-0',
         CardList(Card(0, 0)),
-        id='init_by_integers_as_str_instances'
+        id='01 init_by_integers_as_str_instances'
     ),
 ])
 def test_cardlist_init_by_str_instance(cards: str, expected: CardList):
@@ -177,15 +177,19 @@ def test_cardlist_init_by_str_instance(cards: str, expected: CardList):
         )
     ),
 ])
-def test_cardlist_init_asserts(cards: list[str], expected: Exception):
-    failed = False
-    try:
+def test_cardlist_init_exeptions(cards: list[str], expected: Exception):
+    with pytest.raises(expected_exception=type(expected)) as exp_info:
         CardList(*cards)
-    except Exception as e:
-        failed = True
-        assert isinstance(e, type(expected))
-        assert e.args == expected.args
-    assert failed, ('test is soppused to catch an Exeption, but it`s not raised')
+    assert exp_info.value.args == expected.args
+
+    # failed = False
+    # try:
+    #     CardList(*cards)
+    # except Exception as e:
+    #     failed = True
+    #     assert isinstance(e, type(expected))
+    #     assert e.args == expected.args
+    # assert failed, ('test is soppused to catch an Exeption, but it`s not raised')
 
 
 

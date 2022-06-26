@@ -63,14 +63,14 @@ class Card:
             'rank': [
                 '[not def]',
                 '[not def]',
-                '2️⃣ ',
-                '3️⃣ ',
-                '4️⃣ ',
-                '5️⃣ ',
-                '6️⃣ ',
-                '7️⃣ ',
-                '8️⃣ ',
-                '9️⃣ ',
+                '2️⃣',
+                '3️⃣',
+                '4️⃣',
+                '5️⃣',
+                '6️⃣',
+                '7️⃣',
+                '8️⃣',
+                '9️⃣',
                 '🔟',
                 'J',
                 'Q',
@@ -78,6 +78,7 @@ class Card:
                 'A',
             ],
             'suit': ['[not def]', '➕', '🔺', '💔', '🖤'],
+            'shirt': '🎴'
         }
         ENG: ClassVar = {
             'rank': [
@@ -98,6 +99,7 @@ class Card:
                 'Ace',
             ],
             'suit': ['[not def]', 'Clubs', 'Diamonds', 'Hearts', 'Spades'],
+            'shirt': '*'
         }
 
         @staticmethod
@@ -114,6 +116,7 @@ class Card:
         @staticmethod
         def repr_as_eng_short_suit(c: Card) -> str:
             try:
+                # [0] becouse short suit (only first letter)
                 return (
                     Card.Text.ENG['rank'][c.rank]
                     + '|'
@@ -121,6 +124,15 @@ class Card:
                 )
             except IndexError:
                 return Card.Text.repr_default(c)
+
+        @staticmethod
+        def emoji_shirt(c: Card) -> str:
+            return Card.Text.EMOJI['shirt']
+
+        @staticmethod
+        def eng_shirt(c: Card) -> str:
+            return Card.Text.ENG['shirt']
+
 
     REPR_METHOD: Callable[[Card], str] = Text.repr_as_emoji
     STR_METHOD: Callable[[Card], str] = Text.repr_as_eng_short_suit
@@ -504,6 +516,14 @@ class CardList(list[Card]):
 
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
+
+
+    # @temporary_globals(
+    #     Card__STR_METHOD=Card.Text.emoji_shirt,
+    #     JokerCard__STR_METHOD=Card.Text.emoji_shirt,
+    # )
+    # def str_shirts(self) -> str:
+    #     return ' '.join([c.Text.emoji_shirt() for c in self])
 
     @property
     def __debug_repr(self):

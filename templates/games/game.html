@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% load card_filters %}
+{% block content %}
+
+<div class="row d-flex justify-content-center" style='padding-top: 15px;'>
+    <div class="card border-secondary mb-3" style="max-width: 20rem;">
+        <div class="card-header">
+            {{game.pk}}
+        </div>
+        <div class="card-body">
+            <h4 class="card-title"></h4>
+            <p class="card-text">table: {{game.table}} </p>
+            {% for player in game.players.all %}
+                <p class="card-text"> {{player.user}} has in hand: {{player.hand|hiden}} </p>
+            {% endfor %}
+            <p
+        </div>
+    </div>
+</div>
+{% endblock content %}

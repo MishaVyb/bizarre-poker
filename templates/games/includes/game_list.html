@@ -1,0 +1,62 @@
+{% load game_filters %}
+
+<h3>
+  <small class="text-muted">
+  {{ heading }}
+  </small>
+</h3>
+
+
+<div class="accordion" id="accordionExample">
+
+  {% for game in games %}
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="heading{{ game.pk }}">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ game.pk }}" aria-expanded="false" aria-controls="collapse{{ game.pk }}">
+
+          [{{ game.pk }}]
+          {% for player in game.players.all %}
+            {{ player.user }}
+            {% if not forloop.last %}
+              <small class="text-muted">&nbsp vs &nbsp</small>
+            {% endif %}
+          {% endfor %}
+
+        </button>
+      </h2>
+      <div id="collapse{{ game.pk }}" class="accordion-collapse collapse" aria-labelledby="heading{{ game.pk }}" data-bs-parent="#accordionExample" style="">
+        <div class="accordion-body">
+
+          table: {{game.table}}
+
+          {% if game|player:request.user %}
+            your hand: {{ game|player:request.user|hand }}
+            <hr>
+            <a class="btn btn-info" href="{{game.get_absolute_url}}" role="button">continue</a>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+
+  {% endfor %}
+
+</div>
+
+{% comment %}
+
+<div class="list-group">
+    {% for game in games %}
+      <a href="#" class="list-group-item list-group-item-action {% if game in user_games %} active {% endif %}">
+        {{ game.pk }}
+        {% if game in user_games %} continue playing {% else %} watch {% endif %}
+      </a>
+    {% endfor %}
+</div>
+
+
+<a href="#" class="list-group-item list-group-item-action active">Cras justo odio</a>
+
+  <a href="#" class="list-group-item list-group-item-action disabled">Morbi leo risus</a>
+  {% endcomment %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style='padding-top: 0px;'>
+
+{% with user_games as games %}
+    {% with heading='continue playing' %}
+        {% include 'games/includes/game_list.html' %}
+    {% endwith %}
+{% endwith %}
+
+</div>
+
+<div style='padding-top: 15px;'>
+
+    {% with not_user_games as games %}
+        {% with heading='or join others' %}
+            {% include 'games/includes/game_list.html' %}
+        {% endwith %}
+    {% endwith %}
+
+</div>
+
+
+{% endblock content %}

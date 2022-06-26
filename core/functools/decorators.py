@@ -1,9 +1,9 @@
 """
 
 developing:
-[ ] doc
+[ ] doc test -- not working
 [ ] exclude additional imports
-[ ] pytest
+[X] pytest
 """
 
 
@@ -15,16 +15,28 @@ from games.backends.cards import Card, JokerCard
 import wrapt
 
 
-def temporary_globals(module: str = '', **redefenitions):
-    @wrapt.decorator
+def temporary_globals(**__redefenitions):
+    """Temporary redefenitions for global variables.
+    Globals have to be imported to decorators module.
+    """
+    # """
+    # >>> GLOBAL = 'default'
+    # >>> @temporary_globals(GLOBAL='new value')
+    # >>> def fun()
+    # ...     GLOBAL
+    # 'new value'
+    # ...
+    # >>> GLOBAL
+    # 'default'
+    # """
+    @wrapt.decorator    # also work as functools.wraps
     def wrapper(wrapped, instance, args, kwargs):
-        glpb = globals()
-        print('in')
-        print(*glpb, sep='\n')
+        glb = globals()
+        lcls = locals()
 
         field: dict[str, Any] = {}
         temporary: dict[str, Any] = {}
-        for key in redefenitions:
+        for key in __redefenitions:
             attrs = key.split('__')
             try:
                 temporary[key] = globals()[attrs[0]]
@@ -39,60 +51,48 @@ def temporary_globals(module: str = '', **redefenitions):
                 raise ValueError(f"not sopported attribute: {'.'.join(attrs)}", *e.args)
 
             if len(attrs) == 1:
-                globals()[attrs[-1]] = redefenitions[key]
+                globals()[attrs[-1]] = __redefenitions[key]
             else:
-                setattr(field[key], attrs[-1], redefenitions[key])
+                setattr(field[key], attrs[-1], __redefenitions[key])
 
         result = wrapped(*args, **kwargs)
 
-        for key in redefenitions:
+        for key in __redefenitions:
             attrs = key.split('__')
             if len(attrs) == 1:
                 globals()[attrs[-1]] = temporary[key]
             else:
                 setattr(field[key], attrs[-1], temporary[key])
-        print('out')
         return result
-
     return wrapper
 
 
+# tests:
 class Foo:
-    fff = 10000
-
+    fff = 1234
     class Bar:
         aaa = 1234
         bbb = 'qwerty'
 
+def test_temporary_globals__():
+    new_tmp_values = {
+        'Foo': type('NewClass', (object,), {'qqq': -1, 'fff': 1234, 'Bar': Foo.Bar}),
+        'Foo__fff': -1,
+        'Foo__Bar__aaa': -1,
+    }
 
-SPEC = 'eeeeee'
+    @temporary_globals(**new_tmp_values)
+    def func():
+        assert Foo == new_tmp_values['Foo']
+        assert hasattr(Foo, 'qqq')
+        assert Foo.qqq == -1
+        assert Foo.fff == new_tmp_values['Foo__fff']
+        assert Foo.Bar.aaa == new_tmp_values['Foo__Bar__aaa']
+        assert Foo.Bar.bbb == 'qwerty'
 
-
-def with_keyword_only_arguments(**mykwargs):
-    @wrapt.decorator
-    def wrapper(wrapped, instance, args, kwargs):
-        print('in')
-        res = wrapped(*args, **kwargs)
-        print('out')
-        return res
-
-    return wrapper
-
-
-@with_keyword_only_arguments(aaa=123)
-def test_1():
-    print('do fun')
-
-
-@temporary_globals(Foo__Bar__aaa=-1, Foo__fff=-1, SPEC={'keeey': -4321})
-def test_2():
-    '''dooooo some'''
-    print('do fun 2 ---> ', end='')
-    print(Foo.Bar.aaa, Foo.Bar.bbb, Foo.fff, SPEC, sep=' ')
-
-
-if __name__ == '__main__':
-    print(Foo.Bar.aaa, Foo.Bar.bbb, Foo.fff, SPEC, sep=' ')
-    test_2()
-    print(Foo.Bar.aaa, Foo.Bar.bbb, Foo.fff, SPEC, sep=' ')
-    print(Foo.Bar.aaa, Foo.Bar.bbb, Foo.fff, SPEC, sep=' ')
+    func()
+    assert not hasattr(Foo, 'qqq')
+    assert hasattr(Foo, 'fff')
+    assert Foo.fff == 1234
+    assert Foo.Bar.aaa == 1234
+    assert Foo.Bar.bbb == 'qwerty'
