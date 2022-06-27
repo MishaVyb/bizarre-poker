@@ -1,20 +1,56 @@
 {% extends 'base.html' %}
 {% load card_filters %}
+{% comment %} {% load custom_filters %} {% endcomment %}
 {% block content %}
 
 <div class="row d-flex justify-content-center" style='padding-top: 15px;'>
-    <div class="card border-secondary mb-3" style="max-width: 20rem;">
-        <div class="card-header">
-            {{game.pk}}
-        </div>
-        <div class="card-body">
-            <h4 class="card-title"></h4>
-            <p class="card-text">table: {{game.table}} </p>
-            {% for player in game.players.all %}
-                <p class="card-text"> {{player.user}} has in hand: {{player.hand|hiden}} </p>
-            {% endfor %}
-            <p
-        </div>
+  <div class="card border-info mb-3" style="max-width: 20rem;">
+    <div class="card-header">
+      game #{{game.pk}} detail
     </div>
+    <div class="card-body">
+      <h4 class="card-title"></h4>
+      <p class="card-text">deck: {{game.deck}} </p>
+      <p class="card-text">table: {{game.table}} </p>
+      <p class="card-text">your hand: {{player.hand}} </p>
+      {% for player in other_players %}
+          <p class="card-text"> {{player.user}} <small class="text-muted">has in hand:</small> {{player.hand|hiden}} </p>
+      {% endfor %}
+      <p
+    </div>
+  </div>
 </div>
+
+<div class="row d-flex justify-content-center" style='padding-top: 15px;'>
+  <div class="card border-light mb-3" style="max-width: 20rem;">
+    <div class="card-header">
+      your next step?
+    </div>
+    <div class="card-body">
+
+      <form method="post"
+      enctype="multipart/form-data"
+      {% if action_url %}
+        action="{% url action_url %}"
+      {% endif %}
+      >
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">
+          next...
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+    <h3>
+      {{game.process.status}}
+    </h3>
+    <h4>
+      <h4 class="card-title"></h4>
+      <p class="card-text">step: {{game.process.step}} </p>
+      <p class="card-text">step: {{game.process.info}} </p>
+    </h4>
+
 {% endblock content %}

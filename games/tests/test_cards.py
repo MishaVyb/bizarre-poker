@@ -8,7 +8,7 @@ p = sys.path
 print(*p, sep='\n')
 import pytest
 
-from games.backends.cards import Card, CardList, JokerCard, Stacks
+from games.backends.cards import Card, CardList, Decks, JokerCard, Stacks
 
 
 @pytest.mark.parametrize(['input_data', 'expected'], [
@@ -88,12 +88,10 @@ def test_card_ordering(input_data: tuple[Card, Card],
 @pytest.mark.parametrize('input_data, expected_len', [
     [CardList(), 0],
     [CardList(Card('Ace-D'), Card('King,H')), 2],
-    [CardList(Card('Ace/D'), ('King', 'H')), 2],
-    [CardList((12, 3), 'King|H'), 2],
-    [CardList(('2', 'H'),), 1],
-    [CardList(('2', 'H')), 1],
+    [CardList(Card('Ace/D'), ('King-H')), 2],
+    [CardList('(12,3)', 'King|H'), 2],
     [CardList('red', 'king|h'), 2],
-    [CardList('red', 'black', (12, 'H'), ('10', 3), 'Quin|C'), 5],
+    [CardList('red', 'black', '(12,H)', 'Quin|C'), 4],
 ])
 def test_cardlist_init_len(input_data: CardList, expected_len: int):
     assert input_data.length == expected_len
@@ -107,7 +105,7 @@ def test_cardlist_init_len(input_data: CardList, expected_len: int):
         0,
     ),
     pytest.param(
-        ['[](),.|-'],
+        ['(),.|-'],
         0,
     ),
 ])
@@ -117,7 +115,7 @@ def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
 
 
 
-@pytest.mark.parametrize('cards, expected', [
+@pytest.mark.parametrize('instance, expected', [
     pytest.param(
         '  ',
         CardList(),
@@ -127,15 +125,11 @@ def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
         CardList(),
     ),
     pytest.param(
-        '    [    ]  Ace-H',
-        CardList('Ace-H'),
+        '    [  Ace-H,   10-D,    ]  ',
+        CardList('Ace-H', '10-D'),
     ),
     pytest.param(
-        '    [    ]  Ace-H, red(10-d)    [] \n \n   [ black  ]',
-        CardList('Ace-H', 'red(10|d)', 'black'),
-    ),
-    pytest.param(
-        '11-1',
+        '   11-1    ',
         CardList('Jack-Clubs'),
         id='init_by_integers_as_str_instances'
     ),
@@ -144,9 +138,13 @@ def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
         CardList(Card(0, 0)),
         id='01 init_by_integers_as_str_instances'
     ),
+    pytest.param(
+        '   [  A-1,    K-D,   ]   ',
+        CardList('Ace|C', 'King|D'),
+    ),
 ])
-def test_cardlist_init_by_str_instance(cards: str, expected: CardList):
-    cl = CardList(instance=cards)
+def test_cardlist_init_by_str_instance(instance: str, expected: CardList):
+    cl = CardList(instance=instance)
     assert cl == expected
 
 
@@ -176,22 +174,52 @@ def test_cardlist_init_by_str_instance(cards: str, expected: CardList):
             "not supported: kind='Ace'"
         )
     ),
+    pytest.param(
+        (['red', 'Ace', 'H'],),
+        ValueError(
+            "Invalid card type <class 'list'>. Can by <class 'str'>"
+            "<class 'games.backends.cards.Card'>"
+            "<class 'games.backends.cards.JokerCard'>. ",
+            "Did you forget to unpack(*) list of cards? ",
+            "card=['red', 'Ace', 'H'] in cards=(['red', 'Ace', 'H'],). "
+        )
+    ),
+    pytest.param(
+        ['[Ace-H]'],
+        AssertionError('card contains [] symbols, but it reserved for Stacks seperator'),
+    ),
+    pytest.param(
+        [' Ace-H '],
+        AssertionError('card contains space symbol, but it reserved for CardList seperator'),
+    ),
+    # pytest.param(
+    #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
+    #     ValueError(),
+    # ),
 ])
-def test_cardlist_init_exeptions(cards: list[str], expected: Exception):
+def test_cardlist_init_by_str_cards_raises(cards: list[str], expected: Exception):
     with pytest.raises(expected_exception=type(expected)) as exp_info:
         CardList(*cards)
     assert exp_info.value.args == expected.args
 
-    # failed = False
-    # try:
-    #     CardList(*cards)
-    # except Exception as e:
-    #     failed = True
-    #     assert isinstance(e, type(expected))
-    #     assert e.args == expected.args
-    # assert failed, ('test is soppused to catch an Exeption, but it`s not raised')
-
-
+@pytest.mark.parametrize('instance, expected', [
+    pytest.param(
+        '    Ace H    ',
+        ValueError("not supported: card = 'Ace'\n", "not supported: rank='Ace' | suit=None", "not supported: kind='Ace'"),
+    ),
+    pytest.param(
+        '  A-1, K-D,   ]',
+        ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'"),
+    ),
+    # pytest.param(
+    #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
+    #     ValueError(),
+    # ),
+])
+def test_cardlist_init_by_str_instances_raises(instance: str, expected: Exception):
+    with pytest.raises(expected_exception=type(expected)) as exp_info:
+        CardList(instance=instance)
+    assert exp_info.value.args == expected.args
 
 @pytest.mark.parametrize('input_data', [
     CardList('Ace|H', 'King|H', 'Quin|C'),
@@ -446,3 +474,25 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
 
         # and after shuffeling also
         input_data.shuffle()
+
+def test_standart_52_card_deck_plus_jokers():
+    jokers_amount = 5
+
+    generator = Decks.standart_52_card_deck_plus_jokers(jokers_amount)
+    cl = CardList(instance=generator)
+    assert cl.length == 52 + jokers_amount
+
+    # check joker kind amounts
+    red = JokerCard('red')
+    black = JokerCard('black')
+    assert len(list(filter(lambda c: c == red, cl))) == 2
+    assert len(list(filter(lambda c: c == black, cl))) == 3
+
+    # check generator for not exhausness
+    new_generator = Decks.standart_52_card_deck_plus_jokers(jokers_amount)
+    assert CardList(instance=new_generator).length == 52 + jokers_amount
+
+    # use new_generator again
+    # be carefull, becouse in that way no cards will be yield
+    assert CardList(instance=new_generator).length == 0
+

@@ -29,12 +29,21 @@ import functools
 import itertools
 import random
 from operator import attrgetter
-from typing import Callable, ClassVar, Generator, Iterable, SupportsIndex, overload
+from typing import (
+    Callable,
+    ClassVar,
+    Generator,
+    Iterable,
+    Iterator,
+    SupportsIndex,
+    overload,
+)
 
 from django.db import models
 
-from core.functools.utils import eq_first, split
+from core.functools.utils import eq_first, range_inclusevly, split
 from core.functools.looptools import looptools
+from core.templatetags.custom_filters import index
 
 SET_JOKERS_AFTER_EQUAL_CARD = True
 """To operate a curtain way of sorting, when mirrored jokers placed after card with
@@ -78,7 +87,7 @@ class Card:
                 'A',
             ],
             'suit': ['[not def]', '➕', '🔺', '💔', '🖤'],
-            'shirt': '🎴'
+            'shirt': ['🎴'],
         }
         ENG: ClassVar = {
             'rank': [
@@ -99,8 +108,22 @@ class Card:
                 'Ace',
             ],
             'suit': ['[not def]', 'Clubs', 'Diamonds', 'Hearts', 'Spades'],
-            'shirt': '*'
+            'shirt': ['*'],
         }
+
+        @staticmethod
+        def get_rank_value(rank_english: str) -> int:
+            try:
+                return Card.Text.ENG['rank'].index(rank_english)
+            except ValueError:
+                raise ValueError(f'not supported card rank: {rank_english}')
+
+        @staticmethod
+        def get_suit_value(suit_english) -> int:
+            try:
+                return Card.Text.ENG['suit'].index(suit_english)
+            except ValueError:
+                raise ValueError(f'not supported card rank: {suit_english}')
 
         @staticmethod
         def repr_default(c: Card) -> str:
@@ -127,12 +150,11 @@ class Card:
 
         @staticmethod
         def emoji_shirt(c: Card) -> str:
-            return Card.Text.EMOJI['shirt']
+            return Card.Text.EMOJI['shirt'][0]
 
         @staticmethod
         def eng_shirt(c: Card) -> str:
-            return Card.Text.ENG['shirt']
-
+            return Card.Text.ENG['shirt'][0]
 
     REPR_METHOD: Callable[[Card], str] = Text.repr_as_emoji
     STR_METHOD: Callable[[Card], str] = Text.repr_as_eng_short_suit
@@ -414,10 +436,17 @@ class CardList(list[Card]):
 
     @staticmethod
     def generator(
-        *cards: Card | JokerCard | tuple[str | int, str | int] | str,
+        *cards: Card | JokerCard  | str,
         new_card_instances: bool = False,
     ):
         for card in cards:
+            # type cheking
+            if isinstance(card, Iterable) and not isinstance(card, str):
+                raise ValueError(
+                    f'Invalid card type {type(card)}. Can by {str}{Card}{JokerCard}. ',
+                    f'Did you forget to unpack(*) list of cards? ',
+                    f'{card=} in {cards=}. ',
+                )
             if not card:  # blank card init like ''
                 continue
 
@@ -426,24 +455,28 @@ class CardList(list[Card]):
             elif isinstance(card, JokerCard):
                 yield JokerCard(card) if new_card_instances else card
             elif isinstance(card, tuple):
-                assert not new_card_instances, 'not supported for `tuple` defenition'
-                assert len(card) in [1, 2], 'can not get Card from tuple len not 1 or 2'
-                try:
-                    yield Card(card[0], card[1])
-                except ValueError as card_exc:
-                    try:
-                        yield JokerCard(card[0])
-                    except ValueError as joker_exc:
-                        raise ValueError(
-                            f'not supported: {card = }\n',
-                            *card_exc.args,
-                            *joker_exc.args,
-                        )
+                ...
+                # assert not new_card_instances, 'not supported for `tuple` defenition'
+                # assert len(card) in [1, 2], 'can not get Card from tuple len not 1 or 2'
+                # try:
+                #     yield Card(card[0], card[1])
+                # except ValueError as card_exc:
+                #     try:
+                #         yield JokerCard(card[0])
+                #     except ValueError as joker_exc:
+                #         raise ValueError(
+                #             f'not supported: {card = }\n',
+                #             *card_exc.args,
+                #             *joker_exc.args,
+                #         )
             elif isinstance(card, str):
                 assert not new_card_instances, 'not supported for `str` defenition'
                 assert (
                     ' ' not in card
                 ), 'card contains space symbol, but it reserved for CardList seperator'
+                assert (
+                    '[' not in card and ']' not in card
+                ), 'card contains [] symbols, but it reserved for Stacks seperator'
                 try:
                     yield Card(card)
                 except ValueError as card_exc:
@@ -460,11 +493,14 @@ class CardList(list[Card]):
                 except EmptyValueError:
                     continue
             else:
-                raise TypeError
+                raise ValueError(
+                    f'Invalid card type: {type(card)}. ',
+                    f'{card=} in {cards=}. '
+                )
 
     def __init__(
         self,
-        *cards: Card | JokerCard | tuple[str | int, str | int] | str,
+        *cards: Card | JokerCard | str,
         instance: Iterable[Card] | str | None = None,
         new_card_instances: bool = False,
     ):
@@ -472,7 +508,6 @@ class CardList(list[Card]):
 
         `*cards`:
             - instances of Card/JokerCard
-            - tuple: `(12, 3)`, `('9', 1)`
             - str: `'king clubs'`, `'Q|h'`, `'black'`, `'red(Jack, C)'`
 
         `instance`
@@ -489,14 +524,31 @@ class CardList(list[Card]):
 
         If no argument is given, the constructor creates a new empty list.
         """
+        def brackets_checker(__list: list[str]):
+            mapped = map(lambda x: x in ('[', ']', '[]', ']['), __list)
+            if any(mapped) and (
+                len(__list) > 1
+                and (__list[0], __list[-1]) != ('[', ']')
+                or len(__list) == 0
+                and __list != ('[]',)
+                or len(list(filter(None, mapped))) > 2
+            ):
+                raise ValueError(f'invalid brackets `[` `]` at {instance=}')
+            return True
+
         if isinstance(instance, str):
             assert (
                 not cards
             ), 'not supported definition for `instance` and `cards` together'
+            # space symbol is a card seperator
+            splited = split(instance, by_symbols=' ')
+            # check [] brackets
+            assert brackets_checker(splited)
+            # square bracket [ ] reserved for Stacks seperator
+            filtered = filter(lambda x: x not in ('[', ']', '[]'), splited)
+
             super().__init__(
-                self.generator(
-                    *instance.split(' '), new_card_instances=new_card_instances
-                )
+                self.generator(*filtered, new_card_instances=new_card_instances)
             )
         elif instance is not None:
             assert (
@@ -516,7 +568,6 @@ class CardList(list[Card]):
 
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
-
 
     # @temporary_globals(
     #     Card__STR_METHOD=Card.Text.emoji_shirt,
@@ -650,6 +701,23 @@ class CardList(list[Card]):
 
 
 Stacks = list[CardList]
+
+
+class Decks:
+    @staticmethod
+    def standart_52_card_deck_plus_jokers(jokers_amount: int = 2):
+        """yield all 52 cards from highes to smallest and then red/black jokers"""
+        _2 = Card.Text.get_rank_value('2')
+        ace = Card.Text.get_rank_value('Ace')
+        clubs = Card.Text.get_suit_value('Clubs')
+        spades = Card.Text.get_suit_value('Spades')
+
+        for rank in reversed(range_inclusevly(_2, ace)):
+            for suit in reversed(range_inclusevly(clubs, spades)):
+                yield Card(rank, suit)
+
+        for i in range(jokers_amount):
+            yield JokerCard('red') if i % 2 else JokerCard('black')
 
 
 def main():

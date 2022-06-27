@@ -71,6 +71,9 @@ class ComboKind:
         if highest_card_case:
             self.cases['highest card'] = tuple(highest_card_case)
 
+    def __repr__(self) -> str:
+        return f'<ComboKind: {self.name=}>'
+
     def __str__(self) -> str:
         return (
             f'Name: {self.name}\n'
@@ -144,14 +147,17 @@ class ComboKindList(list[ComboKind]):
             if ref.is_minor_combo_for(conditions):
                 raise ExtraComboException(cases=conditions, nearest=ref)
         raise RuntimeError(
-            f'No reference combination found for {conditions} in:\n{self}\n'
-            f'At least `highest card` combination.'
+            f'no reference combination found for {conditions} in: {self}'
+            f'at least `highest card` combination should be'
         )
+
+    def __str__(self) -> str:
+        return ', '.join([c.name for c in self])
 
 
 CLASSIC_COMBOS = ComboKindList(
     [
-        ComboKind(rank_case=[1], name='high card'),
+        ComboKind(highest_card_case=[1], name='high card'),
         ComboKind(rank_case=[2], name='one pair'),
         ComboKind(rank_case=[2, 2], name='two pair'),
         ComboKind(rank_case=[3], name='three of kind'),
@@ -230,8 +236,10 @@ class ComboStacks:
         # 4- row case
         self.track_row(tracking, possible_highest, tracking_list_constant=False)
         # 5- add highest
-        if not self.cases:
-            self.cases['highest card'] = [CardList(card) for card in tracking]
+        # даже если нашли что-то для предыдущих cases, они потом могут быть
+        # недостаточными для метода merge и будут откинуты, в этом случае нам и нужен
+        # заранее записанный случай highest card
+        self.cases['highest card'] = [CardList(card) for card in tracking]
 
     def track_equal(
         self,
@@ -322,16 +330,16 @@ class ComboStacks:
         cursor = CardList()
         loop_max_iteration = 99
         # перебераем кажду карту из трекинга
-        print.header('\n--- row ----')
-        print.underline(f'{tracking=} -- {jokers=}\n')
+        # print.header('\n--- row ----')
+        # print.underline(f'{tracking=} -- {jokers=}\n')
         for track_card, final in looptools.final(tracking):
             while True:  # цикл по джокерам
-                print('')
-                print.bold(
-                    f'{loop_max_iteration = } {track_card = } cursor = '
-                    f'<the same as last case group>'
-                )
-                print(f'{case=}')
+                # print('')
+                # print.bold(
+                #     f'{loop_max_iteration = } {track_card = } cursor = '
+                #     f'<the same as last case group>'
+                # )
+                # print(f'{case=}')
                 loop_max_iteration -= 1
                 assert loop_max_iteration, 'Achive lopp max iteration.'
 
@@ -375,7 +383,7 @@ class ComboStacks:
                         cursor = case[-1]
                         cursor.extend(tail)
                         assert tail, 'Empy tail.'
-                        print.green(f'{tail=}')
+                        # print.green(f'{tail=}')
                     else:
                         # 3.1.2 -- начнем новую группу без хвоста, но с крайней карты
                         usg_jkrs = jokers.copy()
@@ -436,8 +444,8 @@ class ComboStacks:
         if case:
             # 4.1 -- выбрать самую длинну группу
             max_group = max(case, key=attrgetter('length'))
-            print.warning('max_group swap red/black jokers')
-            print(jokers)
+            # print.warning('max_group swap red/black jokers')
+            # print(jokers)
 
             # 4.2 -- перегруперовать в ней джокеров, чтобы в начале были черные
             jkr_iter = reversed(jokers)
@@ -473,8 +481,8 @@ class ComboStacks:
             # используюемые карты запишем
             used.extend(group)
 
-        print.warning('-after collapse excess jokers-')
-        print(f'{case=}')
+        # print.warning('-after collapse excess jokers-')
+        # print(f'{case=}')
         # 5- отсортируем, чтобы в начале была самая длинная группа
         case.sort(key=attrgetter('length'), reverse=True)
         # 6- удалим все группы меньше min_group_len, начнем с конца, чтобы

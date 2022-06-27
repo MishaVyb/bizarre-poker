@@ -1,9 +1,13 @@
 from typing import Any, Pattern
 from django.db import IntegrityError
 import pytest
-from games.backends.cards import Card, CardList
+from games.backends.cards import Card, CardList, Stacks
+from games.backends.combos import CLASSIC_COMBOS, ComboStacks
 
-from games.models import Game, Player
+from games.models import Game, Player, PlayerCombo
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import AbstractBaseUser
 
 
 @pytest.mark.django_db
@@ -92,4 +96,42 @@ class TestGameModel:
 
         another_game: Game = Game.objects.create()
         another_game.players.create(user=admin_user, hand=CardList('9-H'))
+
+
+@pytest.mark.django_db
+class TestGameProcessModel():
+    pass
+
+
+@pytest.mark.django_db
+class TestPlayerComboModel():
+
+
+    def test_setup(self, admin_user: AbstractBaseUser):
+        expected_name = 'one pair'
+        expected_cases: dict[str, Stacks] = {'rank': [CardList('Ace|H', 'Ace|D')]}
+
+        game: Game = Game.objects.create()
+        hand = CardList('Ace|H', 'Ace|D')
+        player: Player = Player.objects.create(user=admin_user, game=game, hand=hand)
+        combo: PlayerCombo = PlayerCombo.objects.create(player=player)
+        stacks = ComboStacks()
+
+        kind = stacks.track_and_merge(player.hand)
+
+        assert kind == CLASSIC_COMBOS.get(expected_name)
+
+        combo.setup(combo_kind=kind, combo_stacks=stacks)
+        assert Player.objects.get(game=game).combo.name == expected_name
+        assert Player.objects.get(game=game).combo.rank == expected_cases['rank']
+        assert Player.objects.get(game=game).combo.suit == []
+        assert Player.objects.get(game=game).combo.row == []
+        assert Player.objects.get(game=game).combo.highest_card == []
+
+        
+
+
+
+
+
 

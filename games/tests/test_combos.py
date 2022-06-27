@@ -64,7 +64,16 @@ def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
             'row': [
                 CardList('A.h', 'K.c'),
             ],
-            'highest card': [],
+            'highest card': [
+                CardList('A,h'),
+                CardList('A,c'),
+                CardList('K,c'),
+                CardList('K.c'),
+                CardList('10.s'),
+                CardList('10,h'),
+                CardList('10,d'),
+                CardList('10,c'),
+            ],
         },
         id='02- simple test'
     ),
@@ -93,7 +102,7 @@ def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
             # 'row': [
             #     CardList('A.h', 'K.c', 'black(Q.s)', 'red(J.s)', '10.s'),
             # ],
-            'highest card': [],
+            #'highest card': [],
         },
         id='03- add jokers'
     ),

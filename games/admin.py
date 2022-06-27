@@ -3,7 +3,7 @@ from games.models import Game, Player
 
 
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'deck', 'table', 'players_list')
+    list_display = ('pk', 'process', 'deck', 'table', 'players_list')
     list_editable = ('deck', 'table')
     # search_fields = ('text',)
     # list_filter = ('created',)

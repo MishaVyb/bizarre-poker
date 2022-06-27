@@ -127,11 +127,19 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
-
 STATICFILES_DIRS = (
     # by default it already contatins 'root/static/...'
     # os.path.join(BASE_DIR, 'static'),
-
+    # ...
     os.path.join(BASE_DIR, 'node_modules'),
 )
+
+
+# DEFAULT URLs
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = 'games:index'
+LOGOUT_REDIRECT_URL = None  
+"""The URL or named URL pattern where requests are redirected after logout
+if LogoutView doesn't have a next_page attribute.
+If None, no redirect will be performed and the logout view will be rendered.
+"""

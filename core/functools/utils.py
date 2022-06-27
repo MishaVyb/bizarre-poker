@@ -11,7 +11,7 @@ from __future__ import annotations
 import itertools
 import operator
 import re
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar, overload
 
 
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
@@ -26,9 +26,19 @@ def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
     return bool(minor) or (not minor and not major)
 
 
-def split(__str: str, delimeters: str = ' \n,./|()-[]', exclude_delimeters:str = None) -> list[str]:
+def split(
+    __str: str,
+    by_symbols: str = ' \n,./|()-[]',
+    by_delimeters: list[str] = None,
+    exclude_delimeters: str = None,
+) -> list[str]:
+    """Split string by each symbol from delimiter-string and return list of strings.
+    Empty strings filtered out from result list.
+    """
     assert not exclude_delimeters, 'not implemented yet'
-    delimeters_list = list(itertools.chain(*delimeters))
+    assert not by_delimeters, 'not implemented yet'
+
+    delimeters_list = list(itertools.chain(*by_symbols))
     splited = re.split('|'.join(map(re.escape, delimeters_list)), __str)
     return list(filter(None, splited))  # filter for removing "" empty string
 
@@ -84,7 +94,8 @@ class PrintColors:
         print(*args, **kwargs)
         print(cls._ENDC, end='')
 
-print_colors = PrintColors()    # default instance for easy access
+
+print_colors = PrintColors()  # default instance for easy access
 
 _TC = TypeVar('_TC')
 
@@ -123,3 +134,27 @@ def is_sorted(
     return True
 
 
+@overload
+def range_inclusevly(__stop: SupportsIndex, /) -> range:
+    ...
+
+
+@overload
+def range_inclusevly(
+    __start: SupportsIndex, __stop: SupportsIndex, __step: SupportsIndex = ..., /
+) -> range:
+    ...
+
+
+def range_inclusevly(
+    __start: SupportsIndex = 0, __stop: SupportsIndex = None, __step: SupportsIndex = 1
+) -> range:
+    if isinstance(__stop, int):
+        return range(__start, __stop + 1, __step)
+    raise NotImplementedError
+
+
+def isinstance_items(__iterable: Iterable, __item_type: type):
+    return isinstance(__iterable, Iterable) and all(
+        map(lambda x: isinstance(x, __item_type), __iterable)
+    )

@@ -1,4 +1,5 @@
 
+from typing import Sequence, SupportsIndex
 from django import template, forms
 from games import models
 from django.contrib.auth import get_user_model
@@ -23,3 +24,6 @@ def hand(player: models.Player):
     else:
         return player
 
+@register.filter
+def index(indexable: Sequence, i: int):
+    return indexable[i]
