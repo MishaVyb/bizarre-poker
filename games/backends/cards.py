@@ -15,9 +15,9 @@ black will never equal red (because of different ranks)
 но во время сортировки используются дополнительное условие, при котором карта
 сама по себе считается более ценной, чем отреженный джокер. См. метод sortby.
 
-You can change default way for string representation by choosing a relevant method:
->>> Card.REPR_METHOD = Card.Text.repr_as_eng_short_suit
->>> JokerCard.REPR_METHOD = JokerCard.Text.repr_as_eng_short_suit
+You can change default way for string representation by choosing a relevant method.
+It also ovveride repr_method for JokerCard:
+>>> Card.Text.repr_method = 'eng_short_suit'
 
 developing:
 [ ] move text style dict to json file
@@ -29,21 +29,9 @@ import functools
 import itertools
 import random
 from operator import attrgetter
-from typing import (
-    Callable,
-    ClassVar,
-    Generator,
-    Iterable,
-    Iterator,
-    SupportsIndex,
-    overload,
-)
-
-from django.db import models
+from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 
 from core.functools.utils import eq_first, range_inclusevly, split
-from core.functools.looptools import looptools
-from core.templatetags.custom_filters import index
 
 SET_JOKERS_AFTER_EQUAL_CARD = True
 """To operate a curtain way of sorting, when mirrored jokers placed after card with
@@ -67,19 +55,30 @@ class Card:
     '''
 
     class Text:
+        """Handling Card text style.
+        Redefine class varable `str_method` or `repr_method` to apply changes.
+        Relevant methods: `default` `emoji` `eng_short_suit` `classic` `emoji_shirt`.
+
+        Notice, that it also get affect for JokerCard because of inheritance.
+
+        `str_method`
+            default is `None` (for None __str__ calling __repr__ inside)
+        `repr_method`
+            default is `emoji` (better for representatins while debuging)
+        """
 
         EMOJI: ClassVar = {
             'rank': [
                 '[not def]',
                 '[not def]',
-                '2️⃣',
-                '3️⃣',
-                '4️⃣',
-                '5️⃣',
-                '6️⃣',
-                '7️⃣',
-                '8️⃣',
-                '9️⃣',
+                '2️⃣ ',
+                '3️⃣ ',
+                '4️⃣ ',
+                '5️⃣ ',
+                '6️⃣ ',
+                '7️⃣ ',
+                '8️⃣ ',
+                '9️⃣ ',
                 '🔟',
                 'J',
                 'Q',
@@ -110,6 +109,68 @@ class Card:
             'suit': ['[not def]', 'Clubs', 'Diamonds', 'Hearts', 'Spades'],
             'shirt': ['*'],
         }
+        CLASSIC: ClassVar = {
+            'rank': [
+                '[not def]',
+                '[not def]',
+                '2',
+                '3',
+                '4',
+                '5',
+                '6',
+                '7',
+                '8',
+                '9',
+                '10',
+                'J',
+                'Q',
+                'K',
+                'A',
+            ],
+            'suit': ['[not def]', '♣️', '♦️', '♥️', '♠️'],
+            'shirt': ['🎴'],
+        }
+
+        str_method: ClassVar[str | None] = None
+        """string name of method:
+        `default` `emoji` `eng_short_suit` `classic` `emoji_shirt` `eng_shirt`
+        """
+        repr_method: ClassVar[str] = 'emoji'
+        """string name of method:
+        `default` `emoji` `eng_short_suit` `classic` `emoji_shirt` `eng_shirt`
+        """
+
+        @classmethod
+        def get_repr(cls, c: Card) -> str:
+            assert cls.repr_method in [
+                'default',
+                'emoji',
+                'eng_short_suit',
+                'classic',
+                'emoji_shirt',
+                'eng_shirt',
+            ], f'invalind {cls.repr_method=}'
+            try:
+                return getattr(cls, cls.repr_method)(c)
+            except IndexError:
+                return cls.default(c)
+
+        @classmethod
+        def get_str(cls, c: Card) -> str:
+            assert cls.str_method in [
+                'default',
+                'emoji',
+                'eng_short_suit',
+                'classic',
+                'emoji_shirt',
+                'eng_shirt',
+                None,
+            ], f'invalind {cls.str_method=}'
+            try:
+                return getattr(cls, cls.str_method or cls.repr_method)(c)
+            except IndexError:
+                return cls.default(c)
+            # except
 
         @staticmethod
         def get_rank_value(rank_english: str) -> int:
@@ -119,34 +180,30 @@ class Card:
                 raise ValueError(f'not supported card rank: {rank_english}')
 
         @staticmethod
-        def get_suit_value(suit_english) -> int:
+        def get_suit_value(suit_english: str) -> int:
             try:
                 return Card.Text.ENG['suit'].index(suit_english)
             except ValueError:
                 raise ValueError(f'not supported card rank: {suit_english}')
 
         @staticmethod
-        def repr_default(c: Card) -> str:
+        def default(c: Card) -> str:
             return f'Card({c.rank}, {c.suit})'
 
         @staticmethod
-        def repr_as_emoji(c: Card) -> str:
-            try:
-                return Card.Text.EMOJI['rank'][c.rank] + Card.Text.EMOJI['suit'][c.suit]
-            except IndexError:
-                return Card.Text.repr_default(c)
+        def emoji(c: Card) -> str:
+            return Card.Text.EMOJI['rank'][c.rank] + Card.Text.EMOJI['suit'][c.suit]
 
         @staticmethod
-        def repr_as_eng_short_suit(c: Card) -> str:
-            try:
-                # [0] becouse short suit (only first letter)
-                return (
-                    Card.Text.ENG['rank'][c.rank]
-                    + '|'
-                    + Card.Text.ENG['suit'][c.suit][0]
-                )
-            except IndexError:
-                return Card.Text.repr_default(c)
+        def eng_short_suit(c: Card) -> str:
+            # [0] becouse short suit (only first letter)
+            return (
+                Card.Text.ENG['rank'][c.rank] + '|' + Card.Text.ENG['suit'][c.suit][0]
+            )
+
+        @staticmethod
+        def classic(c: Card) -> str:
+            return Card.Text.CLASSIC['rank'][c.rank] + Card.Text.CLASSIC['suit'][c.suit]
 
         @staticmethod
         def emoji_shirt(c: Card) -> str:
@@ -155,9 +212,6 @@ class Card:
         @staticmethod
         def eng_shirt(c: Card) -> str:
             return Card.Text.ENG['shirt'][0]
-
-    REPR_METHOD: Callable[[Card], str] = Text.repr_as_emoji
-    STR_METHOD: Callable[[Card], str] = Text.repr_as_eng_short_suit
 
     def __init__(
         self, rank: int | str | Card | None = None, suit: int | str | None = None
@@ -205,7 +259,7 @@ class Card:
                 )
             except StopIteration:
                 raise ValueError(f'not supported: {rank=} | {suit=}')
-            self.rank = Card.Text.ENG['rank'].index(filtered)
+            self.rank = Card.Text.get_rank_value(filtered)
         else:
             self.rank = rank
 
@@ -216,7 +270,7 @@ class Card:
                 )
             except StopIteration:
                 raise ValueError(f'not supported: {rank=} | {suit=}')
-            self.suit = Card.Text.ENG['suit'].index(filtered)
+            self.suit = Card.Text.get_suit_value(filtered)
         elif not hasattr(self, 'suit'):
             # hasattr - because we probably set this attribute upper
             self.suit = suit
@@ -239,10 +293,16 @@ class Card:
         return self.__dict__[key]
 
     def __str__(self) -> str:
-        return Card.STR_METHOD(self) if Card.STR_METHOD else Card.__repr__(self)
+        return self.Text.get_str(self)
 
     def __repr__(self) -> str:
-        return Card.REPR_METHOD(self)
+        return self.Text.get_repr(self)
+
+    # def __str__(self) -> str:
+    #     return Card.STR_METHOD(self) if Card.STR_METHOD else Card.__repr__(self)
+
+    # def __repr__(self) -> str:
+    #     return Card.REPR_METHOD(self)
 
     def __lt__(self, other: object) -> bool:  # self < other
         if (
@@ -313,44 +373,51 @@ class JokerCard(Card):
 
     class Text(Card.Text):
         EMOJI = {'joker': ['🤡', '😈']}
+        CLASSIC = {'joker': ['🤡', '😈']}
         ENG = {'joker': ['red', 'black']}
 
         @staticmethod
-        def repr_default(c: Card) -> str:
+        def get_kind_value(kind: str) -> int:
+            try:
+                return JokerCard.Text.ENG['joker'].index(kind)
+            except ValueError:
+                raise ValueError(f'not supported: {kind=}')
+
+        @staticmethod
+        def default(c: Card) -> str:
             if not isinstance(c, JokerCard):
                 raise TypeError
-            return (
-                f'JokerCard({c.kind}'
-                f'reflection={super(JokerCard.Text, JokerCard.Text).repr_default(c)})'
+            return f'JokerCard({c.kind}, reflection={Card.Text.default(c)})'
+
+        @staticmethod
+        def classic(c: Card):
+            if not isinstance(c, JokerCard):
+                raise TypeError
+            return JokerCard.Text.CLASSIC['joker'][c.kind] + (
+                f'(as {Card.Text.classic(c)})' if c.is_mirror else ''
             )
 
         @staticmethod
-        def repr_as_emoji(c: Card) -> str:
+        def emoji(c: Card) -> str:
             if not isinstance(c, JokerCard):
                 raise TypeError
             try:
                 return JokerCard.Text.EMOJI['joker'][c.kind] + (
-                    f'(as {Card.Text.repr_as_emoji(c)})' if c.is_mirror else ''
+                    f'(as {Card.Text.emoji(c)})' if c.is_mirror else ''
                 )
             except IndexError:
-                return JokerCard.Text.repr_default(c)
+                return JokerCard.Text.default(c)
 
         @staticmethod
-        def repr_as_eng_short_suit(c: Card) -> str:
+        def eng_short_suit(c: Card) -> str:
             if not isinstance(c, JokerCard):
                 raise TypeError
             try:
-                return (
-                    f'{JokerCard.Text.ENG["joker"][c.kind]}'
-                    f'({Card.Text.repr_as_eng_short_suit(c)})'
-                    if c.is_mirror
-                    else ''
+                return f'{JokerCard.Text.ENG["joker"][c.kind]}' + (
+                    f'({Card.Text.eng_short_suit(c)})' if c.is_mirror else ''
                 )
             except IndexError:
-                return Card.Text.repr_default(c)
-
-    REPR_METHOD = Text.repr_as_emoji
-    STR_METHOD = Text.repr_as_eng_short_suit
+                return Card.Text.default(c)
 
     def __init__(
         self,
@@ -368,10 +435,11 @@ class JokerCard(Card):
             if splited:
                 assert not reflection
                 reflection = '|'.join(splited)
-            try:
-                self.kind = JokerCard.Text.ENG['joker'].index(kind)
-            except ValueError:
-                raise ValueError(f'not supported: {kind=}')
+            if isinstance(kind, str):
+                self.kind = JokerCard.Text.get_kind_value(kind)
+            else:
+                raise ValueError(f'JokerCard defenition goes in wrong way: {kind=}')
+
         elif isinstance(kind, int):
             self.kind = kind
         elif isinstance(kind, JokerCard):
@@ -388,16 +456,6 @@ class JokerCard(Card):
 
         for k in initial:
             self.__dict__[k] = initial[k]
-
-    def __str__(self) -> str:
-        return (
-            JokerCard.STR_METHOD(self)
-            if JokerCard.STR_METHOD
-            else JokerCard.__repr__(self)
-        )
-
-    def __repr__(self) -> str:
-        return JokerCard.REPR_METHOD(self)
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, JokerCard):
@@ -436,7 +494,7 @@ class CardList(list[Card]):
 
     @staticmethod
     def generator(
-        *cards: Card | JokerCard  | str,
+        *cards: Card | JokerCard | str,
         new_card_instances: bool = False,
     ):
         for card in cards:
@@ -444,7 +502,7 @@ class CardList(list[Card]):
             if isinstance(card, Iterable) and not isinstance(card, str):
                 raise ValueError(
                     f'Invalid card type {type(card)}. Can by {str}{Card}{JokerCard}. ',
-                    f'Did you forget to unpack(*) list of cards? ',
+                    'Did you forget to unpack(*) list of cards? ',
                     f'{card=} in {cards=}. ',
                 )
             if not card:  # blank card init like ''
@@ -455,20 +513,9 @@ class CardList(list[Card]):
             elif isinstance(card, JokerCard):
                 yield JokerCard(card) if new_card_instances else card
             elif isinstance(card, tuple):
-                ...
-                # assert not new_card_instances, 'not supported for `tuple` defenition'
-                # assert len(card) in [1, 2], 'can not get Card from tuple len not 1 or 2'
-                # try:
-                #     yield Card(card[0], card[1])
-                # except ValueError as card_exc:
-                #     try:
-                #         yield JokerCard(card[0])
-                #     except ValueError as joker_exc:
-                #         raise ValueError(
-                #             f'not supported: {card = }\n',
-                #             *card_exc.args,
-                #             *joker_exc.args,
-                #         )
+                raise NotImplementedError(
+                    'tuple definition for card not available anymore'
+                )
             elif isinstance(card, str):
                 assert not new_card_instances, 'not supported for `str` defenition'
                 assert (
@@ -494,8 +541,7 @@ class CardList(list[Card]):
                     continue
             else:
                 raise ValueError(
-                    f'Invalid card type: {type(card)}. ',
-                    f'{card=} in {cards=}. '
+                    f'Invalid card type: {type(card)}. ', f'{card=} in {cards=}. '
                 )
 
     def __init__(
@@ -524,6 +570,7 @@ class CardList(list[Card]):
 
         If no argument is given, the constructor creates a new empty list.
         """
+
         def brackets_checker(__list: list[str]):
             mapped = map(lambda x: x in ('[', ']', '[]', ']['), __list)
             if any(mapped) and (
@@ -568,17 +615,6 @@ class CardList(list[Card]):
 
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
-
-    # @temporary_globals(
-    #     Card__STR_METHOD=Card.Text.emoji_shirt,
-    #     JokerCard__STR_METHOD=Card.Text.emoji_shirt,
-    # )
-    # def str_shirts(self) -> str:
-    #     return ' '.join([c.Text.emoji_shirt() for c in self])
-
-    @property
-    def __debug_repr(self):
-        return super().__repr__()
 
     # пришлось переопределить, чтобы сохраить тип возвращаемого значения CardList
     @overload
@@ -720,10 +756,23 @@ class Decks:
             yield JokerCard('red') if i % 2 else JokerCard('black')
 
 
-def main():
-    pass
+# def main():
+#     card = Card(14, 2)
+#     joker = JokerCard('red', reflection=Card(10, 1))
+#     with temporally(globals(), Card__Text__str_method='classic'):
+#         print(card, joker)
+#     print(card, joker)
 
 
-if __name__ == '__main__':
-    main()
-    pass
+# @temporally(Card.Text, repr_method='eng_short_suit')
+# def some():
+#     card = Card(14, 2)
+#     joker = JokerCard('red', reflection=Card(10, 1))
+#     print(card.__repr__(), joker.__repr__())
+
+
+# if __name__ == '__main__':
+#     print(Card(14, 2).__str__())
+#     main()
+#     some()
+#     pass

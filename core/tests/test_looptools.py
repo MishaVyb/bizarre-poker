@@ -1,6 +1,4 @@
 import pytest
-import sys
-sys.path
 
 from core.functools.looptools import looptools
 

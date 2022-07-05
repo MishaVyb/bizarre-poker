@@ -1,11 +1,7 @@
 import copy
-from logging import exception
 from operator import eq, ge, gt, is_, is_not, le, lt, ne
 from typing import Any, Callable
 
-import sys
-p = sys.path
-print(*p, sep='\n')
 import pytest
 
 from games.backends.cards import Card, CardList, Decks, JokerCard, Stacks
@@ -97,8 +93,6 @@ def test_cardlist_init_len(input_data: CardList, expected_len: int):
     assert input_data.length == expected_len
 
 
-
-
 @pytest.mark.parametrize('cards, expected', [
     pytest.param(
         [''],
@@ -112,7 +106,6 @@ def test_cardlist_init_len(input_data: CardList, expected_len: int):
 def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
     cl = CardList(*cards)
     assert len(cl) == expected
-
 
 
 @pytest.mark.parametrize('instance, expected', [
@@ -148,15 +141,18 @@ def test_cardlist_init_by_str_instance(instance: str, expected: CardList):
     assert cl == expected
 
 
-
 @pytest.mark.parametrize('cards, expected', [
     pytest.param(
         [' '],
-        AssertionError('card contains space symbol, but it reserved for CardList seperator'),
+        AssertionError(
+            'card contains space symbol, but it reserved for CardList seperator'
+        ),
     ),
     pytest.param(
         ['Ace Hearts'],
-        AssertionError('card contains space symbol, but it reserved for CardList seperator'),
+        AssertionError(
+            'card contains space symbol, but it reserved for CardList seperator'
+        ),
     ),
     pytest.param(
         ['Ace', 'H'],
@@ -186,11 +182,13 @@ def test_cardlist_init_by_str_instance(instance: str, expected: CardList):
     ),
     pytest.param(
         ['[Ace-H]'],
-        AssertionError('card contains [] symbols, but it reserved for Stacks seperator'),
+        AssertionError('card contains [] symbols, but it reserved for Stacks seperator')
     ),
     pytest.param(
         [' Ace-H '],
-        AssertionError('card contains space symbol, but it reserved for CardList seperator'),
+        AssertionError(
+            'card contains space symbol, but it reserved for CardList seperator'
+        )
     ),
     # pytest.param(
     #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
@@ -202,24 +200,25 @@ def test_cardlist_init_by_str_cards_raises(cards: list[str], expected: Exception
         CardList(*cards)
     assert exp_info.value.args == expected.args
 
+
 @pytest.mark.parametrize('instance, expected', [
     pytest.param(
         '    Ace H    ',
-        ValueError("not supported: card = 'Ace'\n", "not supported: rank='Ace' | suit=None", "not supported: kind='Ace'"),
+        ValueError(
+            "not supported: card = 'Ace'\n",
+            "not supported: rank='Ace' | suit=None", "not supported: kind='Ace'"
+        )
     ),
     pytest.param(
         '  A-1, K-D,   ]',
-        ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'"),
+        ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'")
     ),
-    # pytest.param(
-    #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
-    #     ValueError(),
-    # ),
 ])
 def test_cardlist_init_by_str_instances_raises(instance: str, expected: Exception):
     with pytest.raises(expected_exception=type(expected)) as exp_info:
         CardList(instance=instance)
     assert exp_info.value.args == expected.args
+
 
 @pytest.mark.parametrize('input_data', [
     CardList('Ace|H', 'King|H', 'Quin|C'),
@@ -475,6 +474,7 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
         # and after shuffeling also
         input_data.shuffle()
 
+
 def test_standart_52_card_deck_plus_jokers():
     jokers_amount = 5
 
@@ -495,4 +495,3 @@ def test_standart_52_card_deck_plus_jokers():
     # use new_generator again
     # be carefull, becouse in that way no cards will be yield
     assert CardList(instance=new_generator).length == 0
-

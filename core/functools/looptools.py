@@ -16,8 +16,16 @@ developing:
 from __future__ import annotations
 
 from itertools import tee
-from typing import (Generator, Generic, Iterable, Iterator, Literal,
-                    Reversible, Sequence, TypeVar)
+from typing import (
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Literal,
+    Reversible,
+    Sequence,
+    TypeVar,
+)
 
 _T = TypeVar('_T')
 
@@ -92,6 +100,11 @@ class _LoopTools(Generic[_T]):
         self.final: bool = False
 
     @property
+    def single(self) -> bool:
+        """True if there are only one loop iteration."""
+        return self.begins and self.final
+
+    @property
     def has_previous(self) -> bool:
         """Checks if there is the previous element."""
         return hasattr(self, 'previous')
@@ -114,7 +127,7 @@ class _LoopTools(Generic[_T]):
 
     @current.setter
     def current(self, value: _T):
-        self.source[self.index] = value
+        self.source[self.index] = value  # type: ignore
 
 
 class _LoopToolsGenerators:
@@ -242,6 +255,3 @@ if __name__ == '__main__':
         )
         if loop.final:
             print(f'final via {loop.last}')
-
-    # for item, loop in looptools('abcd'):
-    #     loop.previous

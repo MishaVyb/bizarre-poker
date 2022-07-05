@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # poker apps:
     'games.apps.GamesConfig',
     'core.apps.CoreConfig',
@@ -95,7 +94,9 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': (
+            'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
+        ),
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
@@ -138,7 +139,7 @@ STATICFILES_DIRS = (
 # DEFAULT URLs
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = 'games:index'
-LOGOUT_REDIRECT_URL = None  
+LOGOUT_REDIRECT_URL = None
 """The URL or named URL pattern where requests are redirected after logout
 if LogoutView doesn't have a next_page attribute.
 If None, no redirect will be performed and the logout view will be rendered.

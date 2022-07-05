@@ -10,11 +10,31 @@
     </div>
     <div class="card-body">
       <h4 class="card-title"></h4>
-      <p class="card-text">deck: {{game.deck}} </p>
-      <p class="card-text">table: {{game.table}} </p>
-      <p class="card-text">your hand: {{player.hand}} </p>
+      <p class="card-text">
+        deck:
+        <small class='game_card'>
+          {{game.deck|hiden}}
+        </small>
+      </p>
+      <p class="card-text">
+        table:
+        <small class='game_card'>
+          {{game.table}}
+        </small></p>
+      <p class="card-text">
+        your hand:
+        <small class='game_card'>
+          {{player.hand}}
+        </small>
+      </p>
       {% for player in other_players %}
-          <p class="card-text"> {{player.user}} <small class="text-muted">has in hand:</small> {{player.hand|hiden}} </p>
+          <p class="card-text">
+            {{player.user}}
+            <small class="text-muted">has in hand:</small>
+            <small class='game_card'>
+              {{player.hand|hiden}}
+            </small>
+          </p>
       {% endfor %}
       <p
     </div>
@@ -50,7 +70,7 @@
     <h4>
       <h4 class="card-title"></h4>
       <p class="card-text">step: {{game.process.step}} </p>
-      <p class="card-text">step: {{game.process.info}} </p>
+      {{game.process.info|safe}}
     </h4>
 
 {% endblock content %}

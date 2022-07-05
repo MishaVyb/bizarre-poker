@@ -54,45 +54,43 @@ class PrintColors:
     _BOLD = '\033[1m'
     _UNDERLINE = '\033[4m'
 
-    def __call__(self, *args: Any, **kwds: Any) -> None:
-        print(*args, **kwds)
+    def __init__(self, activated=True) -> None:
+        self.activated = activated
         pass
 
-    @classmethod
-    def header(cls, *args, **kwargs) -> None:
-        print(cls._HEADER, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def __call__(self, *args: Any, **kwds: Any) -> None:
+        if self.activated:
+            print(*args, **kwds)
 
-    @classmethod
-    def bold(cls, *args, **kwargs) -> None:
-        print(cls._BOLD, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def header(self, *args, **kwargs) -> None:
+        self(self._HEADER, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
 
-    @classmethod
-    def underline(cls, *args, **kwargs) -> None:
-        print(cls._UNDERLINE, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def bold(self, *args, **kwargs) -> None:
+        self(self._BOLD, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
 
-    @classmethod
-    def green(cls, *args, **kwargs) -> None:
-        print(cls._OKGREEN, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def underline(self, *args, **kwargs) -> None:
+        self(self._UNDERLINE, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
 
-    @classmethod
-    def fail(cls, *args, **kwargs) -> None:
-        print(cls._FAIL, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def green(self, *args, **kwargs) -> None:
+        self(self._OKGREEN, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
 
-    @classmethod
-    def warning(cls, *args, **kwargs) -> None:
-        print(cls._WARNING, end='')
-        print(*args, **kwargs)
-        print(cls._ENDC, end='')
+    def fail(self, *args, **kwargs) -> None:
+        self(self._FAIL, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
+
+    def warning(self, *args, **kwargs) -> None:
+        self(self._WARNING, end='')
+        self(*args, **kwargs)
+        self(self._ENDC, end='')
 
 
 print_colors = PrintColors()  # default instance for easy access
@@ -111,7 +109,8 @@ def is_sorted(
     if not key:
         for sequence in sequences:
             if not all(
-                compr(sequence[i], sequence[i + 1]) for i in range(len(sequence) - 1)
+                compr(sequence[i], sequence[i + 1])  # type: ignore
+                for i in range(len(sequence) - 1)
             ):
                 return False
     elif isinstance(key, str):
@@ -154,7 +153,7 @@ def range_inclusevly(
     raise NotImplementedError
 
 
-def isinstance_items(__iterable: Iterable, __item_type: type):
-    return isinstance(__iterable, Iterable) and all(
-        map(lambda x: isinstance(x, __item_type), __iterable)
+def isinstance_items(container: Iterable, container_type: type, item_type: type):
+    return isinstance(container, container_type) and all(
+        map(lambda x: isinstance(x, item_type), container)
     )

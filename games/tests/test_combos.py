@@ -1,5 +1,3 @@
-
-
 import itertools
 import random
 from copy import deepcopy
@@ -8,7 +6,7 @@ import pytest
 
 from games.backends.cards import Card, CardList, Stacks
 from games.backends.combos import (CLASSIC_COMBOS, ComboKind, ComboKindList,
-                            ComboStacks, Conditions)
+                                   ComboStacks, Conditions)
 
 
 @pytest.mark.parametrize('input_data, expected', [
@@ -31,7 +29,7 @@ def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
             'K,c',
         ),
         {
-            'highest card': [
+            'highest_card': [
                 # expected
                 CardList('K.c'),
                 CardList('J.h'),
@@ -64,7 +62,7 @@ def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
             'row': [
                 CardList('A.h', 'K.c'),
             ],
-            'highest card': [
+            'highest_card': [
                 CardList('A,h'),
                 CardList('A,c'),
                 CardList('K,c'),
@@ -102,7 +100,7 @@ def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
             # 'row': [
             #     CardList('A.h', 'K.c', 'black(Q.s)', 'red(J.s)', '10.s'),
             # ],
-            #'highest card': [],
+            # 'highest_card': [],
         },
         id='03- add jokers'
     ),
@@ -641,3 +639,43 @@ def test_track_and_merge(
     combo = ComboStacks()
     assert combo.track_and_merge(*input_stacks) == expected_combo
     assert combo.cases == expected_cases
+
+
+@pytest.mark.parametrize('cases, expected', [
+    pytest.param(
+        {
+            'rank': [CardList('A|h', 'A|d')]
+        },
+        True,
+        id='01',
+    ),
+    pytest.param(
+        {},
+        False,
+        id='01',
+    ),
+    pytest.param(
+        {
+            'rank': [],
+            'suit': [],
+            'row': [],
+            'highest_card': [],
+        },
+        False,
+        id='01',
+    ),
+    pytest.param(
+        {
+            'rank': [CardList(), CardList()],
+            'suit': [],
+            'row': [CardList(), CardList(), CardList()],
+            'highest_card': [],
+        },
+        False,
+        id='01',
+    ),
+])
+def test_combokind_bool(cases: dict[str, Stacks], expected: bool):
+    combo = ComboStacks()
+    combo.cases = cases
+    assert bool(combo) == expected

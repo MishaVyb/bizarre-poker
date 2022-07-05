@@ -363,10 +363,10 @@ Untitled*
 # ------- IDE settings -------- #
 
 # Black settings
-pyproject.toml
+# pyproject.toml
 
 # flake8 settings
-setup.cfg
+# setup.cfg
 
 # visual studio code settings
 .vscode*

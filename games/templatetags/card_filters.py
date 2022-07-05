@@ -1,23 +1,14 @@
-
-from django import template, forms
-from games import models
+from django import template
 from django.contrib.auth import get_user_model
-from django.contrib.auth.base_user import AbstractBaseUser
 
-from core.functools.decorators import temporary_globals
+from core.functools.decorators import temporally
 from games.backends.cards import Card, CardList
-from games.backends.cards import CardList
-
 
 register = template.Library()
-#User = get_user_model()
-
+User = get_user_model()
 
 
 @register.filter
-@temporary_globals(
-        Card__STR_METHOD=Card.Text.emoji_shirt,
-        JokerCard__STR_METHOD=Card.Text.emoji_shirt,
-    )
+@temporally(Card.Text, str_method='emoji_shirt')
 def hiden(cards: CardList) -> str:
     return str(cards)

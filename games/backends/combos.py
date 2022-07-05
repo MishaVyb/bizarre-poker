@@ -16,11 +16,12 @@ from copy import deepcopy
 from operator import attrgetter
 from typing import ClassVar, Iterable
 
-from games.backends.cards import Card, CardList, JokerCard, Stacks
 from core.functools.looptools import looptools
-from core.functools.utils import PrintColors, is_sorted
+from core.functools.utils import PrintColors
+from core.functools.utils import is_sorted
+from games.backends.cards import Card, CardList, JokerCard, Stacks
 
-print = PrintColors()   # alias
+print = PrintColors(activated=False)  # alias
 Conditions = dict[str, tuple[int, ...]]
 
 
@@ -69,7 +70,7 @@ class ComboKind:
         if row_case:
             self.cases['row'] = tuple(sorted(row_case, reverse=True))
         if highest_card_case:
-            self.cases['highest card'] = tuple(highest_card_case)
+            self.cases['highest_card'] = tuple(highest_card_case)
 
     def __repr__(self) -> str:
         return f'<ComboKind: {self.name=}>'
@@ -146,10 +147,8 @@ class ComboKindList(list[ComboKind]):
                 return ref
             if ref.is_minor_combo_for(conditions):
                 raise ExtraComboException(cases=conditions, nearest=ref)
-        raise RuntimeError(
-            f'no reference combination found for {conditions} in: {self}'
-            f'at least `highest card` combination should be'
-        )
+
+        raise NoComboException(cases=conditions, nearest=ref)
 
     def __str__(self) -> str:
         return ', '.join([c.name for c in self])
@@ -194,6 +193,27 @@ class ExtraComboException(Exception):
         stacks.trim_to(self.nearest)
 
 
+class NoComboException(Exception):
+    def __init__(self, cases: Conditions, nearest: ComboKind) -> None:
+        assert nearest.name == 'high card'
+
+        self.cases = cases
+        self.nearest = nearest
+        return super().__init__(
+            f'No reference combination found for {cases}. '
+            f'At least {self.nearest} combination should be sytisfied. '
+        )
+
+    def solution(self, stacks: ComboStacks):
+        if not stacks:
+            return None
+        else:
+            # add highest card here
+            ...
+            ...
+            raise RuntimeError(f'{stacks=}. {self.nearest=}. {self.cases=}')
+
+
 class ComboStacks:
     """Contains lists of stacks equivalented to ComboKind condtitions groups.
     By default `init()` creates an epty object.
@@ -203,6 +223,9 @@ class ComboStacks:
     def __init__(self):
         self.cases: dict[str, Stacks] = {}
         self.extra_cases: dict[str, Stacks] = {}
+
+    def __bool__(self) -> bool:
+        return any(any(bool(cl) for cl in stacks) for stacks in self.cases.values())
 
     def __str__(self) -> str:
         value = f'Conditions: {get_conditions(self.cases)}\n'
@@ -229,6 +252,9 @@ class ComboStacks:
     def track(self, *stacks: CardList, possible_highest: Card = Card(14, 4)) -> None:
         # 1- сложим все стопки в одну новую
         tracking = CardList(instance=itertools.chain(*stacks))
+        if not tracking:
+            print("raise Warning('no cards for tracking was provided')")
+
         # 2- suit case
         self.track_equal(tracking, possible_highest, 'suit')
         # 3- rank case
@@ -239,7 +265,7 @@ class ComboStacks:
         # даже если нашли что-то для предыдущих cases, они потом могут быть
         # недостаточными для метода merge и будут откинуты, в этом случае нам и нужен
         # заранее записанный случай highest card
-        self.cases['highest card'] = [CardList(card) for card in tracking]
+        self.cases['highest_card'] = [CardList(card) for card in tracking]
 
     def track_equal(
         self,
@@ -497,12 +523,14 @@ class ComboStacks:
         if case:
             self.cases[key] = case
 
-    def merge(self, references: ComboKindList) -> ComboKind:
+    def merge(self, references: ComboKindList) -> ComboKind | None:
         try:
             return references.get_by_conditions(get_conditions(self.cases))
         except ExtraComboException as e:
             e.solution(self)
             return e.nearest
+        except NoComboException as e:
+            return e.solution(self)
 
     def trim_to(self, reference: ComboKind) -> None:
         assert self.cases
@@ -525,7 +553,7 @@ class ComboStacks:
         *stacks: CardList,
         references=CLASSIC_COMBOS,
         possible_highest: Card = Card(14, 4),
-    ) -> ComboKind:
+    ) -> ComboKind | None:
         """Find any possible combination in stacks (even a Highest Card).
 
         `*stacks`: where to trace combinations
