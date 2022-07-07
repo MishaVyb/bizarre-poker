@@ -18,8 +18,8 @@ from core.functools.decorators import temporally
 from games import models
 from games.backends.cards import Card
 from poker import settings
+from users.models import User
 
-User = get_user_model()
 app_name = 'games'
 
 
@@ -70,12 +70,13 @@ class GameView(views.View):
         """handling GET request"""
         game: models.Game = get_object_or_404(models.Game, pk=pk)
         context = {'game': game}
+        request.user.__class__ = User # <re-code! put in in middleware>
 
         try:
             context['player'] = request.user.players.get(game=game)
             context['other_players'] = game.players.filter(~Q(user=request.user))
         except models.Player.DoesNotExist:
-            # monitoring mode (user are not playing at this game)
+            # monitoring mode (user are not playing at this game but watching)
             # return self.get_monitoring_mode(...)
             raise NotImplementedError('monitoring mode is not implemented yet')
         except models.Player.MultipleObjectsReturned:
@@ -86,6 +87,7 @@ class GameView(views.View):
         except AttributeError:
             # for non authenticated user
             # 'AnonymousUser' object has no attribute 'players'
+            # monitoring mode (user are not playing at this game but watching)
             return redirect(settings.LOGIN_URL)
 
         return render(request, self.template, context)

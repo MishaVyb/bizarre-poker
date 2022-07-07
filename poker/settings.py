@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # poker apps:
+    'users.apps.UsersConfig',
     'games.apps.GamesConfig',
     'core.apps.CoreConfig',
 ]

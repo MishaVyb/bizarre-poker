@@ -9,14 +9,13 @@ from core.functools.utils import isinstance_items
 from games.backends.cards import CardList, Stacks
 from games.backends.combos import CLASSIC_COMBOS
 from games.models import Game, Player
-
-User = get_user_model()
+from users.models import User
 
 
 @pytest.mark.django_db
 class TestUserModel:
     def test_user_fiilds(self, admin_user):
-        assert hasattr(admin_user, 'players')
+        assert hasattr(admin_user, '_players')
 
 
 @pytest.mark.django_db
@@ -113,7 +112,7 @@ class TestGameModel:
         assert isinstance(game.deck, CardList)
 
     @pytest.mark.django_db(transaction=True)
-    def test_unique_constraints(self, admin_user, vybornyy: AbstractBaseUser):
+    def test_unique_constraints(self, admin_user, vybornyy: User):
         """Правило: у одного юзера может быть много плееров, но у этих плееров
         должны быть разные геймы. То есть один юзер не может играть в одну игру
         несколькими плеерами"""
@@ -202,8 +201,8 @@ class TestGameModel:
         expected_method: str,
         expected,
         game_vybornyy_vs_bart: Game,
-        vybornyy: AbstractBaseUser,
-        bart_barticheg: AbstractBaseUser,
+        vybornyy: User,
+        bart_barticheg: User,
     ):
         # get custom deck from input data:
         test_deck = CardList()
@@ -260,7 +259,7 @@ class TestPlayerComboModel:
     )
     def test_setup(
         self,
-        admin_user: AbstractBaseUser,
+        admin_user: User,
         game_with_bunch_of_players: Game,
         hand: CardList,
         expected_name: str,
@@ -270,7 +269,7 @@ class TestPlayerComboModel:
         game = game_with_bunch_of_players
 
         # add main test player to the game
-        player: Player = admin_user.players.create(game=game, hand=hand)
+        player: Player = admin_user.players_manager.create(game=game, hand=hand)
         player.combo.setup()
 
         # get player by another query to db:

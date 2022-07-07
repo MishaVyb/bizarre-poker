@@ -11,13 +11,19 @@ import pytest
 from django.contrib.auth import get_user_model
 from games.backends.cards import CardList
 from games.models import Game
+from users.models import User
 
-User = get_user_model()
+
+@pytest.fixture
+def admin_user():
+    u = User.objects.create(username='admin_user')
+    return u
 
 
 @pytest.fixture
 def vybornyy():
-    return User.objects.create(username='vybornyy')
+    u = User.objects.create(username='vybornyy')
+    return u
 
 
 @pytest.fixture
@@ -41,7 +47,9 @@ def bunch_of_users(request):  # -> QuerySet[AbstractBaseUser]
     # so there are another query to all objects
     # 2- objects.all() may contain other users (user_admin, vybornyy...)
     # so there are filtering by namse
-    return User.objects.filter(username__in=[user.username for user in users])
+    return User.objects.filter(
+        username__in=[user.username for user in users]
+    )
 
 
 @pytest.fixture(

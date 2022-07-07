@@ -1,33 +1,34 @@
 """
 
 developing:
-[ ] setup / teardown
+[ ] чтобы не надо было вызывать save() каждый раз
 
 """
 
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Reversible
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import IntegrityError, models
 from django.db.models.query import QuerySet
-from django.db.models.manager import RelatedManager
+from django.db.models import manager
 from django.urls import reverse
+import itertools
 
 
-from core.functools.looptools import looptools
+from core.functools.looptools import lapafter, looptools
 from games.backends.cards import CardList, Stacks, Decks
 from games.backends.combos import ComboKind, ComboStacks
 from games.fields import CardListField, StacksField
 
-User = get_user_model()
-# ----> players
+from core.models import CreatedModifiedModel
 
 
-class Game(models.Model):
+from users.models import User, UserModel
+
+
+class Game(CreatedModifiedModel):
     deck: CardList = CardListField('deck of cards', blank=True)
     deck_generator = models.CharField(
         'name of deck generator method or contaianer',
@@ -38,6 +39,12 @@ class Game(models.Model):
     )
     deck_generator_shuffling = True
     table: CardList = CardListField('cards on the table', blank=True)
+    beds_storage: int = models.PositiveIntegerField(
+        'sum of all beds maded for game round', default=0
+    )
+
+    SMALL_BLIND: int = 5
+    BIG_BLIND: int = SMALL_BLIND * 2
 
     # typing annotation for releted objects (handle it like combo: PlayerCombo)
     @property
@@ -45,8 +52,12 @@ class Game(models.Model):
         return self._players.all()
 
     @property
-    def players_manager(self) -> RelatedManager:
+    def players_manager(self) -> manager.RelatedManager:
         return self._players
+
+    class Meta(CreatedModifiedModel.Meta):
+        verbose_name = 'poker game'
+        verbose_name_plural = 'poker games'
 
     def __init__(
         self,
@@ -54,7 +65,7 @@ class Game(models.Model):
         deck: CardList = None,
         table: CardList = None,
         commit: bool = False,
-        players: Iterable[AbstractBaseUser] = [],
+        players: Iterable[User] = [],
     ) -> None:
         kwargs: dict[str, Any] = {}
         kwargs.setdefault('deck', deck) if deck is not None else ...
@@ -79,10 +90,6 @@ class Game(models.Model):
             except IntegrityError as e:
                 raise ValueError(f'{user} already playing in {self}', *e.args)
 
-    class Meta:
-        verbose_name = 'poker game'
-        verbose_name_plural = 'poker games'
-
     def __str__(self) -> str:
         return (
             f'({self.pk}): step[{self.step}] deck [...{self.deck[-5:]}], '
@@ -97,6 +104,19 @@ class Game(models.Model):
         return super().clean()
 
     # ------- game iterations default implementations -------
+
+    def setup(self):
+        """prepare round executions"""
+        self.fill_and_shuffle_deck()
+        self.move_dealer_button()
+
+        # tmp
+        for player in self.players:
+            player.bet.append(0)
+
+        self.get_blinds()
+        self.save()
+
     def fill_and_shuffle_deck(self):
         full_deck = self.deck_generator
 
@@ -117,8 +137,48 @@ class Game(models.Model):
             self.deck.shuffle()
         self.save()
 
+    def move_dealer_button(self):
+        # <re-code> by cycle method
+        for loop in looptools(self.players):
+            if loop.item.dealer:
+                loop.item.dealer = False
+                loop.item.save()
+                if loop.has_following:
+                    loop.following.dealer = True
+                    loop.following.save()
+                else:
+                    loop.first.dealer = True
+                    loop.first.save()
+                break
+            elif loop.final:
+                # in case there are no dealer at all
+                self.players.first().dealer = True
+                self.players.first().save()
+
+    # def players_clockwise(self, start=0, length=None, infinity=False):
+    #     length = self.players.count()
+    #     index = start
+    #     stop = start - 1 if start > 0 else length - 1
+    #     while True:
+    #         try:
+    #             yield self.players[index]
+    #             index += 1
+    #         except IndexError:
+    #             index = 0
+
+    def get_blinds(self):
+        for i, player in zip([0, 1], lapafter(lambda p: not p.dealer, self.players)):
+            p: Player = player
+            p.bet.append(self.SMALL_BLIND if not i else self.BIG_BLIND)
+
+
+    def ask_for_beds(self):
+        self.players_manager.order_by('bet__modified').last()
+
+
+
     def deal_cards(self, deal_amount: int = 2):
-        """draw cards to all players"""
+        """pre-flop: draw cards to all players"""
         assert not any(p.hand for p in self.players), 'player can not has cards in hand'
         for _ in range(deal_amount):
             for player in self.players:
@@ -133,9 +193,6 @@ class Game(models.Model):
             self.table.append(self.deck.pop())
         self.save()
 
-    def place_bets(self):
-        ...
-
     def track_combos(self):
         for player in self.players:
             player.combo.setup()
@@ -147,11 +204,6 @@ class Game(models.Model):
         # self.track_combos()
         ...
         ...
-
-    def setup(self):
-        """prepare round executions"""
-        self.fill_and_shuffle_deck()
-        self.save()
 
     def teardown(self):
         self.table.clear()
@@ -230,30 +282,63 @@ class Game(models.Model):
         return self.step, name
 
 
-class Player(models.Model):
+class Player(CreatedModifiedModel):
     """Model for representing single user at curtain game."""
 
-    user: AbstractBaseUser = models.ForeignKey(
+    user: User = models.ForeignKey(
         to=User,
         on_delete=models.CASCADE,
-        related_name='players',
+        related_name='_players',
     )
     game: Game = models.ForeignKey(
         to=Game, on_delete=models.CASCADE, related_name='_players'
     )
     hand: CardList = CardListField('cards in players hand', blank=True)
+    dealer: bool = models.BooleanField('dealer botton', default=False)
+    """A dealer button is used to represent the player in the dealer position;
+    the dealer button rotates clockwise after each round, changing the position of the
+    dealer and blinds.
+    """
 
     # typing annotation for releted objects (handle it like combo: PlayerCombo)
+    @property
+    def bet(self) -> PlayerBet:
+        if hasattr(self, '_bet'):
+            return self._bet
+        return PlayerBet.objects.create(player=self)
+
     @property
     def combo(self) -> PlayerCombo:
         if hasattr(self, '_combo'):
             return self._combo
         return PlayerCombo.objects.create(player=self)
 
+    # @property
+    # def dealer(self) -> bool:
+    #     return self._dealer
+
+    # @dealer.setter
+    # def dealer(self, value: bool):
+    #     self._dealer = value
+    #     self.save()
+
+    # @property
+    # def bet(self) -> bool:
+    #     return self._bet
+
+    # @bet.setter
+    # def bet(self, value: bool):
+    #     self._bet = value
+    #     self.save()
+
+    # def __setattr__(self, __name: str, __value: Any) -> None:
+    #     super().__setattr__(__name, __value)
+    #     self.save()
+
     def __init__(
         self,
         *args,
-        user: AbstractBaseUser = None,
+        user: User = None,
         game: Game = None,
         hand: CardList = None,
     ) -> None:
@@ -266,18 +351,55 @@ class Player(models.Model):
         ), f'not supported args and kwargs toogether. {args=}, {kwargs=}'
         super().__init__(*args, **kwargs)
 
-    class Meta:
+    class Meta(CreatedModifiedModel.Meta):
         verbose_name = 'user in game (player)'
         verbose_name_plural = 'users in games (players)'
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'game'],
                 name='unique: User can play in Game only by one Player',
-            )
+            ),
+            # models.???Constraint(
+            #     fields=['dealer'],
+            #     name='only one dealer could be and it has to be',
+            # )
+            # models.UniqueConstraint(
+            #     fields=['created'],
+            #     name='it should be unique becase of proper ordering',
+            # )
         ]
 
     def __str__(self) -> str:
         return f'({self.pk}) {self.user.username}: hand [{self.hand}]'
+
+
+
+
+class PlayerBet(CreatedModifiedModel):
+    """Current players bet. After beds applyed it becomes 0."""
+
+    player: Player = models.OneToOneField(
+        Player, on_delete=models.CASCADE, related_name='_bet'
+    )
+    # maker: bool = models.BooleanField('making a bet now', default=False)
+    # """True if game is wating till this player append a bet."""
+    value: int = models.PositiveIntegerField(default=0)
+
+
+    class Meta(CreatedModifiedModel.Meta):
+        pass
+
+    def append(self, value: int):
+        """appending a bet to the game. `user bank -= value` `bet += value`"""
+        t = type(self.player.user)
+        if value > self.player.user.profile.bank:
+            raise NotImplementedError
+
+        self.player.user.profile.bank -= value
+        self.player.user.profile.save()
+
+        self.value += value
+        self.save()
 
 
 class PlayerCombo(models.Model):

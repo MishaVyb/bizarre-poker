@@ -16,6 +16,7 @@ developing:
 from __future__ import annotations
 
 from itertools import tee
+import itertools
 from typing import (
     Generator,
     Generic,
@@ -229,6 +230,27 @@ looptools.begins(..)
 looptools.final(..)
     yield `tools.item` and `tools.final`
 """
+
+
+# def circle_after(__predicate, __iterable: Iterable[_T]):
+#     start_point: _T = None
+#     for item, begins in looptools.begins(
+#         itertools.cycle(itertools.dropwhile(__predicate, __iterable))
+#     ):
+#         if begins:
+#             start_point = item
+#         elif item is start_point:
+#             return
+
+#         yield item
+
+def lapafter(__predicate, __sequence: Sequence[_T]):
+    # <re-code>
+    # два раза проходим по одной и той же сиквенции
+    for i in itertools.dropwhile(__predicate, __sequence):
+        yield i
+    for i in itertools.takewhile(__predicate, __sequence):
+        yield i
 
 
 if __name__ == '__main__':

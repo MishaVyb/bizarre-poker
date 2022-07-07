@@ -31,6 +31,8 @@ class GameData:
     def game(self) -> Game:
         return Game.objects.get(pk=self._game.pk)
 
+
+    # the same for player
     @property
     def player(self) -> Player | None:
         try:
@@ -84,7 +86,6 @@ class TestGameView:
             assert response.status_code == HTTPStatus.FOUND
             return
 
-        assert response.status_code == HTTPStatus.OK
         assert response.status_code == HTTPStatus.OK
         assert 'game' in response.context
         assert data.game == response.context['game']
