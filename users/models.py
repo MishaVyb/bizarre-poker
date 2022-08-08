@@ -6,6 +6,8 @@ from django.db import models
 from django.db.models import manager
 from django.db.models.query import QuerySet
 
+
+
 # from games.models import Player -- error circular imports
 
 # not possible to inheritate from get_user_model()

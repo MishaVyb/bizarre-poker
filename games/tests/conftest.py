@@ -16,20 +16,15 @@ from users.models import User
 
 @pytest.fixture
 def admin_user():
-    u = User.objects.create(username='admin_user')
-    return u
-
+    return User.objects.create(username='admin_user')
 
 @pytest.fixture
 def vybornyy():
-    u = User.objects.create(username='vybornyy')
-    return u
-
+    return User.objects.create(username='vybornyy')
 
 @pytest.fixture
 def bart_barticheg():
     return User.objects.create(username='bart_barticheg')
-
 
 @pytest.fixture(
     params=[

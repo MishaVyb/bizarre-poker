@@ -31,20 +31,21 @@ ALLOWED_HOSTS: list[str] = []
 # Application definition
 
 INSTALLED_APPS = [
-    # default django apps:
+    # default django:
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # poker apps:
+    # custom:
     'users.apps.UsersConfig',
     'games.apps.GamesConfig',
     'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
+    # default django:
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -52,6 +53,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # custom:
+    'poker.middleware.proxy.UserProxyMiddleware',
+    # ...
+    # ...
 ]
 
 ROOT_URLCONF = 'poker.urls'

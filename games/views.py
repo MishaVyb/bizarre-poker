@@ -19,6 +19,7 @@ from games import models
 from games.backends.cards import Card
 from poker import settings
 from users.models import User
+from django.contrib.auth.models import AnonymousUser
 
 app_name = 'games'
 
@@ -68,9 +69,12 @@ class GameView(views.View):
     @temporally(Card.Text, str_method='classic')
     def get(self, request: WSGIRequest, pk: int) -> HttpResponse:
         """handling GET request"""
+        assert isinstance(
+            request.user, User | AnonymousUser
+        ), 'requst should passed through user proxy middlware'
+        
         game: models.Game = get_object_or_404(models.Game, pk=pk)
         context = {'game': game}
-        request.user.__class__ = User # <re-code! put in in middleware>
 
         try:
             context['player'] = request.user.players.get(game=game)
