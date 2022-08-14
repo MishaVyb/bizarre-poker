@@ -3,7 +3,7 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
-import games.fields
+import games.models.fields
 
 
 class Migration(migrations.Migration):
@@ -26,10 +26,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ('name', models.CharField(max_length=20)),
-                ('rank', games.fields.StacksField()),
-                ('suit', games.fields.StacksField()),
-                ('row', games.fields.StacksField()),
-                ('highest_card', games.fields.StacksField()),
+                ('rank', games.models.fields.StacksField()),
+                ('suit', games.models.fields.StacksField()),
+                ('row', games.models.fields.StacksField()),
+                ('highest_card', games.models.fields.StacksField()),
                 (
                     'player',
                     models.OneToOneField(

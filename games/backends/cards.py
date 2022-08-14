@@ -740,6 +740,10 @@ Stacks = list[CardList]
 
 
 class Decks:
+
+    TEST_DECK: CardList | None = None
+    """Castom deck for testing porpuses."""
+
     @staticmethod
     def standart_52_card_deck_plus_jokers(jokers_amount: int = 2):
         """yield all 52 cards from highes to smallest and then red/black jokers"""
@@ -754,6 +758,7 @@ class Decks:
 
         for i in range(jokers_amount):
             yield JokerCard('red') if i % 2 else JokerCard('black')
+
 
 
 # def main():

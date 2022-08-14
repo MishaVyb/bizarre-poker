@@ -1,26 +1,25 @@
 from django.contrib import admin
 
-from games.models import Game, Player
+from games import models
 
 
+@admin.register(models.PlayerBet, models.PlayerCombo)
+class DefaultAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(models.Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'step', 'deck', 'table', 'players')
-    list_editable = ('step',)
+    list_display = ('pk', 'action_name', 'deck', 'table', 'players')
+    list_editable = ('action_name',)
     # search_fields = ('text',)
     # list_filter = ('created',)
-    empty_value_display = '-empty-'
+    empty_value_display = 'empty'
 
 
+@admin.register(models.Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = (
-        'pk',
-        'user',
-        'hand',
-    )
-    # list_editable = ('hand',)
+    list_display = ('pk', 'user', 'hand', 'dealer', 'host')
+    list_editable = ('dealer', 'host')
 
-    empty_value_display = '-empty-'
-
-
-admin.site.register(Game, GameAdmin)
-admin.site.register(Player, PlayerAdmin)
+    empty_value_display = 'empty'

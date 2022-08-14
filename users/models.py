@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User as _UserModel
 from django.db import models
 from django.db.models import manager
 from django.db.models.query import QuerySet
 
-
-
-# from games.models import Player -- error circular imports
+if TYPE_CHECKING:
+    from games.models import Player
 
 # not possible to inheritate from get_user_model()
-# so we have to use auth user model directly
+# so we have to use auth user model (_UserModel) directly
 class UserProxy(_UserModel):
     @property
-    def players(self) -> QuerySet[Player]:  # works but warning
+    def players(self) -> QuerySet[Player]:
         return self._players.all()
 
     @property
@@ -46,9 +47,6 @@ class Profile(models.Model):
     bank: int = models.PositiveIntegerField(default=1000)
     """Users money account in cents. Default is 10.00$."""
 
-
-
-# for easy import by another module:
 
 User = UserProxy
 """alias to custom proxy model which extends UserModel behaviour.

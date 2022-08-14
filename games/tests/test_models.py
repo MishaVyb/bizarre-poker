@@ -8,7 +8,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from core.functools.utils import isinstance_items
 from games.backends.cards import CardList, Stacks
 from games.backends.combos import CLASSIC_COMBOS
-from games.models import Game, Player
+from games.models import Game, Player, GAME_ACTIONS, BaseGameAction, RequirementError
 from users.models import User
 
 
@@ -141,18 +141,27 @@ class TestGameModel:
         another_game: Game = Game.objects.create()
         another_game.players_manager.create(user=admin_user, hand=CardList('9-H'))
 
-    def test_game_full_iteration(self, game_with_bunch_of_players):
+    def test_game_all_actions_force_requirements(self, game_with_bunch_of_players):
         game_cicle_amount = 7
-        while True:
+        game: Game = game_with_bunch_of_players
+
+
+        assert game.current_action == GAME_ACTIONS['setup']
+
+        for i in range(len(GAME_ACTIONS)):
+            game.current_action.game = game
             try:
-                next(game_with_bunch_of_players)
-            except StopIteration:
-                if not game_cicle_amount:
-                    break
-                game_cicle_amount -= 1
+                game.current_action.pre_call()
+            except RequirementError as e:
+                pass
+            finally:
+                game.current_action()
+                game.current_action.post_call()
+
+        assert game.current_action == GAME_ACTIONS['setup']
 
     @pytest.mark.parametrize(
-        'table, hands, expected_method, expected',
+        'table, hands, action, expected',
         [
             pytest.param(
                 CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),   # table
@@ -160,13 +169,13 @@ class TestGameModel:
                     CardList('10-s', '9-s'),    # vybornyy hand
                     CardList('Ace|H', '2-h'),   # bart_barticheg hand
                 ),
-                'opposing',  # expected
+                GAME_ACTIONS['opposing'],
                 (
-                    # vybornyy
+                    # expected combo vybornyy
                     ('one pair', {
                         'rank': [CardList('Ace|H', 'Ace|D')]
                     }),
-                    # bart_barticheg
+                    # expected combo bart_barticheg
                     ('three of kind', {
                         'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]
                     })
@@ -179,13 +188,13 @@ class TestGameModel:
                     CardList('10-s', '9-s'),    # vybornyy hand
                     CardList('Ace|H', '2-h'),   # bart_barticheg hand
                 ),
-                'opposing',  # expected
+                GAME_ACTIONS['opposing'],
                 (
-                    # vybornyy
+                    # expected combo vybornyy
                     ('high card', {
                         'highest_card': [CardList('Ace|H')]
                     }),
-                    # bart_barticheg
+                    # expected combo bart_barticheg
                     ('one pair', {
                         'rank': [CardList('Ace|H', 'Ace|H')]
                     })
@@ -198,7 +207,7 @@ class TestGameModel:
         self,
         table: CardList,
         hands: Stacks,
-        expected_method: str,
+        action: BaseGameAction,
         expected,
         game_vybornyy_vs_bart: Game,
         vybornyy: User,
@@ -215,11 +224,21 @@ class TestGameModel:
         game.deck_generator_shuffling = False
         game.deck_generator = test_deck.copy()
 
-        while True:
-            step, method = next(game)
-            if method is expected_method:
-                break
+        act = False
+        while not act:
+            if game.current_action == action:
+                act = True
 
+            game.current_action.game = game
+            try:
+                game.current_action.pre_call()
+            except RequirementError as e:
+                pass
+            finally:
+                game.current_action()
+                game.current_action.post_call()
+
+        # assertion:
         for player, hand, (name, stacks) in zip(
             game.players, hands, expected, strict=True
         ):
@@ -228,7 +247,7 @@ class TestGameModel:
             for key in CLASSIC_COMBOS.get(player.combo.name).cases.keys():
                 assert player.combo[key] == stacks[key]
 
-        game.teardown()
+        #game.teardown()
 
     def test_deck_generator_default(self):
         assert Game._meta.get_field('deck_generator').default == (
@@ -238,6 +257,8 @@ class TestGameModel:
 
 @pytest.mark.django_db
 class TestPlayerComboModel:
+
+
     @pytest.mark.parametrize(
         'hand, expected_name, expected_cases',
         [
@@ -274,6 +295,7 @@ class TestPlayerComboModel:
 
         # get player by another query to db:
         player = Player.objects.get(user=admin_user)
+        
         # assertion:
         assert isinstance(player.combo.name, str)
         assert isinstance_items(player.combo.rank, list, CardList)

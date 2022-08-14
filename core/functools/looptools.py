@@ -18,6 +18,7 @@ from __future__ import annotations
 from itertools import tee
 import itertools
 from typing import (
+    Callable,
     Generator,
     Generic,
     Iterable,
@@ -54,7 +55,7 @@ class _LoopTools(Generic[_T]):
                 following=next(following_iter),
                 source=__iterable,
             )
-        except StopIteration:  # iterable is epty
+        except StopIteration:  # iterable is empty
             return
         try:
             tools.following = next(following_iter)
@@ -219,61 +220,43 @@ class _LoopToolsGenerators:
         return _LoopTools.generator(__iterable, default=default)
 
 
-looptools = _LoopToolsGenerators()  # alias
-"""
-looptools(..)
-    yield only `tools`
-looptools.item(..)
-    yield `tools.item` and `tools`
-looptools.begins(..)
-    yield `tools.item` and `tools.begins`
-looptools.final(..)
-    yield `tools.item` and `tools.final`
-"""
+looptools = _LoopToolsGenerators()
 
 
-# def circle_after(__predicate, __iterable: Iterable[_T]):
-#     start_point: _T = None
-#     for item, begins in looptools.begins(
-#         itertools.cycle(itertools.dropwhile(__predicate, __iterable))
-#     ):
-#         if begins:
-#             start_point = item
-#         elif item is start_point:
-#             return
+def circle_after(
+    enter_condition: Callable[[_T], bool], sequence: Sequence[_T], /, inclusive=True
+) -> Generator[_T, None, None]:
+    """Making a circle through sequence after enter condition is satisfied.
+    Starting by next value after satisfaction if not inclusive.
 
-#         yield item
+    >>> ''.join(circle_after(lambda x: x == 'b', 'abab'))
+    'baba'
+    >>> list(circle_after(lambda x: x > 2, [1, 2, 3, 4, 5], inclusive=False))
+    [4, 5, 1, 2, 3]
 
-def lapafter(__predicate, __sequence: Sequence[_T]):
-    # <re-code>
-    # два раза проходим по одной и той же сиквенции
-    for i in itertools.dropwhile(__predicate, __sequence):
+    """
+    if not sequence:
+        return
+
+    it = itertools.dropwhile(lambda x: not enter_condition(x), sequence)
+
+    # yield first value after incoming
+    try:
+        incoming = next(it)
+    except StopIteration:
+        raise StopIteration('Enter condition for circle loop was not satisfied. ')
+
+    if inclusive:
+        yield incoming
+
+    # yield all after
+    for i in it:
         yield i
-    for i in itertools.takewhile(__predicate, __sequence):
+
+    # yield from beggining till incoming value
+    for i in sequence:
+        if i is incoming:
+            if not inclusive:   # get incoming value as last one it not inclusive
+                yield incoming
+            return
         yield i
-
-
-if __name__ == '__main__':
-    for item, loop in looptools.item('abcd', default='*'):
-        print(f'{item}: [{loop.index}] | {loop.previous} {loop.item} {loop.following}')
-
-    print('----')
-
-    for item, loop in looptools.item('a', default='*'):
-        print(f'{item}: [{loop.index}] | {loop.previous} {loop.item} {loop.following}')
-
-    print('----')
-    for loop in looptools('a'):
-        loop.has_following
-
-    for item, loop in looptools.item('abcd'):
-        if loop.begins:
-            print(f'begins via {loop.first}')
-        nothing = '*'
-        print(
-            f'{item}: [{loop.index}] | '
-            f'{loop.previous if loop.has_previous else nothing} {loop.item} '
-            f'{loop.following if loop.has_following else nothing}'
-        )
-        if loop.final:
-            print(f'final via {loop.last}')

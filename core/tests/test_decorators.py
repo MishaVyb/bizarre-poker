@@ -1,7 +1,7 @@
 from core.functools.decorators import temporally
 
 
-# test porpuses:
+# for test porpuses
 TEST_GLOBAL = 'default'
 
 

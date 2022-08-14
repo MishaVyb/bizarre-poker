@@ -63,14 +63,28 @@
   </div>
 </div>
 
+<div class="row d-flex justify-content-center" style='padding-top: 15px;'>
+  <div class="card border-light mb-3" style="max-width: 20rem;">
+    <div class="card-header">
+      form:
+    </div>
+    <div class="card-body">
 
-    <h3>
-      {{game.status}}
-    </h3>
-    <h4>
-      <h4 class="card-title"></h4>
-      <p class="card-text">step: {{game.process.step}} </p>
-      {{game.info|safe}}
-    </h4>
+      <form method="post"
+      enctype="multipart/form-data"
+
+      action="{% url 'games:bet' pk=game.pk %}"
+
+      >
+        {% csrf_token %}
+        {{ form }}
+        <button type="submit" class="btn btn-primary">
+          {% block submit_button %}
+          {% endblock %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% endblock content %}

@@ -18,6 +18,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path('', include('games.urls', namespace='games')),
+    path('api/', include('api.urls', namespace='api')),
+
     # django default urls:
     path('accounts/', include('django.contrib.auth.urls')),
     path('admin/', admin.site.urls),

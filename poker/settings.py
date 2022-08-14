@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
+from datetime import timedelta
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -38,7 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # other libs
+    'rest_framework',
+    'rest_framework.authtoken',
+    'djoser',
     # custom:
+    'api.apps.ApiConfig',
     'users.apps.UsersConfig',
     'games.apps.GamesConfig',
     'core.apps.CoreConfig',
@@ -141,6 +147,7 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'node_modules'),
 )
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # DEFAULT URLs
 LOGIN_URL = '/accounts/login/'
@@ -150,3 +157,34 @@ LOGOUT_REDIRECT_URL = None
 if LogoutView doesn't have a next_page attribute.
 If None, no redirect will be performed and the logout view will be rendered.
 """
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        #'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '10000/day',
+        'anon': '1000/day',
+        'low_request': '10/minute',
+    },
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=10),
+    'AUTH_HEADER_TYPES': (
+        'Bearer',
+        'JWT',
+    ),
+}

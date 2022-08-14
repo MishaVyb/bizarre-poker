@@ -1,13 +1,11 @@
 from typing import Sequence
 
 from django import template
-from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import AbstractBaseUser
 
 from games import models
 
 register = template.Library()
-User = get_user_model()
 
 
 @register.filter

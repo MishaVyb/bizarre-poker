@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-import games.fields
+import games.models.fields
 
 
 class Migration(migrations.Migration):
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='game',
             name='deck',
-            field=games.fields.CardListField(
+            field=games.models.fields.CardListField(
                 auto_created=None,
                 blank=True,
                 db_index=None,
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='game',
             name='table',
-            field=games.fields.CardListField(
+            field=games.models.fields.CardListField(
                 auto_created=None,
                 blank=True,
                 db_index=None,
@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='playercombo',
             name='highest_card',
-            field=games.fields.StacksField(default=[]),
+            field=games.models.fields.StacksField(default=[]),
         ),
         migrations.AlterField(
             model_name='playercombo',
@@ -51,16 +51,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='playercombo',
             name='rank',
-            field=games.fields.StacksField(default=[]),
+            field=games.models.fields.StacksField(default=[]),
         ),
         migrations.AlterField(
             model_name='playercombo',
             name='row',
-            field=games.fields.StacksField(default=[]),
+            field=games.models.fields.StacksField(default=[]),
         ),
         migrations.AlterField(
             model_name='playercombo',
             name='suit',
-            field=games.fields.StacksField(default=[]),
+            field=games.models.fields.StacksField(default=[]),
         ),
     ]

@@ -9,12 +9,20 @@ developing:
 from __future__ import annotations
 
 import itertools
+import logging
 import operator
 import re
 from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar, overload
 
 
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
+    """True if minor string is equivalent to major string from begining
+
+    >>> eq_first('eq', 'equivalent')
+    True
+    >>> eq_first('eq', 'not eq')
+    False
+    """
     if len(minor) > len(major):
         return False
     if not case_sensitive:
@@ -28,19 +36,14 @@ def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
 
 def split(
     __str: str,
-    by_symbols: str = ' \n,./|()-[]',
-    by_delimeters: list[str] = None,
-    exclude_delimeters: str = None,
+    by_symbols: str = ' \n,./|()-[]'
 ) -> list[str]:
     """Split string by each symbol from delimiter-string and return list of strings.
     Empty strings filtered out from result list.
     """
-    assert not exclude_delimeters, 'not implemented yet'
-    assert not by_delimeters, 'not implemented yet'
-
     delimeters_list = list(itertools.chain(*by_symbols))
     splited = re.split('|'.join(map(re.escape, delimeters_list)), __str)
-    return list(filter(None, splited))  # filter for removing "" empty string
+    return list(filter(None, splited))  # filter for removing empty strings
 
 
 class PrintColors:
@@ -93,7 +96,7 @@ class PrintColors:
         self(self._ENDC, end='')
 
 
-print_colors = PrintColors()  # default instance for easy access
+print_colors = PrintColors()
 
 _TC = TypeVar('_TC')
 
@@ -133,18 +136,6 @@ def is_sorted(
     return True
 
 
-@overload
-def range_inclusevly(__stop: SupportsIndex, /) -> range:
-    ...
-
-
-@overload
-def range_inclusevly(
-    __start: SupportsIndex, __stop: SupportsIndex, __step: SupportsIndex = ..., /
-) -> range:
-    ...
-
-
 def range_inclusevly(
     __start: SupportsIndex = 0, __stop: SupportsIndex = None, __step: SupportsIndex = 1
 ) -> range:
@@ -157,3 +148,17 @@ def isinstance_items(container: Iterable, container_type: type, item_type: type)
     return isinstance(container, container_type) and all(
         map(lambda x: isinstance(x, item_type), container)
     )
+
+
+def init_logger(name, level=logging.DEBUG) -> logging.Logger:
+    """Get or create default logger by givven name."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(
+            '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+        )
+    )
+    logger.addHandler(handler)
+    return logger
