@@ -1,9 +1,10 @@
 from typing import Any, Dict
 
-from games.models import Game, Player, PlayerBet, PlayerCombo, RequirementError
+from games.models import Game, Player, PlayerBet, PlayerCombo
+
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from games.models.game import Opposing
+
 from users.models import User
 from django.db.models import Q
 from core.functools.decorators import temporally
@@ -21,7 +22,7 @@ class PlayerComboSerializer(serializers.ModelSerializer):
 class PlayerBetSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlayerBet
-        fields = ('value',)
+        fields = ('_values',)
         # exclude = ('id','created', 'modified')
 
 
@@ -35,29 +36,26 @@ class PlayerSerializer(serializers.ModelSerializer):
     bet = serializers.SerializerMethodField()
 
     def get_bet(self, obj: Player):
-        return obj.bet.value
+        return obj.bet._values
 
     combo = PlayerComboSerializer(source='_combo', read_only=True)
     hand = serializers.SerializerMethodField()
 
     def get_hand(self, obj: Player):
-
-        # show hand of all players at Opposing
-        if obj.game.current_action == Opposing:
-            return str(obj.hand)
-
         request: Request = self.context.get('request')
-        if request is None:
-            with temporally(Card.Text, str_method='emoji_shirt'):
-                hidden = str(obj.hand)
-            return hidden
+        user_players: list[Player] = request.user.players if request else []
 
-        if obj in request.user.players:
+        permition = any([
+            obj.game.current_action == Opposing,  # show hand of all players at Opposing
+            obj in user_players                   # show hand if it requested by owner
+        ])
+
+        if permition:
             return str(obj.hand)
+        else:
+            with temporally(Card.Text, str_method='emoji_shirt'):
+                return str(obj.hand)
 
-        with temporally(Card.Text, str_method='emoji_shirt'):
-            hidden = str(obj.hand)
-        return hidden
 
     class Meta:
         model = Player
@@ -86,25 +84,27 @@ class GameSerializer(serializers.ModelSerializer):
         except RequirementError as e:
             return str(e)
 
-    pluser = serializers.SerializerMethodField()
-    other_players = serializers.SerializerMethodField()
+    #pluser = serializers.SerializerMethodField()
+    #other_players = serializers.SerializerMethodField()
 
-    def get_pluser(self, obj: Game):
-        request: Request = self.context.get('request')
-        if request is None:
-            return []
+    # def get_pluser(self, obj: Game):
+    #     request: Request = self.context.get('request')
+    #     if request is None:
+    #         return []
 
-        pluser = request.user.players.get(game=obj)
-        return PlayerSerializer(instance=pluser).data
+    #     pluser = request.user.players.get(game=obj)
+    #     serializer = PlayerSerializer(instance=pluser, context=self.context)
+    #     return serializer.data
 
-    def get_other_players(self, obj: Game):
-        request: Request = self.context.get('request')
-        if request is None:
-            return []
+    # def get_other_players(self, obj: Game):
+    #     request: Request = self.context.get('request')
+    #     if request is None:
+    #         return []
 
+    #     other_players = obj.players.filter(~Q(user=request.user))
 
-        other_players = obj.players.filter(~Q(user=request.user))
-        return PlayerSerializer(other_players, many=True).data
+    #     serializer = PlayerSerializer(other_players, many=True, context=self.context)
+    #     return serializer.data
 
 
     class Meta:
@@ -116,9 +116,7 @@ class GameSerializer(serializers.ModelSerializer):
             'table',
             'bank',
             'players',
-            'pluser',
-            'other_players',
+            #'pluser',
+            #'other_players',
             'players_detail',
         )
-        # read_only_fields = 'players'
-        # exclude = ('id', 'created', 'modified', 'deck_generator')

@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from django.db import IntegrityError
 
@@ -8,9 +9,13 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from core.functools.utils import isinstance_items
 from games.backends.cards import CardList, Stacks
 from games.backends.combos import CLASSIC_COMBOS
-from games.models import Game, Player, GAME_ACTIONS, BaseGameAction, RequirementError
+from games.models import Game, Player
 from users.models import User
 
+from django.core.exceptions import ValidationError
+from core.functools.utils import init_logger
+
+logger = init_logger(__name__, logging.INFO)
 
 @pytest.mark.django_db
 class TestUserModel:
@@ -111,6 +116,35 @@ class TestGameModel:
         game = Game.objects.get(pk=2)
         assert isinstance(game.deck, CardList)
 
+    def test_get_changed_fields(self):
+        # create game
+        game: Game = Game.objects.create()
+        changed = game.get_changed_fields()
+        assert changed == {}
+
+        game.table = CardList('Ace|H', 'Ace|D')
+        changed = game.get_changed_fields()
+        assert changed == {'table': CardList('Ace|H', 'Ace|D')}
+        game.save()
+
+        # new query to db
+        game = Game.objects.get(pk=1)
+        game.table = CardList('red')
+        changed = game.get_changed_fields()
+        assert changed == {'table': CardList('red')}
+
+        game.save()
+        changed = game.get_changed_fields()
+        assert changed == {}
+
+    def test_property_players_after_dealer(self):
+        u1 = User.objects.create(username='misha')
+        u2 = User.objects.create(username='sima')
+        u3 = User.objects.create(username='bart')
+        game = Game(players=[u1, u2, u3], commit=True)
+        expected = [u2, u3, u1]
+        assert list(game.players.after_dealer) == [u.player_at(game) for u in expected]
+
     @pytest.mark.django_db(transaction=True)
     def test_unique_constraints(self, admin_user, vybornyy: User):
         """Правило: у одного юзера может быть много плееров, но у этих плееров
@@ -118,7 +152,7 @@ class TestGameModel:
         несколькими плеерами"""
 
         game: Game = Game.objects.create()
-        game.players_manager.create(user=admin_user, hand=CardList('Ace|S'))
+        game.players.create(user=admin_user, hand=CardList('Ace|S'))
 
         # assert related names
         assert admin_user.players.first().hand == CardList('Ace|S')
@@ -127,9 +161,9 @@ class TestGameModel:
         # unique raises
         with pytest.raises(
             IntegrityError,
-            match='UNIQUE constraint failed: games_player.user_id, games_player.game_id'
+            match='UNIQUE constraint failed: games_player.user_id, games_player.game_id',
         ):
-            game.players_manager.create(user=admin_user, hand=CardList('10-H'))
+            game.players.create(user=admin_user, hand=CardList('10-H'))
 
         with pytest.raises(
             ValueError,
@@ -139,12 +173,11 @@ class TestGameModel:
 
         # no raises for another game
         another_game: Game = Game.objects.create()
-        another_game.players_manager.create(user=admin_user, hand=CardList('9-H'))
+        another_game.players.create(user=admin_user, hand=CardList('9-H'))
 
     def test_game_all_actions_force_requirements(self, game_with_bunch_of_players):
         game_cicle_amount = 7
         game: Game = game_with_bunch_of_players
-
 
         assert game.current_action == GAME_ACTIONS['setup']
 
@@ -164,42 +197,34 @@ class TestGameModel:
         'table, hands, action, expected',
         [
             pytest.param(
-                CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),   # table
+                CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),  # table
                 (
-                    CardList('10-s', '9-s'),    # vybornyy hand
-                    CardList('Ace|H', '2-h'),   # bart_barticheg hand
+                    CardList('10-s', '9-s'),  # vybornyy hand
+                    CardList('Ace|H', '2-h'),  # bart_barticheg hand
                 ),
-                GAME_ACTIONS['opposing'],
+                'opposing',
                 (
                     # expected combo vybornyy
-                    ('one pair', {
-                        'rank': [CardList('Ace|H', 'Ace|D')]
-                    }),
+                    ('one pair', {'rank': [CardList('Ace|H', 'Ace|D')]}),
                     # expected combo bart_barticheg
-                    ('three of kind', {
-                        'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]
-                    })
+                    ('three of kind', {'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]}),
                 ),
-                id='simple test'
+                id='simple test',
             ),
             pytest.param(
-                CardList('Ace|H', 'Jack|D', 'King|C', '5-c', '7-s'),   # table
+                CardList('Ace|H', 'Jack|D', 'King|C', '5-c', '7-s'),  # table
                 (
-                    CardList('10-s', '9-s'),    # vybornyy hand
-                    CardList('Ace|H', '2-h'),   # bart_barticheg hand
+                    CardList('10-s', '9-s'),  # vybornyy hand
+                    CardList('Ace|H', '2-h'),  # bart_barticheg hand
                 ),
-                GAME_ACTIONS['opposing'],
+                'opposing',
                 (
                     # expected combo vybornyy
-                    ('high card', {
-                        'highest_card': [CardList('Ace|H')]
-                    }),
+                    ('high card', {'highest_card': [CardList('Ace|H')]}),
                     # expected combo bart_barticheg
-                    ('one pair', {
-                        'rank': [CardList('Ace|H', 'Ace|H')]
-                    })
+                    ('one pair', {'rank': [CardList('Ace|H', 'Ace|H')]}),
                 ),
-                id='high card combo'
+                id='high card combo',
             ),
         ],
     )
@@ -207,7 +232,7 @@ class TestGameModel:
         self,
         table: CardList,
         hands: Stacks,
-        action: BaseGameAction,
+        action,
         expected,
         game_vybornyy_vs_bart: Game,
         vybornyy: User,
@@ -247,7 +272,7 @@ class TestGameModel:
             for key in CLASSIC_COMBOS.get(player.combo.name).cases.keys():
                 assert player.combo[key] == stacks[key]
 
-        #game.teardown()
+        # game.teardown()
 
     def test_deck_generator_default(self):
         assert Game._meta.get_field('deck_generator').default == (
@@ -257,8 +282,6 @@ class TestGameModel:
 
 @pytest.mark.django_db
 class TestPlayerComboModel:
-
-
     @pytest.mark.parametrize(
         'hand, expected_name, expected_cases',
         [
@@ -290,12 +313,12 @@ class TestPlayerComboModel:
         game = game_with_bunch_of_players
 
         # add main test player to the game
-        player: Player = admin_user.players_manager.create(game=game, hand=hand)
+        player: Player = admin_user.players.create(game=game, hand=hand)
         player.combo.setup()
 
         # get player by another query to db:
         player = Player.objects.get(user=admin_user)
-        
+
         # assertion:
         assert isinstance(player.combo.name, str)
         assert isinstance_items(player.combo.rank, list, CardList)
@@ -314,5 +337,4 @@ class TestPlayerComboModel:
         pass
 
 
-class TestStacksField:
-    pass
+

@@ -34,10 +34,7 @@ def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
     return bool(minor) or (not minor and not major)
 
 
-def split(
-    __str: str,
-    by_symbols: str = ' \n,./|()-[]'
-) -> list[str]:
+def split(__str: str, by_symbols: str = ' \n,./|()-[]') -> list[str]:
     """Split string by each symbol from delimiter-string and return list of strings.
     Empty strings filtered out from result list.
     """
@@ -46,7 +43,7 @@ def split(
     return list(filter(None, splited))  # filter for removing empty strings
 
 
-class PrintColors:
+class StrColors:
     _HEADER = '\033[95m'
     _OKBLUE = '\033[94m'
     _OKCYAN = '\033[96m'
@@ -57,46 +54,30 @@ class PrintColors:
     _BOLD = '\033[1m'
     _UNDERLINE = '\033[4m'
 
-    def __init__(self, activated=True) -> None:
-        self.activated = activated
-        pass
+    @classmethod
+    def header(cls, __str: str) -> str:
+        return cls._HEADER + __str + cls._ENDC
 
-    def __call__(self, *args: Any, **kwds: Any) -> None:
-        if self.activated:
-            print(*args, **kwds)
+    @classmethod
+    def bold(cls, __str: str) -> str:
+        return cls._BOLD + __str + cls._ENDC
 
-    def header(self, *args, **kwargs) -> None:
-        self(self._HEADER, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
+    @classmethod
+    def underline(cls, __str: str) -> str:
+        return cls._UNDERLINE + __str + cls._ENDC
 
-    def bold(self, *args, **kwargs) -> None:
-        self(self._BOLD, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
+    @classmethod
+    def green(cls, __str: str) -> str:
+        return cls._OKGREEN + __str + cls._ENDC
 
-    def underline(self, *args, **kwargs) -> None:
-        self(self._UNDERLINE, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
+    @classmethod
+    def fail(cls, __str: str) -> str:
+        return cls._FAIL + __str + cls._ENDC
 
-    def green(self, *args, **kwargs) -> None:
-        self(self._OKGREEN, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
+    @classmethod
+    def warning(cls, __str: str) -> str:
+        return cls._WARNING + __str + cls._ENDC
 
-    def fail(self, *args, **kwargs) -> None:
-        self(self._FAIL, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
-
-    def warning(self, *args, **kwargs) -> None:
-        self(self._WARNING, end='')
-        self(*args, **kwargs)
-        self(self._ENDC, end='')
-
-
-print_colors = PrintColors()
 
 _TC = TypeVar('_TC')
 
@@ -157,7 +138,8 @@ def init_logger(name, level=logging.DEBUG) -> logging.Logger:
     handler = logging.StreamHandler()
     handler.setFormatter(
         logging.Formatter(
-            '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+            #'%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+            '%(levelname)s - %(message)s'
         )
     )
     logger.addHandler(handler)

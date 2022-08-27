@@ -10,8 +10,8 @@ class DefaultAdmin(admin.ModelAdmin):
 
 @admin.register(models.Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'action_name', 'deck', 'table', 'players')
-    list_editable = ('action_name',)
+    list_display = ('pk', 'stage_index', 'deck', 'table', 'players')
+    list_editable = ('stage_index',)
     # search_fields = ('text',)
     # list_filter = ('created',)
     empty_value_display = 'empty'
@@ -19,7 +19,7 @@ class GameAdmin(admin.ModelAdmin):
 
 @admin.register(models.Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'hand', 'dealer', 'host')
-    list_editable = ('dealer', 'host')
+    list_display = ('pk', 'user', 'position', 'hand', 'is_host')
+    list_editable = ('position', 'is_host')
 
     empty_value_display = 'empty'

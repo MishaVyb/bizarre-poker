@@ -1,0 +1,7 @@
+{
+    "small_blind": 5,
+    "big_blind": 10,
+    "bet_multiplicity": 5,
+    "deck_shuffling": true,
+    "deck_container_name": "standart_52_card_deck_plus_jokers"
+}

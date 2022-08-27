@@ -14,7 +14,6 @@ from games.backends.combos import (CLASSIC_COMBOS, ComboKind, ComboKindList,
      [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, ])
 ])
 def test_combo_kind_list(input_data: ComboKindList, expected: list[float]):
-    # print(*input_data, sep='\n')
     for combo, priority in zip(input_data, expected):
         assert combo.priority == priority
 

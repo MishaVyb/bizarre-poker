@@ -1,62 +1,47 @@
 from __future__ import annotations
+from copy import copy
+
+
 import logging
 import re
-from typing import Any, Callable, Iterable, Literal
+from pprint import pformat
+from typing import Any, Iterable, Literal
 
 import pytest
-from django.contrib.auth import get_user_model
-from games.backends.cards import CardList, Decks, Stacks
-from games.models import Game, Player
-from users.models import User
-from django.test import Client
-from django.urls import reverse
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.test import APIClient
-from core.functools.utils import init_logger
-import pytest
-from _pytest.fixtures import SubRequest as PytestSubRequest
-import requests
-from pprint import pformat, pprint
 from core.functools.decorators import temporally
+from core.functools.utils import StrColors, init_logger
+from games.backends.cards import Stacks
+from games.models import Game, Player
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.test import APIClient
+from users.models import User
+from core.types import JSON
+from django.http import HttpResponsePermanentRedirect
 
 logger = init_logger(__name__, logging.DEBUG)
 
-# @pytest.mark.django_db
-# @pytest.fixture(scope='class')
-# def vybornyy():
-#     user: User = User.objects.create(username='vybornyy')
-#     user.set_password(user.username)
-#     user.save()
-#     return User.objects.get(username=user.username)
-
-# @pytest.mark.django_db
-# @pytest.fixture(scope='class')
-# def simusik():
-#     user: User = User.objects.create(username='simusik')
-#     user.set_password(user.username)
-#     user.save()
-#     return User.objects.get(username=user.username)
-
-# @pytest.mark.django_db
-# @pytest.fixture(scope='class')
-# def barticheg():
-#     user: User = User.objects.create(username='barticheg')
-#     user.set_password(user.username)
-#     user.save()
-#     return User.objects.get(username=user.username)
-
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures('setup_test_game_by_api')
 class TestGame:
     usernames = ('vybornyy', 'simusik', 'barticheg')  # host username is 'vybornyy'
-    game_pk: int | None = None
     urls = {
         'games': '/api/v1/games/',
-        'detail': '/api/v1/games/{pk}/',
-        'join': '/api/v1/games/{pk}/join/',
-        'start': '/api/v1/games/{pk}/start/',
+        'game_detail': '/api/v1/games/{game_pk}/',
+        'join': '/api/v1/games/{game_pk}/join/',
+        'start': '/api/v1/games/{game_pk}/start/',
+        'players': '/api/v1/games/{game_pk}/players/',
+        'user_player': '/api/v1/games/{game_pk}/players/user/',
+        'other_players': '/api/v1/games/{game_pk}/players/other/',
+        'bet': '/api/v1/games/{game_pk}/bet/',
     }
+    game_pk: int = -1
+    clients: dict[str, APIClient]
+    expected_combo_names: dict[str, str]
+    expected_combo_stacks: dict[str, dict[str, Stacks]]
+
+    response_data: JSON
 
     @property
     def users(self) -> dict[str, User]:
@@ -70,124 +55,19 @@ class TestGame:
     def players(self) -> dict[str, Player]:
         return {p.user.username: p for p in self.game.players}
 
-    #@pytest.mark.django_db
-    @pytest.fixture(
-        #autouse=True,
-        #scope='class',
-        params=
-        [
-            pytest.param(
-                (
-                    CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),  # table
-                    (
-                        CardList('10-s', '9-s'),  # hand 1
-                        CardList('Ace|H', '2-h'),  # hand 2
-                        CardList('2-c', '5-h'),  # hand 3
-                    ),
-                    (
-                        # expected combo 1
-                        ('one pair', {'rank': [CardList('Ace|H', 'Ace|D')]}),
-                        # expected combo 2
-                        (
-                            'three of kind',
-                            {'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]},
-                        ),
-                        # expected combo 3
-                        ('one pair', {'rank': [CardList('5-c', '5-c')]}),
-                    ),
-                ),
-                id='simple test',
-            ),
-        ],
-    )
-    def setup_clients_game_and_expected(
-        self,
-        #vybornyy: User, barticheg: User, simusik: User,
-        request: PytestSubRequest
-        #data: tuple
-    ):
-        # users
-        for username in self.usernames:
-            user: User = User.objects.create(username=username)
-            user.set_password(user.username)
-            user.save()
-
-        # clients
-        self.clients: dict[str, Client] = {}
-        for username, user in self.users.items():
-            client = APIClient()
-            client.login(username=user.username, password=user.username)
-            self.clients[username] = client
-
-            # chek user auth
-            self.assert_game_response(
-                'chek user auth',
-                username,
-                'GET',
-                'games',
-                '',
-                assertion_messages=(
-                    (
-                        'Authetication failed. '
-                        'Check auth backends: SessionAuthetication should be aplyed. '
-                    ),
-                    None,
-                ),
-            )
-
-        # create game by api
-        game_detail, user_detail = self.assert_game_response(
-            'create game', 'vybornyy', 'POST', 'games', r'', status.HTTP_201_CREATED
-        )
-        self.game_pk = game_detail['id']  # remember game pk to operate test data
-
-        # get custom deck from input data:
-        table = request.param[0]
-        hands = request.param[1]
-        test_deck = CardList()
-        test_deck.extend(table)
-        for cards in zip(*reversed(hands), strict=True):
-            test_deck.extend(cards)
-
-        # set our test deck to the game
-        Decks.TEST_DECK = test_deck.copy()
-        g = self.game
-        g.deck_generator = 'TEST_DECK'
-        g.save()
-
-        # expected
-        expected_combos = request.param[2]
-        self.expected_combo_names: dict[str, str] = {}
-        self.expected_combo_stacks: dict[str, dict[str, Stacks]] = {}
-        for key, (combo_name, combo_stacks) in zip(self.users, expected_combos):
-            self.expected_combo_names[key] = combo_name
-            self.expected_combo_stacks[key] = combo_stacks
-
-        # format urls
-        for key, url in self.urls.items():
-            if '{pk}' in url:
-                self.urls[key] = url.format(pk=self.game_pk)
-
-        # check game data no errors
-        self.game.full_clean()
-
-    @temporally(Game, DECK_SHUFFLING=False)
-    def test_game_by_api(
-        self,
-        setup_clients_game_and_expected
-        ):
+    def test_game_by_api(self):
         # [0] test get game detail by host
-        game_detail, user_detail = self.assert_game_response(
+        self.assert_response(
             'test get game detail by host',
             'vybornyy',
             'GET',
-            'detail',
+            'game_detail',
             r'HostApprovedGameStart not sytisfyed',
         )
-        # user_detail = r.data['players_detail'][0]
-        assert user_detail['host'] is True, 'Vybornyy should be host. '
-        assert user_detail['dealer'] is True, 'Vybornyy should be dealer. '
-        assert user_detail['position'] is 0, 'Vybornyy should be at first position. '
+        vybornyy = self.response_data['players_detail'][0]
+        assert vybornyy['host'] is True, 'should be host. '
+        assert vybornyy['dealer'] is True, 'should be dealer. '
+        assert vybornyy['position'] is 0, 'should be at first position. '
 
         # test: if host leave the game
         ...
@@ -202,7 +82,7 @@ class TestGame:
         ...
 
         # test other players join game
-        self.assert_game_response(
+        self.assert_response(
             'test other players join game',
             ['simusik', 'barticheg'],
             'POST',
@@ -210,17 +90,27 @@ class TestGame:
             r'(simusik|barticheg) joined',
         )
 
+
+        # test_players_api(self):
+        self.assert_response(
+            'test players api',
+            'vybornyy',
+            'GET',
+            'players'
+        )
+
+
         # [1] check game status befor start
-        self.assert_game_response(
+        self.assert_response(
             'check game status before start',
             'vybornyy',
             'GET',
-            'detail',
+            'game_detail',
             r'HostApprovedGameStart not sytisfyed',
         )
 
         # test other player press `start`
-        self.assert_game_response(
+        self.assert_response(
             'test other player press `start`',
             ['simusik', 'barticheg'],
             'POST',
@@ -230,7 +120,7 @@ class TestGame:
         )
 
         # test host press `start`
-        self.assert_game_response(
+        self.assert_response(
             'test host press `start`',
             'vybornyy',
             'POST',
@@ -238,79 +128,125 @@ class TestGame:
             r'started',
         )
 
-        # test blinds
+        # test blinds values
         ...
 
-        # [2] check game status before bidding
-        game, user = self.assert_game_response(
-            'check game status before bidding',
+        # [2] update game status before bidding
+        self.assert_response(
+            'update game status before bidding',
+            'simusik',
+            'GET',
+            'game_detail',
+            r'should make a bet or say "pass"', # vybornyy
+        )
+
+        # test players hand hiden or not
+        self.assert_response(
+            'test players hand hiden or unhiden',
             'vybornyy',
             'GET',
-            'detail',
-            r'should make a bet',
+            'players',
         )
-        # assert user['hand'] == self.players['vybornyy'].hand
-        # assert game
+        assert self.response_data[0]['hand'] == str(self.players['vybornyy'].hand)
+        assert self.response_data[1]['user'] == 'simusik'   # assert ordering
+        assert self.response_data[1]['hand'] == self.players['simusik'].hand.hiden()
 
-    def assert_game_response(
+        # test user_player endpoint
+        self.assert_response(
+            'test user_player return requested user`s plaer',
+            'barticheg',
+            'GET',
+            'user_player',
+        )
+        assert self.response_data['user'] == 'barticheg'
+        self.assert_response(
+            'test other_player return list with len=2 and check playrs positions',
+            'simusik',
+            'GET',
+            'other_players',
+        )
+        assert len(self.response_data) == 2
+        assert self.response_data[0]['user'] == 'vybornyy'
+        assert self.response_data[0]['position'] == 0
+        assert self.response_data[1]['user'] == 'barticheg'
+        assert self.response_data[1]['position'] == 2
+
+        ...
+        ...
+        ...
+        ...
+        return
+
+        # [3] biddings
+        self.assert_response(
+            'test player who already place a bet could not place it again',
+            'simusik',
+            'POST',
+            'bet',
+            post_data = {'value': 0}
+        )
+        err_message = f'simusik can not place a bet because {self.game.status}'
+        assert self.response_data['errors']['game_status'] == err_message
+
+        bet_value = 12345
+        self.assert_response(
+            'test bet maker place more that his bank account',
+            'vybornyy',
+            'POST',
+            'bet',
+            post_data = {'value': bet_value}
+        )
+        err_message = f'vybornyy can not place {bet_value} because it more than his bank {self.users["vybornyy"].profile.bank}'
+        assert self.response_data['errors']['value'] == err_message
+
+
+
+    def assert_response(
         self,
         test_name: str,
         by_users: str | Iterable[str],
         method: Literal['GET'] | Literal['POST'],
         url_name: str,
-        status_pattern: str,
+        status_pattern: str = '',
         expected_status: int = status.HTTP_200_OK,
         assertion_messages: tuple[str | None, ...] = (None, None),
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ):
         if isinstance(by_users, str):
             by_users = (by_users,)
 
-        logger.info(f'TESTING: {test_name}')
+        logger.info(f'{StrColors.header("TESTING")}: {test_name}')
         for user in by_users:
-
             # act
             call = getattr(self.clients[user], method.lower())
             response: Response = call(self.urls[url_name])
-            response_str = pformat(dict(response.data), width=150, sort_dicts=False)
+
+            if isinstance(response, HttpResponsePermanentRedirect):
+                logger.warning(
+                    f'Recieved Permanent Redirect Response: '
+                    f'frorm {self.urls[url_name]} to {response.url}. '
+                    f'Hint: check requested url, it shoul be ended with / (slash)')
 
             # assert response status code
             assert response.status_code == expected_status, (
                 assertion_messages[0]
-                or f'Got unexpected response code. Response: {response_str}'
+                or f'Got unexpected response code. Response: {response}'
             )
-
             # assert status pattern match
             if status_pattern:
                 assert re.findall(status_pattern, response.data['status']), (
                     assertion_messages[1]
                     or f'Got unexpected status: Status {response.data["status"]}'
                 )
+        self.response_data = response.data
 
-            logger.info(f'RESPONSE: \n {response_str}')
+    def make_log(self, user: str, width=150):
+        """Formating response data in certain way and log it."""
+        try:
+            data = copy(self.response_data)
+            data_str = pformat(data, width=width, sort_dicts=False)
+            data_str = re.sub(user, StrColors.green(user), data_str)
+        except Exception as e:
+            logger.error(f'Formating log fialed: {e}')
+            pass
 
-        # if self.game_pk is None:
-        #     return response.data, {}
-
-        # index = self.players[user].position
-        return (
-            response.data,
-            response.data.get('pluser') if isinstance(response.data, dict) else None,
-        )
-
-
-############################################################################################
-
-# class UserApiClient:
-
-
-#     def __init__(self, user: User) -> None:
-#         requests.post()
-#         Client().head =
-
-
-@pytest.mark.django_db
-class TestGameApi:
-    # url_auth = '/api/v1/jwt/create'
-    # url_create_token = '/api/v1/jwt/create/'
-    # url_get_users = '/api/v1/users/'
-    url_games = '/api/v1/games/'
+        logger.info(f'RESPONSE: \n {data_str}')

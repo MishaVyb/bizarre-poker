@@ -13,15 +13,17 @@ from __future__ import annotations
 
 import itertools
 from copy import deepcopy
+import logging
 from operator import attrgetter
 from typing import ClassVar, Iterable
 
 from core.functools.looptools import looptools
-from core.functools.utils import PrintColors
+from core.functools.utils import StrColors, init_logger
 from core.functools.utils import is_sorted
 from games.backends.cards import Card, CardList, JokerCard, Stacks
 
-print = PrintColors(activated=False)  # alias
+logger = init_logger(__name__, logging.DEBUG)
+
 Conditions = dict[str, tuple[int, ...]]
 
 
@@ -182,11 +184,12 @@ class ExtraComboException(Exception):
         )
 
     def solution(self, stacks: ComboStacks):
-        print.warning('WARNING!')
-        print(*self.args)
-        print.underline('TEMPRARY SOLUTION:')
-        print('- Copied extra conditionas and staks in self.extra for any extra uses.')
-        print('- Merjed self into nearest', self.nearest.cases, end='\n\n')
+        logger.warning(
+            StrColors.warning(self.args)
+            + StrColors.underline('TEMPRARY SOLUTION:')
+            + '- Copied extra conditionas and staks in self.extra for any extra uses.'
+            f'- Merjed self into nearest {self.nearest.cases}'
+        )
 
         # deep copy
         stacks.extra_cases = deepcopy(stacks.cases)
@@ -253,7 +256,7 @@ class ComboStacks:
         # 1- сложим все стопки в одну новую
         tracking = CardList(instance=itertools.chain(*stacks))
         if not tracking:
-            print("raise Warning('no cards for tracking was provided')")
+            logger.warning('no cards for tracking was provided')
 
         # 2- suit case
         self.track_equal(tracking, possible_highest, 'suit')

@@ -1,12 +1,77 @@
-from typing import Iterable, Optional
+from __future__ import annotations
+import logging
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from django.db import models
 from django.db.models.fields import NOT_PROVIDED
-from django.forms import ValidationError
+from django.core.exceptions import ValidationError
 
 from core.functools.decorators import temporally
 from core.functools.utils import isinstance_items, split
 from games.backends.cards import Card, CardList, Stacks
+from core.functools.utils import init_logger
+
+
+if TYPE_CHECKING:
+    from games.models import PlayerBet
+
+logger = init_logger(__name__, logging.INFO)
+
+class BetField(models.PositiveIntegerField):
+    pass
+
+#     def clean(self, value: Any, model_instance: Optional[models.Model]) -> Any:
+#         return super().clean(value, model_instance)
+
+#     def validate(self, value: int, model_instance: Optional[PlayerBet]) -> None:
+#         """Note: None value will never be passed here. It checks in clean_fields method."""
+#         if model_instance is None:
+#             raise NotImplementedError
+
+#         logger.info(f'validation for {self} is processing..')
+#         bet = model_instance
+
+#         # [1] check game action is valid
+#         r = bet.player.game.get_requirement()
+#         if not r.requirement == AllPlayersPlaceBeds:
+#             message = (
+#                 f'Invalid game requirement for placing a bet: {r.requirement}. '
+#                 f'Waiting for {AllPlayersPlaceBeds}. '
+#             )
+#             logger.warning(f'{message} ValidatioError will be raised. ')
+#             raise ValidationError(
+#                 message,
+#                 code='Invalid requirement',
+#             )
+
+#         # [2] check player
+#         if bet.player is r.satisfier:
+#             pass
+
+
+#         # [3] check value
+#         user_bank = bet.player.user.profile.bank
+#         if user_bank < value:
+#             message = (
+#                 f'Invalid bet value: {value}. Not enough money. '
+#                 f'{bet.player.user} has only {user_bank} at bank account. '
+#             )
+#             logger.warning(f'{message} ValidatioError will be raised. ')
+#             raise ValidationError(
+#                 message,
+#                 code='Not enough money',
+#             )
+
+
+
+
+#         return super().validate(value, model_instance)
+
+
+
+
+
+
 
 
 class CardListField(models.Field):

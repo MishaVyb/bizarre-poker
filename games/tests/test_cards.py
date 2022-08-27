@@ -459,14 +459,11 @@ def test_isolate_jokers_reverse(
 def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
     for _ in range(2):
         for key in expected:
-            print('key =', key)
-
             for i, groupby_result in enumerate(input_data.groupby(key)):
                 # groupby -> tuple[is_jkrs, CardList]
                 group: CardList = groupby_result[1]
                 expected_group = expected[key][i]
-
-                print(group, '==', expected_group)
+                
                 assert group == expected_group
                 # так же тип каждой карты должен совпадать
                 assert all(map(lambda x, y: type(x) is type(y), group, expected_group))

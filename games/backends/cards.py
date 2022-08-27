@@ -32,6 +32,7 @@ from operator import attrgetter
 from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 
 from core.functools.utils import eq_first, range_inclusevly, split
+from core.functools.decorators import temporally
 
 SET_JOKERS_AFTER_EQUAL_CARD = True
 """To operate a curtain way of sorting, when mirrored jokers placed after card with
@@ -616,6 +617,11 @@ class CardList(list[Card]):
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
 
+    def hiden(self, str_method: str='emoji_shirt') -> str:
+        """Return hiden card list representation (shirts up)"""
+        with temporally(Card.Text, str_method=str_method):
+            return self.__str__()
+
     # пришлось переопределить, чтобы сохраить тип возвращаемого значения CardList
     @overload
     def __getitem__(self, __i: SupportsIndex, /) -> Card:
@@ -740,9 +746,6 @@ Stacks = list[CardList]
 
 
 class Decks:
-
-    TEST_DECK: CardList | None = None
-    """Castom deck for testing porpuses."""
 
     @staticmethod
     def standart_52_card_deck_plus_jokers(jokers_amount: int = 2):
