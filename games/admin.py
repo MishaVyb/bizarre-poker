@@ -3,7 +3,7 @@ from django.contrib import admin
 from games import models
 
 
-@admin.register(models.PlayerBet, models.PlayerCombo)
+@admin.register(models.PlayerBet)
 class DefaultAdmin(admin.ModelAdmin):
     pass
 

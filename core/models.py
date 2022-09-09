@@ -1,62 +1,55 @@
 from copy import deepcopy
 import logging
-from pprint import pformat
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Iterator, Optional, TypeAlias, TypeVar
+import typing
 from django.db import models
 from core.functools.utils import StrColors, init_logger
+
 logger = init_logger(__name__, logging.INFO)
 
 
-class FullCleanSavingMixin():
-    def clean(self):
-        raise NotImplementedError
-
-    def save(
-        self,
-        force_insert: bool = False,
-        force_update: bool = False,
-        using: Optional[str] = None,
-        update_fields: Optional[Iterable[str]] = None,
-    ) -> None:
-        # pk is None for first game saving (just after creation)
-        # so validation won't work because of failing ralated ForigenKey fields
-        # we need to call save before to define pk and
-        if not self.pk:
-            super().save(force_insert, force_update, using, update_fields)
-            self.full_clean()
-        else:
-            self.full_clean()
-            super().save(force_insert, force_update, using, update_fields)
+if typing.TYPE_CHECKING:
+    _TYPE_MODEL: TypeAlias = models.Model
+else:
+    _TYPE_MODEL = object
 
 
+_T = TypeVar('_T')
 
-class CreatedModifiedModel(models.Model):
-    """Abstract model with auto filled created and modified date.
 
-    Ordering by creation date ascending.
-    """
+class IterableManager(models.Manager[_T]):
+    def __iter__(self) -> Iterator[_T]:
+        return iter(self.all())
 
-    created = models.DateTimeField('creation data', auto_now_add=True, db_index=True)
-    modified = models.DateTimeField('modification data', auto_now=True, db_index=True)
-    """Automatically set the field to now every time the object is saved by calling
-    save() method. Notice, that it is not getting affect by calling update() method.
-    """
+    def __getitem__(self, index: int):
+        return self.all()[index]
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._db_data = self.get_current_fields()
+    def __bool__(self):
+        return self.exists()
 
+    def __str__(self) -> str:
+        return '[' + ' '.join(str(b) for b in self.all()) + ']'
+
+
+class UpdateMethodMixin:
     def update(self, **kwargs):
         for attr, value in kwargs.items():
             assert hasattr(self, attr)
             setattr(self, attr, value)
             self.save()
 
+
+class ChangedFieldsLoggingMixin(_TYPE_MODEL):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._db_data = self.get_current_fields()
+
     def get_current_fields(self) -> dict[str, Any]:
-        return {f.attname: deepcopy(getattr(self, f.attname)) for f in self._meta.fields}
+        return {
+            f.attname: deepcopy(getattr(self, f.attname)) for f in self._meta.fields
+        }
 
     def get_changed_fields(self) -> dict[str, Any]:
-        # db_data = self.__class__.objects.get(pk=self.pk).get_current_fields()
         current_data = self.get_current_fields()
         return {k: v for k, v in current_data.items() if v != self._db_data[k]}
 
@@ -72,23 +65,63 @@ class CreatedModifiedModel(models.Model):
             for k, v in changed.items():
                 if isinstance(v, list) and len(v) > 5:
                     changed[k] = str(v[:4]) + '...'
-            logger.info(f'{StrColors.green("Saving")} {self}... Changed fields: {changed}')
+            logger.debug(
+                f'{StrColors.green("Saving")} {self}... Changed fields: {changed}'
+            )
         else:
-            logger.info(f'{StrColors.warning("Creation")} {self}')
+            logger.debug(f'{StrColors.yellow("Creation")} {self}')
 
-
-        # pk is None for first game saving (just after creation)
-        # so validation won't work because of failing ralated ForigenKey fields
-        # we need to call save before to define pk and
-        if not self.pk:
-            super().save(force_insert, force_update, using, update_fields)
-            self.full_clean()
-        else:
-            self.full_clean()
-            super().save(force_insert, force_update, using, update_fields)
-
+        super().save(force_insert, force_update, using, update_fields)
         self._db_data = self.get_current_fields()
 
+    class Meta:
+        abstract = True
+
+
+# _Model = TypeVar('_Model', models.Model)
+
+
+class FullCleanSavingMixin(_TYPE_MODEL):
+    def init_clean(self):
+        pass
+
+    def clean(self):
+        pass
+
+    def save(
+        self: models.Model,
+        force_insert: bool = False,
+        force_update: bool = False,
+        using: Optional[str] = None,
+        update_fields: Optional[Iterable[str]] = None,
+    ) -> None:
+        # pk is None for first game saving (just after creation)
+        # so validation won't work because of failing ralated ForigenKey fields
+        # we need to call save before to define pk
+
+        # Note:
+        # To change any initial values before saving use init_value(..) method.
+        # Anyway call full_clean(..) after saving just to be shure
+        if not self.pk:
+            self.init_clean()
+            super().save(force_insert, force_update, using, update_fields)
+            self.full_clean()
+        else:
+            self.full_clean()
+            super().save(force_insert, force_update, using, update_fields)
+
+
+class CreatedModifiedModel(models.Model):
+    """Abstract model with auto filled created and modified date.
+
+    Ordering by creation date ascending.
+    """
+
+    created = models.DateTimeField('creation data', auto_now_add=True, db_index=True)
+    modified = models.DateTimeField('modification data', auto_now=True, db_index=True)
+    """Automatically set the field to now every time the object is saved by calling
+    save() method. Notice, that it is not getting affect by calling update() method.
+    """
 
     class Meta:
         abstract = True

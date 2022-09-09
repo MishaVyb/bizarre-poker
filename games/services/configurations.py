@@ -7,5 +7,8 @@ class ConfigSchema(pydantic.BaseModel):
     deck_shuffling: bool
     deck_container_name: str
 
+    deal_cards_amount: int
+    flops_amounts: list[int]
+
 
 DEFAULT = ConfigSchema.parse_file('configurations.json')

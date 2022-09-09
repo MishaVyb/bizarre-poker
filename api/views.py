@@ -2,8 +2,7 @@ import logging
 from api.serializers import (
     GameSerializer,
     PlayerSerializer,
-    PlayerComboSerializer,
-    PlayerBetSerializer,
+    PlayerBetSerializer
 )
 from django.shortcuts import get_object_or_404
 from games.models import Game, Player
@@ -34,7 +33,7 @@ class GamesViewSet(viewsets.ModelViewSet):
 
         # make_user_as_host
         user = serializer.context['request'].user
-        Player.objects.create(user=user, game=game, host=True)
+        Player.objects.create(user=user, game=game, is_host=True, position=0)
         # game.players.create(user=user, host=True)
 
     @action(detail=True, methods=['post'])
@@ -58,30 +57,35 @@ class GamesViewSet(viewsets.ModelViewSet):
         #     if 'UNIQUE constraint failed' in e.args[0]:
         #         raise
 
+    @action(detail=False, methods=['post'])
+    def test(self, request: Request):
+        game: Game = self.get_object()
+        player = game.players.get(user=request.user)
+
     @action(detail=True, methods=['post'])
     def start(self, request: Request, pk: int):
         game: Game = self.get_object()
         player = game.players.get(user=request.user)
-        try:
-            game.continue_processing()
-        except RequirementError as e:
-            if not e.requirement == HostApprovedGameStart:
-                message = f'{game} are not waiting for start action (probably already started)'
-                logger.warning(message)
-                return Response(
-                    {'status': message},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if e.satisfier == player:
-                logger.info(f'{e.requirement} succsessfuly satisfyed')
-                e.requirement.satisfy()
-                return Response({'status': f'{game} started'})
-            else:
-                logger.warning(f'no satisfaction for {e.requirement}')
-                return Response(
-                    {'status': f'Only host can start games'},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+        # try:
+        #     game.continue_processing()
+        # except RequirementError as e:
+        #     if not e.requirement == HostApprovedGameStart:
+        #         message = f'{game} are not waiting for start action (probably already started)'
+        #         logger.warning(message)
+        #         return Response(
+        #             {'status': message},
+        #             status=status.HTTP_400_BAD_REQUEST,
+        #         )
+        #     if e.satisfier == player:
+        #         logger.info(f'{e.requirement} succsessfuly satisfyed')
+        #         e.requirement.satisfy()
+        #         return Response({'status': f'{game} started'})
+        #     else:
+        #         logger.warning(f'no satisfaction for {e.requirement}')
+        #         return Response(
+        #             {'status': f'Only host can start games'},
+        #             status=status.HTTP_403_FORBIDDEN,
+        #         )
 
     # @action(detail=True, methods=['post'])
     # def bet(self, request: Request, pk: int):

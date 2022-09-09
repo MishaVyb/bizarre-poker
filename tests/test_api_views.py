@@ -18,14 +18,19 @@ from rest_framework.test import APIClient
 from users.models import User
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
-
+from tests.base import BaseGameProperties
+from games.backends.combos import Combo
 logger = init_logger(__name__, logging.DEBUG)
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures('setup_test_game_by_api')
-class TestGame:
-    usernames = ('vybornyy', 'simusik', 'barticheg')  # host username is 'vybornyy'
+@pytest.mark.usefixtures(
+    'setup_clients',
+    'setup_game_by_api',
+    #'setup_expected_combos',
+    'setup_urls',
+)
+class TestGameAPI(BaseGameProperties):
     urls = {
         'games': '/api/v1/games/',
         'game_detail': '/api/v1/games/{game_pk}/',
@@ -36,26 +41,12 @@ class TestGame:
         'other_players': '/api/v1/games/{game_pk}/players/other/',
         'bet': '/api/v1/games/{game_pk}/bet/',
     }
-    game_pk: int = -1
     clients: dict[str, APIClient]
-    expected_combo_names: dict[str, str]
-    expected_combo_stacks: dict[str, dict[str, Stacks]]
+    expected_combos: dict[str, Combo]
 
     response_data: JSON
 
-    @property
-    def users(self) -> dict[str, User]:
-        return {name: User.objects.get(username=name) for name in self.usernames}
-
-    @property
-    def game(self) -> Game:
-        return Game.objects.get(pk=self.game_pk)
-
-    @property
-    def players(self) -> dict[str, Player]:
-        return {p.user.username: p for p in self.game.players}
-
-    def test_game_by_api(self):
+    def test_game_api(self):
         # [0] test get game detail by host
         self.assert_response(
             'test get game detail by host',
@@ -64,10 +55,13 @@ class TestGame:
             'game_detail',
             r'HostApprovedGameStart not sytisfyed',
         )
+        self.make_log('vybornyy')
         vybornyy = self.response_data['players_detail'][0]
-        assert vybornyy['host'] is True, 'should be host. '
-        assert vybornyy['dealer'] is True, 'should be dealer. '
         assert vybornyy['position'] is 0, 'should be at first position. '
+        assert vybornyy['is_host'] is True, 'should be host. '
+        assert vybornyy['is_dealer'] is True, 'should be dealer. '
+
+        return
 
         # test: if host leave the game
         ...
@@ -90,15 +84,8 @@ class TestGame:
             r'(simusik|barticheg) joined',
         )
 
-
         # test_players_api(self):
-        self.assert_response(
-            'test players api',
-            'vybornyy',
-            'GET',
-            'players'
-        )
-
+        self.assert_response('test players api', 'vybornyy', 'GET', 'players')
 
         # [1] check game status befor start
         self.assert_response(
@@ -137,7 +124,7 @@ class TestGame:
             'simusik',
             'GET',
             'game_detail',
-            r'should make a bet or say "pass"', # vybornyy
+            r'should make a bet or say "pass"',  # vybornyy
         )
 
         # test players hand hiden or not
@@ -148,7 +135,7 @@ class TestGame:
             'players',
         )
         assert self.response_data[0]['hand'] == str(self.players['vybornyy'].hand)
-        assert self.response_data[1]['user'] == 'simusik'   # assert ordering
+        assert self.response_data[1]['user'] == 'simusik'  # assert ordering
         assert self.response_data[1]['hand'] == self.players['simusik'].hand.hiden()
 
         # test user_player endpoint
@@ -183,7 +170,7 @@ class TestGame:
             'simusik',
             'POST',
             'bet',
-            post_data = {'value': 0}
+            post_data={'value': 0},
         )
         err_message = f'simusik can not place a bet because {self.game.status}'
         assert self.response_data['errors']['game_status'] == err_message
@@ -194,12 +181,10 @@ class TestGame:
             'vybornyy',
             'POST',
             'bet',
-            post_data = {'value': bet_value}
+            post_data={'value': bet_value},
         )
         err_message = f'vybornyy can not place {bet_value} because it more than his bank {self.users["vybornyy"].profile.bank}'
         assert self.response_data['errors']['value'] == err_message
-
-
 
     def assert_response(
         self,
@@ -214,7 +199,7 @@ class TestGame:
         if isinstance(by_users, str):
             by_users = (by_users,)
 
-        logger.info(f'{StrColors.header("TESTING")}: {test_name}')
+        logger.info(f'{StrColors.purple("TESTING")}: {test_name}')
         for user in by_users:
             # act
             call = getattr(self.clients[user], method.lower())
@@ -224,15 +209,16 @@ class TestGame:
                 logger.warning(
                     f'Recieved Permanent Redirect Response: '
                     f'frorm {self.urls[url_name]} to {response.url}. '
-                    f'Hint: check requested url, it shoul be ended with / (slash)')
+                    f'Hint: check requested url, it shoul be ended with / (slash)'
+                )
 
             # assert response status code
             assert response.status_code == expected_status, (
                 assertion_messages[0]
-                or f'Got unexpected response code. Response: {response}'
+                or f'Got unexpected response code. Response data: {response.data}'
             )
             # assert status pattern match
-            if status_pattern:
+            if status_pattern and response.data.get('status'):
                 assert re.findall(status_pattern, response.data['status']), (
                     assertion_messages[1]
                     or f'Got unexpected status: Status {response.data["status"]}'

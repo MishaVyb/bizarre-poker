@@ -41,10 +41,10 @@ class IndexView(views.View):
         if request.user.is_authenticated:
             context = {
                 'not_user_games': models.Game.objects.filter(
-                    ~Q(_players__user=self.request.user)
+                    ~Q(players__user=self.request.user)
                 ),
                 'user_games': models.Game.objects.filter(
-                    _players__user=self.request.user
+                    players__user=self.request.user
                 ),
             }
         else:

@@ -10,17 +10,20 @@ developing:
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
 
 import itertools
 from copy import deepcopy
 import logging
 from operator import attrgetter
-from typing import ClassVar, Iterable
+from typing import TYPE_CHECKING, ClassVar, Iterable
 
 from core.functools.looptools import looptools
 from core.functools.utils import StrColors, init_logger
 from core.functools.utils import is_sorted
 from games.backends.cards import Card, CardList, JokerCard, Stacks
+if TYPE_CHECKING:
+    from games.models.player import Player
 
 logger = init_logger(__name__, logging.DEBUG)
 
@@ -184,12 +187,12 @@ class ExtraComboException(Exception):
         )
 
     def solution(self, stacks: ComboStacks):
-        logger.warning(
-            StrColors.warning(self.args)
-            + StrColors.underline('TEMPRARY SOLUTION:')
-            + '- Copied extra conditionas and staks in self.extra for any extra uses.'
-            f'- Merjed self into nearest {self.nearest.cases}'
-        )
+        # logger.warning(
+        #     StrColors.yellow(str(self.args))
+        #     + StrColors.underline('TEMPRARY SOLUTION:')
+        #     + '- Copied extra conditionas and staks in self.extra for any extra uses.'
+        #     f'- Merjed self into nearest {self.nearest.cases}'
+        # )
 
         # deep copy
         stacks.extra_cases = deepcopy(stacks.cases)
@@ -223,7 +226,9 @@ class ComboStacks:
     Call `track_and_merge()` method to complete initialization.
     """
 
-    def __init__(self):
+    def __init__(self, player: Player | None = None):
+        if player:
+            pass
         self.cases: dict[str, Stacks] = {}
         self.extra_cases: dict[str, Stacks] = {}
 
@@ -526,7 +531,7 @@ class ComboStacks:
         if case:
             self.cases[key] = case
 
-    def merge(self, references: ComboKindList) -> ComboKind | None:
+    def merge(self, references: ComboKindList) -> ComboKind:
         try:
             return references.get_by_conditions(get_conditions(self.cases))
         except ExtraComboException as e:
@@ -556,7 +561,7 @@ class ComboStacks:
         *stacks: CardList,
         references=CLASSIC_COMBOS,
         possible_highest: Card = Card(14, 4),
-    ) -> ComboKind | None:
+    ) -> ComboKind:
         """Find any possible combination in stacks (even a Highest Card).
 
         `*stacks`: where to trace combinations
@@ -569,6 +574,12 @@ class ComboStacks:
         """
         self.track(*stacks, possible_highest=possible_highest)
         return self.merge(references)
+
+
+@dataclass
+class Combo:
+    kind: ComboKind
+    stacks: ComboStacks
 
 
 if __name__ == '__main__':

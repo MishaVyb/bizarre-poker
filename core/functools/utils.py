@@ -7,12 +7,13 @@ developing:
 """
 
 from __future__ import annotations
+import inspect
 
 import itertools
 import logging
 import operator
 import re
-from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar, overload
+from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar
 
 
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
@@ -44,19 +45,19 @@ def split(__str: str, by_symbols: str = ' \n,./|()-[]') -> list[str]:
 
 
 class StrColors:
-    _HEADER = '\033[95m'
-    _OKBLUE = '\033[94m'
-    _OKCYAN = '\033[96m'
-    _OKGREEN = '\033[92m'
-    _WARNING = '\033[93m'
-    _FAIL = '\033[91m'
+    _PURPLE = '\033[95m'
+    _BLUE = '\033[94m'
+    _CYAN = '\033[96m'
+    _GREEN = '\033[92m'
+    _YELLOW = '\033[93m'
+    _RED = '\033[91m'
     _ENDC = '\033[0m'
     _BOLD = '\033[1m'
     _UNDERLINE = '\033[4m'
 
     @classmethod
-    def header(cls, __str: str) -> str:
-        return cls._HEADER + __str + cls._ENDC
+    def purple(cls, __str: str) -> str:
+        return cls._PURPLE + __str + cls._ENDC
 
     @classmethod
     def bold(cls, __str: str) -> str:
@@ -68,15 +69,23 @@ class StrColors:
 
     @classmethod
     def green(cls, __str: str) -> str:
-        return cls._OKGREEN + __str + cls._ENDC
+        return cls._GREEN + __str + cls._ENDC
 
     @classmethod
-    def fail(cls, __str: str) -> str:
-        return cls._FAIL + __str + cls._ENDC
+    def blue(cls, __str: str) -> str:
+        return cls._BLUE + __str + cls._ENDC
 
     @classmethod
-    def warning(cls, __str: str) -> str:
-        return cls._WARNING + __str + cls._ENDC
+    def cyan(cls, __str: str) -> str:
+        return cls._CYAN + __str + cls._ENDC
+
+    @classmethod
+    def red(cls, __str: str) -> str:
+        return cls._RED + __str + cls._ENDC
+
+    @classmethod
+    def yellow(cls, __str: str) -> str:
+        return cls._YELLOW + __str + cls._ENDC
 
 
 _TC = TypeVar('_TC')
@@ -138,9 +147,24 @@ def init_logger(name, level=logging.DEBUG) -> logging.Logger:
     handler = logging.StreamHandler()
     handler.setFormatter(
         logging.Formatter(
-            #'%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+            # '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
             '%(levelname)s - %(message)s'
         )
     )
     logger.addHandler(handler)
     return logger
+
+
+def get_func_name(back=False) -> str:
+    frame = inspect.currentframe()
+
+    # single back
+    if not back:
+        if not frame or not frame.f_back:
+            return 'no_func_name'
+        return frame.f_back.f_code.co_name
+
+    # double back
+    if not frame or not frame.f_back or not frame.f_back.f_back:
+        return 'no_func_name'
+    return frame.f_back.f_back.f_code.co_name

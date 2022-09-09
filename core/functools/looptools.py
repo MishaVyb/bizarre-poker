@@ -244,7 +244,10 @@ def circle_after(
     try:
         incoming = next(it)
     except StopIteration:
-        raise StopIteration('Enter condition for circle loop was not satisfied. ')
+        # Enter condition for circle loop was not satisfied
+        # do not re-raising StopIteration because it will make RuntimeError
+        # there are another syntaxis for generators: use `return` statement
+        return
 
     if inclusive:
         yield incoming
