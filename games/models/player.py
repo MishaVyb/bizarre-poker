@@ -14,11 +14,12 @@ from core.validators import bet_multiplicity
 from django.db import IntegrityError, models
 from django.db.models import F, functions
 from django.db.models.query import QuerySet
-from games.backends.cards import CardList
-from games.backends.combos import Combo, ComboStacks
+from games.services.cards import CardList
+from games.services.combos import Combo, ComboStacks
 from games.models import Game
 from games.models.fields import CardListField
 from users.models import User
+from core.functools.looptools import circle_after
 
 logger = init_logger(__name__, logging.INFO)
 
@@ -61,7 +62,7 @@ class PlayerManager(IterableManager[_T]):
         return self.order_by('-bet_total').first()
 
     @property
-    def order_by_bet(self) -> PlayerQuerySet:
+    def order_by_bet(self):
         """Order active players with None bet first then 0 then ascending.
         Starting after dealer."""
         # we need that special annotation to differentiate two types of player bet:
@@ -76,17 +77,22 @@ class PlayerManager(IterableManager[_T]):
         return qs.annotate(bet_total_none=models.Sum('bets__value'))
 
     @property
-    def without_bet(self) -> PlayerQuerySet:
+    def without_bet(self):
         """for active players starting after dealer"""
         return self.after_dealer.filter(is_active=True, bets__isnull=True)
 
     @property
-    def after_dealer(self) -> PlayerQuerySet:
-        """All active players starting after dealer button."""
+    def after_dealer(self):
+        """active players starting after dealer button."""
         return self.order_by('is_dealer', 'position').filter(is_active=True)
 
     @property
-    def active(self) -> PlayerQuerySet:
+    def after_dealer_all(self):
+        """All players (active and passive) starting after dealer button."""
+        return self.order_by('is_dealer', 'position')
+
+    @property
+    def active(self):
         """Players that have not said `pass`."""
         return self.filter(is_active=True)
 
@@ -136,6 +142,9 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     @property
     def combo(self):
+        if not self.hand and not self.table:
+            return None
+
         stacks = ComboStacks()
         kind = stacks.track_and_merge(self.hand, self.game.table)
         return Combo(kind, stacks)
@@ -178,11 +187,12 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             self.position = last.position + 1 if last else 0
 
     def clean(self) -> None:
-        "Check constraints and clean values if could otherwise raising IntegrityError."
+        "Check constraints and clean values if could, otherwise raising IntegrityError."
         # validate only this player instance
         ...
 
         # validate all player dependences at this player Game with this player instance
+        # replace game player list with self instence and operate with new list
         game = self.game
         players = list(game.players)
         index = players.index(self)
@@ -200,20 +210,17 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # that player at 0 position is dealer
 
         # ckeck players ordering by positions
-        positions = [p.position for p in players]
+        # start from position = 0 (from dealer)
+        after_dealer = circle_after(lambda p: not p.position, players)
+        positions = [p.position for p in after_dealer]
         if list(range(len(players))) != positions:
             raise IntegrityError(f'{game} has invalid players positions: {positions}')
 
 
 ########################################################################################
 
-
-def get_bet_default():
-    return []
-
-
-def type_is_list_int(*args, **kwargs):
-    raise NotImplementedError
+# def type_is_list_int(*args, **kwargs):
+#     raise NotImplementedError
 
 
 class PlayerBetQuerySet(models.QuerySet):

@@ -10,7 +10,7 @@ from typing import Any, Iterable, Literal
 import pytest
 from core.functools.decorators import temporally
 from core.functools.utils import StrColors, init_logger
-from games.backends.cards import Stacks
+from games.services.cards import Stacks
 from games.models import Game, Player
 from rest_framework import status
 from rest_framework.response import Response
@@ -19,7 +19,7 @@ from users.models import User
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
 from tests.base import BaseGameProperties
-from games.backends.combos import Combo
+from games.services.combos import Combo
 logger = init_logger(__name__, logging.DEBUG)
 
 

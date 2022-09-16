@@ -9,7 +9,7 @@ from games.services.stages import OpposingStage
 from users.models import User
 from django.db.models import Q
 from core.functools.decorators import temporally
-from games.backends.cards import Card
+from games.services.cards import Card
 
 from rest_framework.request import Request
 

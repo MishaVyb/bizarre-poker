@@ -1,46 +1,119 @@
 import logging
+from typing import Any, TypeVar
 
 import pytest
 
 from core.functools.utils import StrColors
-from games.services import stages, actions
+from games.services import stages, actions, auto
 
 from core.functools.utils import init_logger
-from tests.base import BaseGameProperties
+from tests.base import BaseGameProperties, param_kwargs_list
 from games.services.configurations import DEFAULT
+from games.services.combos import Combo
+from games.models import Player
 
 logger = init_logger(__name__, logging.INFO)
+_AT = TypeVar('_AT', bound=actions.BaseGameAction)
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures('setup_game')
 class TestGameStages(BaseGameProperties):
     usernames = ('vybornyy', 'simusik', 'barticheg', 'arthur_morgan')
+    input_users_bank: dict[str, int]
 
     def test_flop_stage(self):
         # arrange
-        self.autoplay_game_untill('SetupStage', inclusevly=True)
+        auto.autoplay_game(self.game, stop_after_stage='SetupStage')
         input_deck = self.game.deck.copy()
         start = len(self.usernames) * DEFAULT.deal_cards_amount
         end = start + DEFAULT.flops_amounts[0]
         expected_flop = list(reversed(input_deck))[start:end]
 
         # act
-        self.autoplay_game_untill('FlopStage-1', inclusevly=True)
+        auto.autoplay_game(self.game, stop_after_stage='FlopStage-1')
 
         # assert
         assert self.game.table == expected_flop
         assert self.game.deck == input_deck[: len(input_deck) - end]
 
     def test_none_perfomer_after_stage_was_processed(self):
-        stop_after_action = actions.PlaceBet(
-            self.game,
-            self.users['vybornyy'],
-            0,
-            act_immediately=False,
-        )
-        self.autoplay_game_untill('BiddingsStage-4(final)', stop_after_action)
+        auto.autoplay_game(self.game, stop_after_stage='BiddingsStage-1')
         assert self.game.stage.performer is None
+
+    @pytest.mark.parametrize(
+        'passed_names',
+        [
+            param_kwargs_list('01- no passed player', passed_names=set()),
+            param_kwargs_list('02- 1 passed player', passed_names={'vybornyy'}),
+        ],
+    )
+    def test_opposing_stage(
+        self,
+        setup_users_banks,
+        setup_deck_get_expected_combos: tuple[list[Combo], list[list[int]]],
+        passed_names: set[str],
+    ):
+        # Arrange.
+        expected = setup_deck_get_expected_combos[0]
+        rate_groups = setup_deck_get_expected_combos[1]
+        passed_users = {self.users[name] for name in passed_names}
+        active_users = set(self.users.values()) - passed_users
+
+        # prepare winners and loosers set
+        # (exclude passed players if they suppused to win)
+        for rate_group in rate_groups:
+            winners_indexes = rate_group
+            winners = {self.users_list[i] for i in winners_indexes}
+            winners = winners - passed_users    # filter out passed users
+            if winners:
+                break
+            # if not (all potential winners have passed)
+            # we will continue to the next rate group
+
+        loosers = active_users - winners  # filter out winners
+
+        # prepere expected loosing and winning values
+        all_bets_together = len(active_users) * DEFAULT.big_blind
+        benefit = all_bets_together // len(winners) - DEFAULT.big_blind
+        loss = DEFAULT.big_blind
+
+        # prepare pass actioins
+        prepares: list[actions.ActionPreform] = []
+        for user in passed_users:
+            pass_ = actions.PassAction.preform(user)
+            prepares.append(pass_)
+
+        # Act. play game
+        auto.autoplay_game(
+            self.game, stop_after_stage='OpposingStage', with_actions=prepares
+        )
+        assert [p.combo for p in self.players_list] == expected
+
+        # Assert winners banks
+        for winner in winners:
+            bank = self.input_users_bank[winner.username]
+            assert winner.profile.bank == bank + benefit
+
+        # Assert lissers banks
+        for looser in loosers:
+            bank = self.input_users_bank[looser.username]
+            assert looser.profile.bank == bank - loss
+
+        # Assert passed banks (it won`t change)
+        for passed in passed_users:
+            bank = self.input_users_bank[passed.username]
+            assert passed.profile.bank == bank
+
+    def test_move_dealer_button(self):
+        # assertion before act:
+        for player, expected_position in zip(self.players_list, [0, 1, 2, 3]):
+            assert player.position == expected_position
+        # act:
+        auto.autoplay_game(self.game, stop_after_stage='MoveDealerButton')
+        # assert:
+        for player, expected_position in zip(self.players_list, [3, 0, 1, 2]):
+            assert player.position == expected_position
 
 
 @pytest.mark.django_db
@@ -70,7 +143,7 @@ class TestGameActions(BaseGameProperties):
         # [3] test NOT host press "start"
         logger.info(StrColors.purple('[3] test NOT host press "start'))
         match = (
-            r'Acting StartAction failed. '
+            r'Acting .* failed. '
             r'Game waiting for act from another player: .* vybornyy'
         )
         with pytest.raises(actions.ActError, match=match):
@@ -93,7 +166,7 @@ class TestGameActions(BaseGameProperties):
         test = '[3] PlaceBlind by vybornyy | test raises'
         logger.info(StrColors.purple(test))
         match = (
-            r'Acting PlaceBlind failed. '
+            r'Acting .* failed. '
             r'Game waiting for act from another player: .* barticheg'
         )
         with pytest.raises(actions.ActError, match=match):
@@ -107,10 +180,7 @@ class TestGameActions(BaseGameProperties):
 
         test = '[5] PlaceBlind by vybornyy | test raises when game has another stage'
         logger.info(StrColors.purple(test))
-        match = (
-            r'Acting PlaceBlind failed. '
-            r'Game has another current stage: BiddingsStage-1'
-        )
+        match = r'Acting .* failed. ' r'Game has another current stage: BiddingsStage-1'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBlind(self.game, self.users['vybornyy'])
 
@@ -121,10 +191,8 @@ class TestGameActions(BaseGameProperties):
             '[1] PlaceBet by simusik with invalid value 10, but expectd 5 (small blind)'
         )
         logger.info(StrColors.purple(test))
-        match = (
-            r'Acting PlaceBet failed. '
-            r'Condition value_in_valid_range_condition for acting PlaceBet are not satisfied'
-        )
+        condition_name = 'value_in_valid_range_condition'
+        match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['simusik'], value=10)
         assert [0, 0, 0, 0] == [p.bet_total for p in self.game.players]
@@ -142,17 +210,17 @@ class TestGameActions(BaseGameProperties):
         logger.info(StrColors.purple(test))
 
         condition_name = 'value_in_valid_range_condition'
-        match = rf'Condition {condition_name} for acting PlaceBet are not satisfied'
+        match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=0)
 
         condition_name = 'value_in_valid_range_condition'
-        match = rf'Condition {condition_name} for acting PlaceBet are not satisfied'
+        match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=10000)
 
         condition_name = 'It is not multiples of small blind'
-        match = rf'Acting PlaceBet failed.*{condition_name}.*'
+        match = r'Acting .* failed. ' rf'.*{condition_name}.*'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=13)
 
@@ -216,8 +284,14 @@ class TestGameBetActions(BaseGameProperties):
         logger.info(StrColors.purple(test))
         actions.PassAction(self.game, self.users['werner_herzog'])
 
-        test = '[3] PlaceBlind by barticheg'
-        actions.PlaceBlind(self.game, self.users['barticheg'])
+        test = '[3] PlaceBlind by barticheg -- raises. See rule [Blind Fixed to Player]'
+        logger.info(StrColors.purple(test))
+        with pytest.raises(actions.ActError, match=r'Game has another current stage'):
+            actions.PlaceBlind(self.game, self.users['barticheg'])
+
+        test = '[4] PlaceBet by barticheg'
+        logger.info(StrColors.purple(test))
+        actions.PlaceBet(self.game, self.users['barticheg'], value=10)
 
         # [5] test place bet stage
         logger.info(StrColors.purple('[5] test place bet'))
@@ -228,9 +302,9 @@ class TestGameBetActions(BaseGameProperties):
         assert [0, 5, 10, 0] == self.players_bets_total
 
         # [6] test trying another player place bet
-        logger.info(StrColors.purple('[6] test trying another player place bet'))
+        logger.info(StrColors.purple('[6] trying another player place bet -- raises'))
         match = (
-            r'Acting PlaceBet failed. '
+            r'Acting .* failed. '
             r'Game waiting for act from another player: .* arthur_morgan'
         )
         with pytest.raises(actions.ActError, match=match):
@@ -273,9 +347,7 @@ class TestGameBetActions(BaseGameProperties):
         )
         logger.info(StrColors.purple(test))
         condition_name = 'value_in_valid_range_condition'
-        match = (
-            rf'Condition {condition_name} for acting PlaceBetCheck are not satisfied'
-        )
+        match = rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBetCheck(self.game, self.users['arthur_morgan'])
 

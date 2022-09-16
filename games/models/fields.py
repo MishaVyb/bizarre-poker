@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 
 from core.functools.decorators import temporally
 from core.functools.utils import isinstance_items, split
-from games.backends.cards import Card, CardList, Stacks
+from games.services.cards import Card, CardList, Stacks
 from core.functools.utils import init_logger
 
 

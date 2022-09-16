@@ -57,35 +57,35 @@ class StrColors:
 
     @classmethod
     def purple(cls, __str: str) -> str:
-        return cls._PURPLE + __str + cls._ENDC
+        return cls._ENDC + cls._PURPLE + __str + cls._ENDC
 
     @classmethod
     def bold(cls, __str: str) -> str:
-        return cls._BOLD + __str + cls._ENDC
+        return cls._ENDC + cls._BOLD + __str + cls._ENDC
 
     @classmethod
     def underline(cls, __str: str) -> str:
-        return cls._UNDERLINE + __str + cls._ENDC
+        return cls._ENDC + cls._UNDERLINE + __str + cls._ENDC
 
     @classmethod
     def green(cls, __str: str) -> str:
-        return cls._GREEN + __str + cls._ENDC
+        return cls._ENDC + cls._GREEN + __str + cls._ENDC
 
     @classmethod
     def blue(cls, __str: str) -> str:
-        return cls._BLUE + __str + cls._ENDC
+        return cls._ENDC + cls._BLUE + __str + cls._ENDC
 
     @classmethod
     def cyan(cls, __str: str) -> str:
-        return cls._CYAN + __str + cls._ENDC
+        return cls._ENDC + cls._CYAN + __str + cls._ENDC
 
     @classmethod
     def red(cls, __str: str) -> str:
-        return cls._RED + __str + cls._ENDC
+        return cls._ENDC + cls._RED + __str + cls._ENDC
 
     @classmethod
     def yellow(cls, __str: str) -> str:
-        return cls._YELLOW + __str + cls._ENDC
+        return cls._ENDC + cls._YELLOW + __str + cls._ENDC
 
 
 _TC = TypeVar('_TC')

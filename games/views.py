@@ -22,7 +22,7 @@ from users.models import User
 
 from games import models
 from games.models import PlayerBet
-from games.backends.cards import Card
+from games.services.cards import Card
 
 from api.serializers import GameSerializer, PlayerSerializer
 from django.urls import reverse

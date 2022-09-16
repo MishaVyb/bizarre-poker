@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
 import logging
-from typing import Callable, Type
+from typing import Callable, Generic, Type, TypeVar, Union
 
 from core.functools.utils import StrColors, init_logger
 from django.core.exceptions import ValidationError
@@ -18,6 +21,10 @@ logger = init_logger(__name__, logging.INFO)
 
 class ActError(Exception):
     pass
+
+
+
+NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 
 
 class BaseGameAction:
@@ -47,7 +54,13 @@ class BaseGameAction:
         return formated
 
     def __init__(
-        self, game: Game, user: User, *args, act_immediately=True, **kwargs
+        self,
+        game: Game,
+        user: User,
+        *args,
+        act_immediately=True,
+        processing_after_act=True,
+        **kwargs,
     ) -> None:
         self.game = game
         self.user = user
@@ -58,10 +71,17 @@ class BaseGameAction:
         ] + self.conditions
 
         if act_immediately:
-            self.act()
+            self.act(continue_processing_after=processing_after_act)
+
+    def __repr__(self) -> str:
+        player = self.player if hasattr(self, 'player') else '???'
+        try:
+            return f'{player} -> `{self.__class__.__name__}`'
+        except Exception:
+            return super().__repr__()
 
     def __str__(self) -> str:
-        return self.__class__.__name__
+        return self.__repr__()
 
     def __eq__(self, __o: object) -> bool:
         if not isinstance(__o, BaseGameAction):
@@ -69,6 +89,19 @@ class BaseGameAction:
         return (
             type(self) == type(__o) and self.game == __o.game and self.user == __o.user
         )
+
+    @classmethod
+    def preform(
+        cls: Type[_ACTION_TYPE],
+        user: User,
+        stage: str | None = None,
+        game: Game | None = None,
+        **action_kwargs,
+    ) -> ActionPreform[_ACTION_TYPE]:
+        assert isinstance(
+            user, User
+        ), 'Wrong user type. Are you shure you are not confusing with __init__(..)'
+        return ActionPreform(cls, user, stage, game, action_kwargs)
 
     def stage_condition(self):
         # we allow current stage to be a subclass of suitable stage
@@ -88,25 +121,84 @@ class BaseGameAction:
         for c in self.conditions:
             if not c(self):
                 detail = self.error_messages.get(c.__name__) or ''
-                reason = (
-                    f'Condition {c.__name__} for acting {self} '
-                    f'are not satisfied. {detail}'
-                )
+                reason = f'Condition {c.__name__} are not satisfied. {detail}'
                 raise ActError(f'Acting {self} failed. {reason}')
 
-    def act(self):
+    def act(self, *, continue_processing_after=True):
         self.check_conditions()
-        logger.info(f'{self.player} {StrColors.green("acting")} {self}')
+        logger.info(f'{StrColors.green("acting")} {self}')
         try:
             self.act_subclass()
         except ValidationError as e:
             raise ActError(f'Acting {self} failed. {e}')
-        StagesContainer.continue_processing(self.game)
+        if continue_processing_after:
+            StagesContainer.continue_processing(self.game)
 
     def act_subclass(self):
         raise NotImplementedError
 
+_ACTION_TYPE = TypeVar('_ACTION_TYPE', bound=BaseGameAction)
+_T = TypeVar('_T')
 
+@dataclass
+class ActionPreform(Generic[_ACTION_TYPE]):
+    action_class: Type[_ACTION_TYPE]
+
+    user: User
+    'prepared for acting by user'
+
+    stage: str | None = None  # key stage for action
+    'prperate for actiong at stgae'
+
+    game: Game | None = None
+    action_kwargs: dict | None = None
+
+    def __post_init__(self):
+        if self.stage:
+            try:
+                StagesContainer.get(self.stage)
+            except ValueError as e:
+                raise ValueError(f'Invalid stage name for action preform: {e}')
+
+    def act(self, game: Game | None = None, *, continue_processing_after=True):
+        self.game = self.game or game
+        assert self.game, 'Game should be provided'
+
+        #prefrom condition
+        if self.stage and self.game.stage.name != self.stage:
+            raise ActError(f'ActionPreform prepared for another stage: {self.stage}')
+        self.action_class(
+            self.game,
+            self.user,
+            act_immediately=True,
+            processing_after_act=continue_processing_after,
+            **self.action_kwargs or {},
+        )
+
+    # def get_action(self):
+    #         return
+
+    def __eq__(self, other: object):
+        if isinstance(other, ActionPreform):
+            return asdict(self) == asdict(other)
+        if isinstance(other, BaseGameAction):
+            stage_eq = not self.stage or (self.stage == other.game.stage.name)
+            game_eq = not self.game or (self.game == other.game)
+            kwargs_eq = not self.action_kwargs or (
+                self.action_kwargs
+                == {k: getattr(other, k, NONE_ATTRIBUTE) for k in self.action_kwargs}
+            )
+            return (
+                self.action_class == type(other)
+                and self.user == other.user
+                and stage_eq
+                and game_eq
+                and kwargs_eq
+            )
+        return NotImplemented
+
+
+# Action = Union[BaseGameAction, ActionPreform]
 ##############################################################################
 
 
@@ -151,6 +243,12 @@ class PlaceBet(BaseGameAction):
         self.value = value
         super().__init__(game, user, act_immediately=act_immediately)
 
+    def __repr__(self) -> str:
+        try:
+            return super().__repr__() + f' ${self.value}'
+        except Exception:
+            return super().__repr__()
+
     def act_subclass(self):
         # act
         self.user.profile.withdraw_money(self.value)
@@ -161,10 +259,9 @@ class PlaceBlind(PlaceBet):
     suitable_stage = PlacingBlindsStage
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
-        value = game.stage.get_necessary_action_values().get('min')
-        if value is None:
-            self.game = game
-            raise ActError(self.error_messages_formated['invalid_stage'])
+        value = self.suitable_stage(game).get_necessary_action_values().get('min')
+        assert value is not None, 'invalid suitable stage'
+
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
 
@@ -183,15 +280,14 @@ class PlaceBetReply(PlaceBet):
     """Reply to other player bet. Place min possible bet value."""
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
-        value = game.stage.get_necessary_action_values().get('min')
+        value = self.suitable_stage(game).get_necessary_action_values().get('min')
+        assert value is not None, 'invalid suitable stage'
+
         if value == 0:
             logger.warning(
                 f'Acting {self} when there are not bets att all. '
                 'Go ahead with value = 0, that equal to PlaceBetCheck. '
             )
-        elif value is None:
-            self.game = game
-            raise ActError(self.error_messages_formated['invalid_stage'])
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
 
@@ -199,10 +295,9 @@ class PlaceBetVaBank(PlaceBet):
     """All in. Place max possible bet value."""
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
-        value = game.stage.get_necessary_action_values().get('max')
-        if value is None:
-            self.game = game
-            raise ActError(self.error_messages_formated['invalid_stage'])
+        value = self.suitable_stage(game).get_necessary_action_values().get('max')
+        assert value is not None, 'invalid suitable stage'
+
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
 
@@ -229,6 +324,9 @@ class ActionContainer:
 
     @classmethod
     def get(cls, name: str) -> Type[BaseGameAction]:
+        if not name:
+            raise ValueError('No name')
+
         try:
             return next(filter(lambda x: x.__name__ == name, cls.actions))
         except StopIteration:

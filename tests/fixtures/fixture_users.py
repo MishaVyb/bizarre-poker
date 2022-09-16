@@ -9,7 +9,7 @@ developing:
 """
 import pytest
 from django.contrib.auth import get_user_model
-from games.backends.cards import CardList
+from games.services.cards import CardList
 from games.models import Game
 from users.models import User
 

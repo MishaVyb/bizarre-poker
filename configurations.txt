@@ -1,0 +1,9 @@
+
+
+###############################
+##### GAME RULES
+###############################
+
+1. Biddings
+    1.1 Blind Fixed to Player -- False.
+    If player wich is blind-maker said [pass], blind won't go next player and game won't require this blind anymore.

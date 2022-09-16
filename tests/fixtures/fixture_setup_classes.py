@@ -4,14 +4,15 @@ from typing import TypeVar
 import pytest
 from core.functools.decorators import temporally
 from core.functools.utils import StrColors, init_logger, logging, get_func_name
-from games.backends.cards import CardList, Decks
-from games.backends.combos import Combo
+from games.services.cards import CardList, Decks
+from games.services.combos import Combo
 from games.models import Game
 from games.services.configurations import DEFAULT
 from rest_framework import status
 from rest_framework.test import APIClient
 from tests.base import BaseGameProperties
 from users.models import User
+from games.services.cards import get_deck_from
 
 logger = init_logger(__name__, logging.DEBUG)
 _T = TypeVar('_T')
@@ -97,21 +98,40 @@ def setup_game_by_api(
 
 
 @pytest.fixture
-def setup_deck(request: pytest.FixtureRequest, deck_from_table_and_hands: CardList):
+def setup_deck_get_expected_combos(
+    request: pytest.FixtureRequest, table_and_hands_and_expected_combos: dict
+):
     self: BaseGameProperties = assert_base_class(request.instance)
+    data = table_and_hands_and_expected_combos
+    deck = get_deck_from(table=data['table'], hands=data['hands'])
 
     # check test arrange
-    neccessary_amount = len(self.usernames) * DEFAULT.deal_cards_amount + sum(
-        DEFAULT.flops_amounts
-    )
-    if deck_from_table_and_hands.length != neccessary_amount:
+    flops = sum(DEFAULT.flops_amounts)
+    neccessary_amount = len(self.usernames) * DEFAULT.deal_cards_amount + flops
+    if deck.length != neccessary_amount:
         pytest.skip('Current test deck intended for another players amount. ')
 
-    # set our test deck to the game's default
-    setattr(Decks, 'TEST_DECK', deck_from_table_and_hands)
-    with temporally(DEFAULT, deck_container_name='TEST_DECK', deck_shuffling=False):
-        yield
+    # set our test deck to the game
+    setattr(Decks, 'TEST_DECK', deck)
+    with temporally(DEFAULT, deck_shuffling=False):
+        self.game.update(deck_generator='TEST_DECK')
+        yield data['expected_combos'], data['rate_groups']
+        self.game.update(deck_generator=DEFAULT.deck_container_name)
     delattr(Decks, 'TEST_DECK')
+
+
+
+@pytest.fixture
+def setup_urls(request: pytest.FixtureRequest):
+    self: BaseGameProperties = assert_base_class(request.instance)
+
+    # format urls
+    for key, url in self.urls.items():
+        if '{game_pk}' in url:
+            self.urls[key] = url.format(game_pk=self.game_pk)
+
+    # check game data no errors
+    self.game.full_clean()
 
 
 @pytest.fixture
@@ -126,29 +146,3 @@ def setup_users_banks(request: pytest.FixtureRequest):
 
     self.input_users_bank = {name: bank for name, bank in zip(self.usernames, banks)}
     return banks
-
-
-@pytest.fixture
-def setup_expected_combos(
-    request: pytest.FixtureRequest,
-    table_and_hands_and_expected_combos,
-):
-    self: BaseGameProperties = assert_base_class(request.instance)
-
-    combos: list[Combo] = table_and_hands_and_expected_combos['expected_combos']
-    self.expected_combos = {}
-    for user, combo in zip(self.users, combos, strict=True):
-        self.expected_combos[user] = combo
-
-
-@pytest.fixture
-def setup_urls(request: pytest.FixtureRequest):
-    self: BaseGameProperties = assert_base_class(request.instance)
-
-    # format urls
-    for key, url in self.urls.items():
-        if '{game_pk}' in url:
-            self.urls[key] = url.format(game_pk=self.game_pk)
-
-    # check game data no errors
-    self.game.full_clean()

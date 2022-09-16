@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from core.functools.utils import init_logger
 from django.db import IntegrityError, models
-from games.backends.cards import CardList
+from games.services.cards import CardList
 from games.models import Game, Player
 from games.models.player import PlayerBet, PlayerManager, PlayerQuerySet
 from games.services import configurations
@@ -262,3 +262,44 @@ class TestPlayerManager(BaseGameProperties):
         q = self.game.players.order_by_bet
         assert q[0] == self.players['barticheg']
         assert q[1] == self.players['vybornyy']
+
+    def test_player_queryset(self):
+        qs = Player.objects.filter(game=self.game)
+
+        # --- NO CACHE ---
+        vybornyy_object_1 = qs[0]
+        vybornyy_object_2 = qs[0]
+
+        # this objects equal
+        assert vybornyy_object_1 == vybornyy_object_2
+        # but not the same !!!
+        assert vybornyy_object_1 is not vybornyy_object_2
+
+        # changing attribute for one won`t changit for another
+        vybornyy_object_1.is_active = False
+        assert vybornyy_object_2.is_active == True
+
+        # --- CACHE Query Set ---
+        # but if a call for full query before it will be cached
+        [p for p in qs]
+        vybornyy_object_1 = qs[0]
+        vybornyy_object_2 = qs[0]
+
+        # therefore they are the same objects
+        assert vybornyy_object_1 is vybornyy_object_2
+
+        # now it looks like list and has the same objects insede
+        qs[0].is_active = False
+        assert vybornyy_object_1.is_active == False
+        assert vybornyy_object_2.is_active == False
+
+        # but if I call for the same query again with no saving previous qs objects
+        # it will create new qs and `evulated` it again
+
+        another_qs = Player.objects.filter(game=self.game)
+        assert qs is not another_qs
+        assert qs[0] is not another_qs[0]
+        assert another_qs[0].is_active == True
+
+
+

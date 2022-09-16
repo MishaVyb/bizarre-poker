@@ -28,7 +28,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='playerbet',
             name='_values',
-            field=models.JSONField(default=games.models.player.get_bet_default),
+            field=models.JSONField(
+                # default=games.models.player.get_bet_default
+            ),
         ),
         migrations.AlterField(
             model_name='playerbet',

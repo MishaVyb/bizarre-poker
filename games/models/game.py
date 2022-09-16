@@ -8,7 +8,7 @@ from core.models import (CreatedModifiedModel, FullCleanSavingMixin,
                          UpdateMethodMixin)
 from django.db import models
 from django.urls import reverse
-from games.backends.cards import CardList
+from games.services.cards import CardList
 from games.models.fields import CardListField
 
 from ..services import configurations

@@ -33,6 +33,9 @@ from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 
 from core.functools.utils import eq_first, range_inclusevly, split
 from core.functools.decorators import temporally
+from core.functools.utils import StrColors, init_logger
+
+logger = init_logger(__name__)
 
 SET_JOKERS_AFTER_EQUAL_CARD = True
 """To operate a curtain way of sorting, when mirrored jokers placed after card with
@@ -306,13 +309,18 @@ class Card:
     #     return Card.REPR_METHOD(self)
 
     def __lt__(self, other: object) -> bool:  # self < other
-        if (
-            not isinstance(other, Card)
-            or not isinstance(self.rank, int)
-            or not isinstance(self.suit, int)
-            or not isinstance(other.rank, int)
-            or not isinstance(other.suit, int)
+        if not isinstance(other, Card):
+            return NotImplemented
+        elif not (
+            isinstance(self.rank, int)
+            and isinstance(self.suit, int)
+            and isinstance(other.rank, int)
+            and isinstance(other.suit, int)
         ):
+            logger.warning(
+                'Comparison between not mirrored joker and card is not implemented: '
+                f'{self} < {other}'
+            )
             return NotImplemented
         else:
             return (
@@ -617,7 +625,7 @@ class CardList(list[Card]):
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
 
-    def hiden(self, str_method: str='emoji_shirt') -> str:
+    def hiden(self, str_method: str = 'emoji_shirt') -> str:
         """Return hiden card list representation (shirts up)"""
         with temporally(Card.Text, str_method=str_method):
             return self.__str__()
@@ -663,7 +671,7 @@ class CardList(list[Card]):
         random.shuffle(self)
         return self
 
-    def sortby(self, attr: str, *, reverse: bool = True) -> CardList:
+    def sortby(self, attr: str = 'rank', *, reverse: bool = True) -> CardList:
         """Total sorting by specific attribute `rank` or `suit`. Used Card
         another attribute and Jokers `kind` as following sorting parameters.
 
@@ -674,7 +682,8 @@ class CardList(list[Card]):
         >>> CardList('2|C', '2|D', 'Ace|H', 'red(Ace|S)').sortby('rank')
         [red(Ace|S), Ace|H, 2|D, 2|C]
 
-        return self"""
+        return self
+        """
         assert attr in ('rank', 'suit')
         another_attr = 'rank' if attr == 'suit' else 'suit'
 
@@ -691,7 +700,7 @@ class CardList(list[Card]):
         # by default sort save the original position of cards that equal by
         # attr (it's called 'stabel sorting'). But we need total sorting by all
         # attributes one after another.
-        super().sort(key=lambda card: key(card), reverse=reverse)
+        super().sort(key=key, reverse=reverse)
         return self
 
     def isolate_jokers(
@@ -746,7 +755,6 @@ Stacks = list[CardList]
 
 
 class Decks:
-
     @staticmethod
     def standart_52_card_deck_plus_jokers(jokers_amount: int = 2):
         """yield all 52 cards from highes to smallest and then red/black jokers"""
@@ -763,24 +771,9 @@ class Decks:
             yield JokerCard('red') if i % 2 else JokerCard('black')
 
 
-
-# def main():
-#     card = Card(14, 2)
-#     joker = JokerCard('red', reflection=Card(10, 1))
-#     with temporally(globals(), Card__Text__str_method='classic'):
-#         print(card, joker)
-#     print(card, joker)
-
-
-# @temporally(Card.Text, repr_method='eng_short_suit')
-# def some():
-#     card = Card(14, 2)
-#     joker = JokerCard('red', reflection=Card(10, 1))
-#     print(card.__repr__(), joker.__repr__())
-
-
-# if __name__ == '__main__':
-#     print(Card(14, 2).__str__())
-#     main()
-#     some()
-#     pass
+def get_deck_from(table: CardList, hands: Stacks):
+    deck = CardList()
+    deck.extend(table)
+    for cards in zip(*reversed(hands), strict=True):
+        deck.extend(cards)
+    return deck

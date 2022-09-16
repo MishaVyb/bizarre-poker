@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import itertools
 import logging
-from typing import TYPE_CHECKING, Callable
+from operator import attrgetter
+from typing import TYPE_CHECKING, Any, Callable
 
 from core.functools.utils import StrColors, init_logger
 from django.db import models
-from games.backends.cards import CardList, Decks
+from games.services.cards import CardList, Decks
 from games.services.configurations import DEFAULT
 from core.functools.looptools import circle_after
 
@@ -26,8 +27,8 @@ class StageProcessingError(Exception):
     def __str__(self) -> str:
         return (
             f'{StrColors.bold("Stop processing")}. '
-            f'Requirement {self.requirement_name} are not satisfied. '
-            f'Waiting for {self.stage.performer} act {self.stage.necessary_action}'
+            f'Requirement {self.requirement_name} are not satisfied. Waiting...'
+            # f'Waiting for {self.stage.performer} act {self.stage.necessary_action} with {self.stage.get_necessary_action_values()}'
         )
 
 
@@ -45,8 +46,12 @@ class BaseGameStage:
     def performer(self) -> None | Player:
         return None
 
-    def __str__(self) -> str:
+    @property
+    def name(self):
         return self.__class__.__name__
+
+    def __str__(self) -> str:
+        return self.name
 
     def get_necessary_action_values(self) -> dict:
         return {}
@@ -119,6 +124,7 @@ class BiddingsStage(BaseGameStage):
         """Next player after last bet maker. Starting from first after dealer"""
         if self.check_requirements(raises=False):
             return None
+        l = self.game.players.order_by_bet.first()
         return self.game.players.order_by_bet.first()
 
     def get_necessary_action_values(self) -> dict:
@@ -164,16 +170,33 @@ class BiddingsStage(BaseGameStage):
 class PlacingBlindsStage(BiddingsStage):
     necessary_action = 'PlaceBlind'
 
-    def players_have_placed_blinds(self):
+    def players_have_placed_blinds_or_passed(self):
+        first = self.game.players.after_dealer_all[0]
+        second = self.game.players.after_dealer_all[1]
         return bool(
-            self.game.players.after_dealer[0].bets.total == DEFAULT.small_blind
-            and self.game.players.after_dealer[1].bets.total == DEFAULT.big_blind
+            (not first.is_active or first.bets.total == DEFAULT.small_blind)
+            and (not second.is_active or second.bets.total == DEFAULT.big_blind)
         )
 
-    requirements = [players_have_placed_blinds]  # type: ignore
+    requirements = [players_have_placed_blinds_or_passed]  # type: ignore
+
+    @property
+    def performer(self):
+        """Next 2 player after dealer."""
+        if self.check_requirements(raises=False):
+            return None
+
+        first = self.game.players.after_dealer_all[0]
+        second = self.game.players.after_dealer_all[1]
+        if first.is_active and first.bet_total != DEFAULT.small_blind:
+            return first
+        if second.is_active and second.bet_total != DEFAULT.big_blind:
+            return second
+
+        raise RuntimeError
 
     def get_necessary_action_values(self) -> dict:
-        if self.performer == self.game.players.after_dealer.first():
+        if self.performer == self.game.players.after_dealer_all.first():
             return {
                 'min': DEFAULT.small_blind,
                 'max': DEFAULT.small_blind,
@@ -207,9 +230,8 @@ class OpposingStage(BaseGameStage):
         # for player in players:
 
         # taking first group
-        priority, winners_iter = next(
-            itertools.groupby(players, key=lambda p: p.combo.kind.priority)
-        )
+
+        combo, winners_iter = next(itertools.groupby(players, attrgetter('combo')))
         winners = list(winners_iter)
         reminder = self.game.bank % len(winners)
         if reminder > 0:
@@ -239,7 +261,10 @@ class TearDownStage(BaseGameStage):
 
 class MoveDealerButton(BaseGameStage):
     def process(self) -> None:
-        pass
+        qs = self.game.players.after_dealer
+        for i, player in enumerate(qs):
+            player.position = i
+        qs.bulk_update(qs, ('position',))
 
 
 ########################################################################################
@@ -265,12 +290,14 @@ class StagesContainer:
 
     @classmethod
     def get(cls, name: str):
+        if not name:
+            raise ValueError('No name')
         try:
             return next(filter(lambda x: x.__name__ == name, cls.stages))
         except StopIteration:
             raise ValueError(
-                f'Invalid action name: {name}. '
-                f'Available actions: {[a.__name__ for a in cls.stages]}'
+                f'Invalid stage name: {name}. '
+                f'Available stages: {[a.__name__ for a in cls.stages]}'
             )
 
     @classmethod
@@ -286,15 +313,15 @@ class StagesContainer:
             )
 
     @classmethod
-    def continue_processing(
-        cls, game: Game, *, stop_stage: str = ''
-    ) -> StageProcessingError | None:
+    def continue_processing(cls, game: Game, *, stop_stage: str = '') -> dict[str, Any]:
         # logging:
         headline = StrColors.bold('Processing')
+        value = game.stage.performer and game.stage.get_necessary_action_values()
+        value_detail = f'with {value}' if value else ''
         detail = (
             (
                 f'Stage performer: {game.stage.performer}. '
-                f'Necessary action: {game.stage.necessary_action}. '
+                f'Necessary action: {game.stage.necessary_action} {value_detail}'
             )
             if game.stage.performer
             else ''
@@ -307,7 +334,7 @@ class StagesContainer:
         except StageProcessingError as e:
             logger.info(e)
             game.save()
-            return e
+            return {'status': 'forced_stop', 'error': e}
 
         # successfully! go to the next stage:
         if game.stage_index + 1 < len(cls.stages):
@@ -318,9 +345,9 @@ class StagesContainer:
         # check exit condition:
         if stop_stage == str(game.stage):
             game.save()
-            return None
+            return {'status': 'success'}
 
         # CONTINUE RECURSIVELY
         # Do not calling for save() once again.
         # Only when StageProcessingError will be catched and processor will stop.
-        return cls.continue_processing(game)
+        return cls.continue_processing(game, stop_stage=stop_stage)

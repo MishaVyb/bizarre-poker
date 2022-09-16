@@ -27,9 +27,9 @@ class Migration(migrations.Migration):
             name='values',
             field=models.JSONField(
                 blank=True,
-                default=games.models.player.get_bet_default,
+                # default=games.models.player.get_bet_default,
                 validators=[
-                    games.models.player.type_is_list_int,
+                    # games.models.player.type_is_list_int,
                     games.models.player.bet_multiplicity,
                 ],
             ),

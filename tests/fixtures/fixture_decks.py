@@ -1,106 +1,93 @@
 from __future__ import annotations
+from copy import copy
+import itertools
 
 import logging
+from operator import attrgetter
+from typing import Any
 
 import pytest
 from _pytest.fixtures import SubRequest as PytestSubRequest
-from core.functools.utils import get_func_name, init_logger, isinstance_items
-from games.backends.cards import CardList
-from games.backends.combos import CLASSIC_COMBOS, Combo, ComboStacks
+from core.functools.utils import get_func_name, init_logger, is_sorted, isinstance_items
+from games.services.cards import CardList
+from games.services.combos import CLASSIC_COMBOS, Combo, ComboStacks
+from tests.base import param_kwargs
 
 logger = init_logger(__name__, logging.DEBUG)
 
 
 @pytest.fixture(
     params=[
-        pytest.param(
-            dict(
-                table=CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),
-                hands=(
-                    CardList('10-s', '9-s'),
-                    CardList('Ace|H', '2-h'),
-                    CardList('2-c', '5-h'),
-                ),
-                expected_combos=(
-                    (
-                        'one pair',
-                        {'rank': [CardList('Ace|H', 'Ace|D')]},
-                    ),
-                    (
-                        'three of kind',
-                        {'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]},
-                    ),
-                    (
-                        'one pair',
-                        {'rank': [CardList('5-c', '5-h')]},
-                    ),
-                ),
+        param_kwargs(
+            '01- simple test (4 players)',
+            table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
+            hands=(
+                ['Ace|H', '3|H'],  # winner: 3|h > 3|c
+                ['Ace|H', '3|C'],  # 2nd place
+                ['2|C', '5|H'],  # 3d olace
+                ['10|S', '9|S'],  # looser
             ),
-            id='simple test (3 players): the second one has winning combination',
+            rate_groups=([0], [1], [2], [3]),
+            expected_combos=(
+                ('three of kind', ['Ace|H', 'Ace|H', 'Ace|D']),
+                ('three of kind', ['Ace|H', 'Ace|H', 'Ace|D']),
+                ('two pair', ['Ace|H', 'Ace|D'] + ['5|C', '5|H']),
+                ('one pair', ['Ace|H', 'Ace|D']),
+            ),
         ),
-        pytest.param(
-            dict(
-                table=CardList('Ace|H', 'Ace|D', 'King|C', '5-c', '7-s'),
-                hands=(
-                    CardList('10-s', '9-s'),
-                    CardList('Ace|H', '2-h'),
-                    CardList('2-c', '5-h'),
-                    CardList('8-c', '9-h'),
-                ),
-                expected_combos=(
-                    (
-                        'one pair',
-                        {'rank': [CardList('Ace|H', 'Ace|D')]},
-                    ),
-                    (
-                        'three of kind',
-                        {'rank': [CardList('Ace|H', 'Ace|H', 'Ace|D')]},
-                    ),
-                    (
-                        'one pair',
-                        {'rank': [CardList('5-c', '5-h')]},
-                    ),
-                    (
-                        'high card',
-                        {'high_card': [...]},
-                    ),
-                ),
+        param_kwargs(
+            '02- (the same) but two winners (4 players)',
+            table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
+            hands=(
+                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
+                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
+                ['2|C', '5|H'],  # 2d olace
+                ['10|S', '9|S'],  # looser
             ),
-            id='simple test (4 players): the second one has winning combination',
+            rate_groups=([0, 1], [2], [3]),
+            expected_combos=(
+                ('three of kind', ['Ace|H', 'Ace|H', 'Ace|D']),
+                ('three of kind', ['Ace|H', 'Ace|H', 'Ace|D']),
+                ('two pair', ['Ace|H', 'Ace|D'] + ['5|C', '5|H']),
+                ('one pair', ['Ace|H', 'Ace|D']),
+            ),
         ),
     ],
 )
 def table_and_hands_and_expected_combos(request: PytestSubRequest):
     logger.info(f'Fixture {get_func_name()} used.')
 
-    data = request.param
-    if isinstance_items(data['expected_combos'], list, Combo):
-        logger.warning('Repeted re-format expected combos. Skip.')
-        return data
+    # Because diferent fixture could call for this one for one more time
+    # but with the same request.param value, we have to initialize another dict data,
+    # and leaves internal as it is.
+    input_data: dict = request.param
+    data: dict = {}
+    data['rate_groups'] = input_data['rate_groups']
+    data['table'] = CardList(*input_data['table'])
+    data['hands'] = [CardList(*cards) for cards in input_data['hands']]
 
-    # re-arrange combos
+    # arrange combos
     combos = []
-    for expected_name, expected_cases in data['expected_combos']:
+    for (expected_name, expected_combo_cards), hand in zip(
+        input_data['expected_combos'], data['hands']
+    ):
         stacks = ComboStacks()
-        stacks.cases = expected_cases
-        combos.append(Combo(CLASSIC_COMBOS.get(expected_name), stacks))
+        kind = stacks.track_and_merge(hand, data['table'])
+
+        # pre-assertion for input data at fixture param
+        expected: Any = CLASSIC_COMBOS.get(expected_name)
+        assert kind == expected, 'invalid input test data'
+        expected = CardList(*expected_combo_cards).sortby(reverse=True)
+        assert CardList(*stacks.cases_chain) == expected, 'invalid input test data'
+
+        combos.append(Combo(kind, stacks))
+
+    # pre-assertion for input data at fixture param
+    assert is_sorted(combos, reverse=True), 'combos must be provided in winning order'
+    for (key, group), rate_group in zip(
+        itertools.groupby(combos), data['rate_groups'], strict=True
+    ):
+        assert len(list(group)) == len(rate_group), 'invalid rate_groups provided'
+
     data['expected_combos'] = combos
     return data
-
-
-@pytest.fixture
-def deck_from_table_and_hands(table_and_hands_and_expected_combos: dict):
-    """Get custom deck from input data and set it as game deck."""
-    logger.info(f'Fixture {get_func_name()} used.')
-
-    data = table_and_hands_and_expected_combos
-    table = data['table']
-    hands = data['hands']
-
-    # collect deck
-    deck = CardList()
-    deck.extend(table)
-    for cards in zip(*reversed(hands), strict=True):
-        deck.extend(cards)
-
-    return deck

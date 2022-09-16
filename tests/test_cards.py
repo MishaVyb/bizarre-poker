@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import pytest
 
-from games.backends.cards import Card, CardList, Decks, JokerCard, Stacks
+from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
 
 
 @pytest.mark.parametrize(['input_data', 'expected'], [
@@ -174,8 +174,8 @@ def test_cardlist_init_by_str_instance(instance: str, expected: CardList):
         (['red', 'Ace', 'H'],),
         ValueError(
             "Invalid card type <class 'list'>. Can by <class 'str'>"
-            "<class 'games.backends.cards.Card'>"
-            "<class 'games.backends.cards.JokerCard'>. ",
+            "<class 'games.services.cards.Card'>"
+            "<class 'games.services.cards.JokerCard'>. ",
             "Did you forget to unpack(*) list of cards? ",
             "card=['red', 'Ace', 'H'] in cards=(['red', 'Ace', 'H'],). "
         )
@@ -463,7 +463,7 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
                 # groupby -> tuple[is_jkrs, CardList]
                 group: CardList = groupby_result[1]
                 expected_group = expected[key][i]
-                
+
                 assert group == expected_group
                 # так же тип каждой карты должен совпадать
                 assert all(map(lambda x, y: type(x) is type(y), group, expected_group))
@@ -492,3 +492,5 @@ def test_standart_52_card_deck_plus_jokers():
     # use new_generator again
     # be carefull, becouse in that way no cards will be yield
     assert CardList(instance=new_generator).length == 0
+
+
