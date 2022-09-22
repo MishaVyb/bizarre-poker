@@ -1,30 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-import logging
-from typing import Callable, Generic, Type, TypeVar, Union
+from typing import Callable, Generic, Type, TypeVar
 
 from core.functools.utils import StrColors, init_logger
+from core.types import NONE_ATTRIBUTE
 from django.core.exceptions import ValidationError
 from games.models import Game
 from games.services.stages import (
-    StagesContainer,
     BaseGameStage,
     BiddingsStage,
     PlacingBlindsStage,
     SetupStage,
+    StagesContainer,
 )
 from users.models import User
 
-logger = init_logger(__name__, logging.INFO)
+logger = init_logger(__name__)
 
 
 class ActError(Exception):
     pass
-
-
-
-NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 
 
 class BaseGameAction:
@@ -63,8 +59,8 @@ class BaseGameAction:
         **kwargs,
     ) -> None:
         self.game = game
-        self.user = user
-        self.player = self.user.player_at(self.game)
+        self.user = user.player_at(game).user  # !!!!!!!!!!!!!
+        self.player = user.player_at(game)  # player who made an action
         self.conditions = [
             BaseGameAction.stage_condition,
             BaseGameAction.performer_condition,
@@ -125,20 +121,25 @@ class BaseGameAction:
                 raise ActError(f'Acting {self} failed. {reason}')
 
     def act(self, *, continue_processing_after=True):
+        # [1]
         self.check_conditions()
+        # [2]
         logger.info(f'{StrColors.green("acting")} {self}')
         try:
             self.act_subclass()
         except ValidationError as e:
             raise ActError(f'Acting {self} failed. {e}')
+        # [3]
         if continue_processing_after:
             StagesContainer.continue_processing(self.game)
 
     def act_subclass(self):
         raise NotImplementedError
 
+
 _ACTION_TYPE = TypeVar('_ACTION_TYPE', bound=BaseGameAction)
 _T = TypeVar('_T')
+
 
 @dataclass
 class ActionPreform(Generic[_ACTION_TYPE]):
@@ -164,7 +165,7 @@ class ActionPreform(Generic[_ACTION_TYPE]):
         self.game = self.game or game
         assert self.game, 'Game should be provided'
 
-        #prefrom condition
+        # check prefrom condition
         if self.stage and self.game.stage.name != self.stage:
             raise ActError(f'ActionPreform prepared for another stage: {self.stage}')
         self.action_class(
@@ -175,19 +176,20 @@ class ActionPreform(Generic[_ACTION_TYPE]):
             **self.action_kwargs or {},
         )
 
-    # def get_action(self):
-    #         return
-
     def __eq__(self, other: object):
         if isinstance(other, ActionPreform):
             return asdict(self) == asdict(other)
         if isinstance(other, BaseGameAction):
             stage_eq = not self.stage or (self.stage == other.game.stage.name)
             game_eq = not self.game or (self.game == other.game)
-            kwargs_eq = not self.action_kwargs or (
-                self.action_kwargs
-                == {k: getattr(other, k, NONE_ATTRIBUTE) for k in self.action_kwargs}
-            )
+            if self.action_kwargs:
+                other_kwargs = {
+                    k: getattr(other, k, NONE_ATTRIBUTE) for k in self.action_kwargs
+                }
+                kwargs_eq = self.action_kwargs == other_kwargs
+            else:
+                kwargs_eq = True
+
             return (
                 self.action_class == type(other)
                 and self.user == other.user
@@ -198,8 +200,9 @@ class ActionPreform(Generic[_ACTION_TYPE]):
         return NotImplemented
 
 
-# Action = Union[BaseGameAction, ActionPreform]
-##############################################################################
+########################################################################################
+# Actions
+########################################################################################
 
 
 class StartAction(BaseGameAction):
@@ -208,6 +211,7 @@ class StartAction(BaseGameAction):
 
     def act_subclass(self):
         self.game.begins = True
+        self.game.presave()
 
 
 class PlaceBet(BaseGameAction):
@@ -224,7 +228,11 @@ class PlaceBet(BaseGameAction):
         """если ставки уже сделаны и идет второй круг, то игрок может только
         удовлесторвить предыдущю ставку, но не поставить новый вызов
 
-        или наоборот может сделать новый вызов"""
+        или наоборот может сделать новый вызов
+
+        сейчас максимальная ставка ограничего только значением 'max' в
+        get_nessasery_value что равняется банку юзера (как вабанк)
+        """
         return True
 
     conditions = [
@@ -251,8 +259,9 @@ class PlaceBet(BaseGameAction):
 
     def act_subclass(self):
         # act
-        self.user.profile.withdraw_money(self.value)
-        self.user.player_at(self.game).bets.create(value=self.value)
+        self.user.profile.bank -= self.value
+        self.user.profile.presave()
+        self.player.bets.create(value=self.value)
 
 
 class PlaceBlind(PlaceBet):
@@ -305,9 +314,12 @@ class PassAction(BaseGameAction):
     suitable_stage = BiddingsStage
 
     def act_subclass(self):
-        self.player.update(is_active=False)
+        self.player.is_active = False
+        self.player.presave()
 
 
+########################################################################################
+# Action Contsiner
 ########################################################################################
 
 

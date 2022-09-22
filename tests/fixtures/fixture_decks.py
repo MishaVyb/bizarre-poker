@@ -1,17 +1,15 @@
 from __future__ import annotations
-from copy import copy
-import itertools
 
+import itertools
 import logging
-from operator import attrgetter
 from typing import Any
 
 import pytest
 from _pytest.fixtures import SubRequest as PytestSubRequest
-from core.functools.utils import get_func_name, init_logger, is_sorted, isinstance_items
+from core.functools.utils import get_func_name, init_logger, is_sorted
 from games.services.cards import CardList
 from games.services.combos import CLASSIC_COMBOS, Combo, ComboStacks
-from tests.base import param_kwargs
+from tests.tools import param_kwargs
 
 logger = init_logger(__name__, logging.DEBUG)
 
@@ -22,10 +20,10 @@ logger = init_logger(__name__, logging.DEBUG)
             '01- simple test (4 players)',
             table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
             hands=(
-                ['Ace|H', '3|H'],  # winner: 3|h > 3|c
-                ['Ace|H', '3|C'],  # 2nd place
-                ['2|C', '5|H'],  # 3d olace
-                ['10|S', '9|S'],  # looser
+                ['Ace|H', '3|H'],   # winner: 3|h > 3|c
+                ['Ace|H', '3|C'],   # 2nd place
+                ['2|C', '5|H'],     # 3d olace
+                ['10|S', '9|S'],    # looser
             ),
             rate_groups=([0], [1], [2], [3]),
             expected_combos=(
@@ -39,10 +37,10 @@ logger = init_logger(__name__, logging.DEBUG)
             '02- (the same) but two winners (4 players)',
             table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
             hands=(
-                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
-                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
-                ['2|C', '5|H'],  # 2d olace
-                ['10|S', '9|S'],  # looser
+                ['Ace|H', '9|H'],   # winner: 9|H == 9|H
+                ['Ace|H', '9|H'],   # winner: 9|H == 9|H
+                ['2|C', '5|H'],     # 2d olace
+                ['10|S', '9|S'],    # looser
             ),
             rate_groups=([0, 1], [2], [3]),
             expected_combos=(

@@ -1,5 +1,6 @@
 import pydantic
 
+
 class ConfigSchema(pydantic.BaseModel):
     small_blind: int
     big_blind: int

@@ -1,25 +1,21 @@
 from __future__ import annotations
+
 from asyncio.log import logger
-
-
-import itertools
-from copy import deepcopy
-import logging
 from operator import attrgetter
-from typing import TYPE_CHECKING, ClassVar, Iterable
+from typing import TYPE_CHECKING
 
 from core.functools.looptools import looptools
-from core.functools.utils import StrColors, init_logger
 from core.functools.utils import is_sorted
 from games.services.cards import Card, CardList, JokerCard, Stacks
-
 
 if TYPE_CHECKING:
     from games.services.combos import ComboStacks
 
+
 def track_highest(
     self: ComboStacks,
-    possible_highest: Card,):
+    possible_highest: Card,
+):
     # source should be sorted because of previous tracking methods
     assert is_sorted(self.source, reverse=True)
 
@@ -36,6 +32,7 @@ def track_highest(
         # if that card joker, make them possbile highest
         mirrored = self.source[0].get_mirrored(possible_highest)
         self.cases['highest_card'] = [CardList(mirrored)]
+
 
 def track_equal(
     self: ComboStacks,
@@ -93,7 +90,7 @@ def track_equal(
             val = case[0].first[attr]
         except IndexError:
             # группа пустая, тк в трекинге только джокеры
-            val =  possible_highest[attr]
+            val = possible_highest[attr]
 
         # 4.3 установим значение
         mirrored = jkr.get_mirrored(possible_highest, attr, val)

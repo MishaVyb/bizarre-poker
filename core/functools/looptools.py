@@ -224,7 +224,11 @@ looptools = _LoopToolsGenerators()
 
 
 def circle_after(
-    enter_condition: Callable[[_T], bool], sequence: Sequence[_T], /, inclusive=True
+    enter_condition: Callable[[_T], bool],
+    sequence: Sequence[_T],
+    *,
+    inclusive=True,
+    exclude: Iterable[_T] | Callable[[_T], bool] = [],
 ) -> Generator[_T, None, None]:
     """Making a circle through sequence after enter condition is satisfied.
     Starting by next value after satisfaction if not inclusive.
@@ -233,10 +237,25 @@ def circle_after(
     'baba'
     >>> list(circle_after(lambda x: x > 2, [1, 2, 3, 4, 5], inclusive=False))
     [4, 5, 1, 2, 3]
+    >>> list(circle_after(lambda x: x > 2, [1, 2, 3, 4, 5], exclude=[2, 4]))
+    [3, 5, 1]
+    >>> list(circle_after(
+    ...     lambda x: x > 2, [1, 2, 3, 4, 5], inclusive=False, exclude=lambda x: x % 2)
+    ... )
+    [4, 2]
 
     """
+    def in_exclude_method(x: _T):
+        assert isinstance(exclude, Iterable)
+        return x in exclude
+
     if not sequence:
         return
+
+    if isinstance(exclude, Iterable):
+        exclude_call = in_exclude_method
+    else:
+        exclude_call = exclude  # type: ignore
 
     it = itertools.dropwhile(lambda x: not enter_condition(x), sequence)
 
@@ -250,16 +269,22 @@ def circle_after(
         return
 
     if inclusive:
+        if exclude_call(incoming):
+            raise RuntimeError('1- inclusive element in exclude list')
         yield incoming
 
     # yield all after
     for i in it:
-        yield i
+        if not exclude_call(i):
+            yield i
 
     # yield from beggining till incoming value
     for i in sequence:
         if i is incoming:
-            if not inclusive:   # get incoming value as last one it not inclusive
+            if not inclusive:  # get incoming value as last one if not inclusive
+                if exclude_call(incoming):
+                    return  # be carefull, key element for circle_after in exlude list
                 yield incoming
             return
-        yield i
+        if not exclude_call(i):
+            yield i

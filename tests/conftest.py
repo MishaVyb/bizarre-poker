@@ -10,5 +10,5 @@ pytest_plugins = [
     'tests.fixtures.fixture_decks',
     'tests.fixtures.fixture_setup_classes',
     'tests.fixtures.fixture_combos',
-    'tests.fixtures.fixture_some'
+    'tests.fixtures.fixture_change_defaults',
 ]

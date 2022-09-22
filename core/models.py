@@ -1,11 +1,10 @@
 from copy import deepcopy
-import logging
 from typing import Any, Iterable, Iterator, Optional, TypeAlias, TypeVar
 import typing
 from django.db import models
 from core.functools.utils import StrColors, init_logger
 
-logger = init_logger(__name__, logging.INFO)
+logger = init_logger(__name__)
 
 
 if typing.TYPE_CHECKING:
@@ -26,6 +25,9 @@ class IterableManager(models.Manager[_T]):
 
     def __bool__(self):
         return self.exists()
+
+    def __len__(self):
+        return self.count()
 
     def __str__(self) -> str:
         return '[' + ' '.join(str(b) for b in self.all()) + ']'
@@ -82,6 +84,16 @@ class ChangedFieldsLoggingMixin(_TYPE_MODEL):
 
 
 class FullCleanSavingMixin(_TYPE_MODEL):
+    _presave_flag = False
+
+    def presave(self):
+        """Set pre-save flag True.
+
+        Not calling for real save. Do it yourself later, before ending cureent request
+        handling.
+        """
+        self._presave_flag = True
+
     def init_clean(self):
         pass
 
@@ -89,12 +101,18 @@ class FullCleanSavingMixin(_TYPE_MODEL):
         pass
 
     def save(
-        self: models.Model,
+        self,
         force_insert: bool = False,
         force_update: bool = False,
         using: Optional[str] = None,
         update_fields: Optional[Iterable[str]] = None,
+        *,
+        only_if_presave: bool = False,
     ) -> None:
+        if only_if_presave:
+            if not self._presave_flag:
+                return
+
         # pk is None for first game saving (just after creation)
         # so validation won't work because of failing ralated ForigenKey fields
         # we need to call save before to define pk
@@ -105,10 +123,15 @@ class FullCleanSavingMixin(_TYPE_MODEL):
         if not self.pk:
             self.init_clean()
             super().save(force_insert, force_update, using, update_fields)
-            self.full_clean()
+            self.full_clean()  # just to be shure that init data is valid
         else:
             self.full_clean()
             super().save(force_insert, force_update, using, update_fields)
+
+
+class EtendedSavingMixin(FullCleanSavingMixin, ChangedFieldsLoggingMixin):
+    # not implemented yet
+    pass
 
 
 class CreatedModifiedModel(models.Model):

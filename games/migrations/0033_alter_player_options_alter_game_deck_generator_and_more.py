@@ -32,9 +32,9 @@ class Migration(migrations.Migration):
                 verbose_name='name of deck generator method or contaianer',
             ),
         ),
-        migrations.AlterField(
-            model_name='playerbet',
-            name='value',
-            field=games.models.fields.BetField(blank=True, default=None, null=True),
-        ),
+        # migrations.AlterField(
+        #     model_name='playerbet',
+        #     name='value',
+        #     field=games.models.fields.BetField(blank=True, default=None, null=True),
+        # ),
     ]

@@ -1,19 +1,14 @@
-import logging
-from typing import Any, TypeVar
-
 import pytest
-
-from core.functools.utils import StrColors
-from games.services import stages, actions, auto
-
-from core.functools.utils import init_logger
-from tests.base import BaseGameProperties, param_kwargs_list
-from games.services.configurations import DEFAULT
+from core.functools.utils import StrColors, init_logger
+from games.services import actions, auto, stages
 from games.services.combos import Combo
-from games.models import Player
+from games.services.configurations import DEFAULT
+from users.models import User
 
-logger = init_logger(__name__, logging.INFO)
-_AT = TypeVar('_AT', bound=actions.BaseGameAction)
+from tests.base import BaseGameProperties
+from tests.tools import param_kwargs_list
+
+logger = init_logger(__name__)
 
 
 @pytest.mark.django_db
@@ -62,10 +57,11 @@ class TestGameStages(BaseGameProperties):
 
         # prepare winners and loosers set
         # (exclude passed players if they suppused to win)
+        winners: set[User] = set()
         for rate_group in rate_groups:
             winners_indexes = rate_group
             winners = {self.users_list[i] for i in winners_indexes}
-            winners = winners - passed_users    # filter out passed users
+            winners = winners - passed_users  # filter out passed users
             if winners:
                 break
             # if not (all potential winners have passed)
@@ -84,11 +80,16 @@ class TestGameStages(BaseGameProperties):
             pass_ = actions.PassAction.preform(user)
             prepares.append(pass_)
 
-        # Act. play game
+        # Act: play game
         auto.autoplay_game(
             self.game, stop_after_stage='OpposingStage', with_actions=prepares
         )
         assert [p.combo for p in self.players_list] == expected
+
+        reloaded_winners: set[User] = set()
+        for w in winners:
+            reloaded_winners.add(User.objects.get(username=w.username))
+        winners = reloaded_winners
 
         # Assert winners banks
         for winner in winners:
@@ -176,7 +177,7 @@ class TestGameActions(BaseGameProperties):
         logger.info(StrColors.purple(test))
         actions.PlaceBlind(self.game, self.users['barticheg'])
         assert [0, 5, 10, 0] == [p.bet_total for p in self.game.players]
-        assert self.game.stage.__class__.__name__ == 'BiddingsStage-1'
+        assert self.game.stage.name == 'BiddingsStage-1'
 
         test = '[5] PlaceBlind by vybornyy | test raises when game has another stage'
         logger.info(StrColors.purple(test))
@@ -294,12 +295,18 @@ class TestGameBetActions(BaseGameProperties):
         actions.PlaceBet(self.game, self.users['barticheg'], value=10)
 
         # [5] test place bet stage
-        logger.info(StrColors.purple('[5] test place bet'))
+        logger.info(StrColors.purple('[5] test place bet | test profile banks'))
         assert self.game.stage.performer == self.players['arthur_morgan']
         # assert stage type
         assert str(self.game.stage) == 'BiddingsStage-1'
         assert self.game.stage.necessary_action == 'PlaceBet'
         assert [0, 5, 10, 0] == self.players_bets_total
+
+        expected = self.input_users_bank.copy()
+        expected['simusik'] -= DEFAULT.small_blind
+        expected['barticheg'] -= DEFAULT.big_blind
+        expected = [expected[name] for name in self.usernames]
+        assert [p.user.profile.bank for p in self.game.players] == expected
 
         # [6] test trying another player place bet
         logger.info(StrColors.purple('[6] trying another player place bet -- raises'))
@@ -339,7 +346,7 @@ class TestGameBetActions(BaseGameProperties):
         logger.info(StrColors.purple(test))
         actions.PlaceBetVaBank(self.game, self.users['barticheg'])
         expected = self.input_users_bank['vybornyy'] - 25
-        assert expected == self.players['barticheg'].bet_total
+        assert self.players['barticheg'].bet_total == expected
 
         # [11]
         test = (

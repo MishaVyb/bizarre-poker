@@ -16,6 +16,24 @@ import re
 from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar
 
 
+def init_logger(name, level=logging.DEBUG) -> logging.Logger:
+    """Get or create default logger by givven name."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(
+            # '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+            '%(levelname)s - %(message)s'
+        )
+    )
+    logger.addHandler(handler)
+    return logger
+
+
+logger = init_logger(__name__)
+
+
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
     """True if minor string is equivalent to major string from begining
 
@@ -57,34 +75,42 @@ class StrColors:
 
     @classmethod
     def purple(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._PURPLE + __str + cls._ENDC
 
     @classmethod
     def bold(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._BOLD + __str + cls._ENDC
 
     @classmethod
     def underline(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._UNDERLINE + __str + cls._ENDC
 
     @classmethod
     def green(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._GREEN + __str + cls._ENDC
 
     @classmethod
     def blue(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._BLUE + __str + cls._ENDC
 
     @classmethod
     def cyan(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._CYAN + __str + cls._ENDC
 
     @classmethod
     def red(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._RED + __str + cls._ENDC
 
     @classmethod
     def yellow(cls, __str: str) -> str:
+        __str = str(__str)
         return cls._ENDC + cls._YELLOW + __str + cls._ENDC
 
 
@@ -140,19 +166,12 @@ def isinstance_items(container: Iterable, container_type: type, item_type: type)
     )
 
 
-def init_logger(name, level=logging.DEBUG) -> logging.Logger:
-    """Get or create default logger by givven name."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter(
-            # '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
-            '%(levelname)s - %(message)s'
-        )
-    )
-    logger.addHandler(handler)
-    return logger
+def change_loggers_level(level, match_name: str = r'games', exclude_match: str = ''):
+    for name in logging.root.manager.loggerDict:
+        if re.match(match_name, name):
+            if exclude_match and re.match(exclude_match, name):
+                continue
+            logging.getLogger(name).setLevel(level)
 
 
 def get_func_name(back=False) -> str:
@@ -168,3 +187,7 @@ def get_func_name(back=False) -> str:
     if not frame or not frame.f_back or not frame.f_back.f_back:
         return 'no_func_name'
     return frame.f_back.f_back.f_code.co_name
+
+
+def reverse_attrgetter(*attrs: str):
+    return lambda x: not bool(operator.attrgetter(*attrs)(x))

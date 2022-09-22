@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 import itertools
-import logging
 from operator import attrgetter
 from typing import TYPE_CHECKING, Any, Callable
 
+from core.functools.looptools import circle_after
 from core.functools.utils import StrColors, init_logger
-from django.db import models
 from games.services.cards import CardList, Decks
 from games.services.configurations import DEFAULT
-from core.functools.looptools import circle_after
 
 if TYPE_CHECKING:
     from ..models import Player
     from ..models.game import Game
 
-logger = init_logger(__name__, logging.INFO)
+logger = init_logger(__name__)
 
 
 class StageProcessingError(Exception):
@@ -28,7 +26,6 @@ class StageProcessingError(Exception):
         return (
             f'{StrColors.bold("Stop processing")}. '
             f'Requirement {self.requirement_name} are not satisfied. Waiting...'
-            # f'Waiting for {self.stage.performer} act {self.stage.necessary_action} with {self.stage.get_necessary_action_values()}'
         )
 
 
@@ -45,6 +42,18 @@ class BaseGameStage:
     @property
     def performer(self) -> None | Player:
         return None
+
+    @property
+    def performer_report(self):
+        if not self.performer:
+            return ''
+
+        value = self.get_necessary_action_values()
+        value_detail = f'with {value}' if value else ''
+        return (
+            f'Stage performer: {self.performer}. '
+            f'Necessary action: {self.necessary_action} {value_detail}'
+        )
 
     @property
     def name(self):
@@ -113,7 +122,7 @@ class DealCardsStage(BaseGameStage):
         for _ in range(self.amount):
             for player in self.game.players:
                 player.hand.append(self.game.deck.pop())
-                player.save()
+                player.presave()
 
 
 class BiddingsStage(BaseGameStage):
@@ -124,8 +133,7 @@ class BiddingsStage(BaseGameStage):
         """Next player after last bet maker. Starting from first after dealer"""
         if self.check_requirements(raises=False):
             return None
-        l = self.game.players.order_by_bet.first()
-        return self.game.players.order_by_bet.first()
+        return next(self.game.players.order_by_bet)
 
     def get_necessary_action_values(self) -> dict:
         if self.performer is None:
@@ -135,13 +143,11 @@ class BiddingsStage(BaseGameStage):
         performer_bet = self.performer.bet_total
         min_value = max_bet - performer_bet
 
-        field = 'user__profile__bank'
-        max_value = self.game.players.active.aggregate(min=models.Min(field))['min']
-
+        max_value = self.game.players.aggregate_min_users_bank()
         return {'min': min_value, 'max': max_value}
 
     def every_player_place_bet_or_say_pass(self):
-        return not self.game.players.without_bet.exists()
+        return not bool(list(self.game.players.without_bet))
 
     def all_beds_equal(self):
         return self.game.players.check_bet_equality()
@@ -156,14 +162,11 @@ class BiddingsStage(BaseGameStage):
         self.accept_bets()
 
     def accept_bets(self) -> None:
-        logger.info(f'Accepting beds: {[str(p.bets) for p in self.game.players]}')
+        logger.info(f'Accepting beds: {[p.bet_total for p in self.game.players]}')
 
-        income = 0
-        for p in self.game.players:
-            for b in p.bets.all():
-                income += b.value
-                b.delete()
-
+        income = self.game.players.aggregate_sum_all_bets()
+        self.game.players_manager.all_bets().delete()
+        self.game.players_manager.update_annotation(bet_total=0)
         self.game.bank += income
 
 
@@ -171,11 +174,11 @@ class PlacingBlindsStage(BiddingsStage):
     necessary_action = 'PlaceBlind'
 
     def players_have_placed_blinds_or_passed(self):
-        first = self.game.players.after_dealer_all[0]
-        second = self.game.players.after_dealer_all[1]
+        iterator = self.game.players.after_dealer_all
+        first, second = (next(iterator), next(iterator))
         return bool(
-            (not first.is_active or first.bets.total == DEFAULT.small_blind)
-            and (not second.is_active or second.bets.total == DEFAULT.big_blind)
+            (not first.is_active or first.bet_total == DEFAULT.small_blind)
+            and (not second.is_active or second.bet_total == DEFAULT.big_blind)
         )
 
     requirements = [players_have_placed_blinds_or_passed]  # type: ignore
@@ -186,8 +189,8 @@ class PlacingBlindsStage(BiddingsStage):
         if self.check_requirements(raises=False):
             return None
 
-        first = self.game.players.after_dealer_all[0]
-        second = self.game.players.after_dealer_all[1]
+        iterator = self.game.players.after_dealer_all
+        first, second = (next(iterator), next(iterator))
         if first.is_active and first.bet_total != DEFAULT.small_blind:
             return first
         if second.is_active and second.bet_total != DEFAULT.big_blind:
@@ -196,7 +199,7 @@ class PlacingBlindsStage(BiddingsStage):
         raise RuntimeError
 
     def get_necessary_action_values(self) -> dict:
-        if self.performer == self.game.players.after_dealer_all.first():
+        if self.performer == next(self.game.players.after_dealer_all):
             return {
                 'min': DEFAULT.small_blind,
                 'max': DEFAULT.small_blind,
@@ -218,20 +221,17 @@ class FlopStage(BaseGameStage):
     amount: int
 
     def process(self) -> None:
-        flop = self.game.deck[-self.amount :]
+        flop = self.game.deck[-self.amount:]
         self.game.table.extend(reversed(flop))
-        del self.game.deck[-self.amount :]
+        del self.game.deck[-self.amount:]
+        self.game.presave()
 
 
 class OpposingStage(BaseGameStage):
     def process(self) -> None:
-
-        players = list(self.game.players.active)
-        # for player in players:
-
-        # taking first group
-
-        combo, winners_iter = next(itertools.groupby(players, attrgetter('combo')))
+        combo, winners_iter = next(
+            itertools.groupby(self.game.players.active, attrgetter('combo'))
+        )
         winners = list(winners_iter)
         reminder = self.game.bank % len(winners)
         if reminder > 0:
@@ -241,11 +241,15 @@ class OpposingStage(BaseGameStage):
 
         for player in winners:
             self.game.bank -= share
-            player.user.profile.deposit_in(share)
+            player.user.profile.bank += share
+            player.user.profile.presave()
+        self.game.presave()
 
-        logger.info(StrColors.underline('Game summary'))
-        logger.info(f'Combos: {[p.combo for p in self.game.players.active]}')
-        logger.info(f'Winners: {winners}')
+        logger.info(
+            f'{StrColors.underline("Game summary")}'
+            f'Combos: {[p.combo for p in self.game.players.active]}'
+            f'Winners: {winners}'
+        )
 
 
 class TearDownStage(BaseGameStage):
@@ -256,18 +260,38 @@ class TearDownStage(BaseGameStage):
         for player in self.game.players:
             player.hand.clear()
             player.is_active = True
-            player.save()
+            player.pre_save()
 
 
 class MoveDealerButton(BaseGameStage):
     def process(self) -> None:
-        qs = self.game.players.after_dealer
-        for i, player in enumerate(qs):
-            player.position = i
-        qs.bulk_update(qs, ('position',))
+        n = len(self.game.players)
+        self.game.players[0].is_dealer = False
+        self.game.players[0].position = n - 1  # become last
+        self.game.players[0].pre_save()
+
+        self.game.players[1].is_dealer = True
+        self.game.players[1].position = 0
+        self.game.players[1].pre_save()
+
+        for player, position in zip(self.game.players[2:], range(1, n)):
+            player.position = position
+            player.pre_save()
+
+        # re-order PlayerSelector
+        self.game.players.reorder_source()
 
 
 ########################################################################################
+# Stages Container - Main Game Processing
+########################################################################################
+
+def save_game_objects(game: Game):
+    """Saving game, players, and users banks. Only if presave flag is True."""
+    game.save(only_if_presave=True)
+    for player in game.players:
+        player.save(only_if_presave=True)
+        player.user.profile.save(only_if_presave=True)
 
 
 class StagesContainer:
@@ -283,10 +307,13 @@ class StagesContainer:
         FlopStage.factory('FlopStage-3', amount=1),
         BiddingsStage.factory('BiddingsStage-4(final)'),
         OpposingStage,
-        # stages for preparing next game
+
+        # stages for preparing next game:
         TearDownStage,
         MoveDealerButton,
     )
+
+    _save_after_proces_stoped: bool = True
 
     @classmethod
     def get(cls, name: str):
@@ -316,24 +343,14 @@ class StagesContainer:
     def continue_processing(cls, game: Game, *, stop_stage: str = '') -> dict[str, Any]:
         # logging:
         headline = StrColors.bold('Processing')
-        value = game.stage.performer and game.stage.get_necessary_action_values()
-        value_detail = f'with {value}' if value else ''
-        detail = (
-            (
-                f'Stage performer: {game.stage.performer}. '
-                f'Necessary action: {game.stage.necessary_action} {value_detail}'
-            )
-            if game.stage.performer
-            else ''
-        )
-        logger.info(f'{headline} {game}. {detail}')
+        logger.info(f'{headline} {game}. {game.stage.performer_report}')
 
-        # process curent stage:
         try:
-            game.stage.process()
+            game.stage.process()  # process curent stage:
         except StageProcessingError as e:
-            logger.info(e)
-            game.save()
+            logger.info(f'{e}. ')
+            if cls._save_after_proces_stoped:  # SAVING
+                save_game_objects(game)
             return {'status': 'forced_stop', 'error': e}
 
         # successfully! go to the next stage:
@@ -341,10 +358,12 @@ class StagesContainer:
             game.stage_index += 1
         else:
             game.stage_index = 0
+        game.presave()
 
         # check exit condition:
-        if stop_stage == str(game.stage):
-            game.save()
+        if stop_stage == game.stage.name:
+            if cls._save_after_proces_stoped:  # SAVING
+                save_game_objects(game)
             return {'status': 'success'}
 
         # CONTINUE RECURSIVELY

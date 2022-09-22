@@ -1,0 +1,8 @@
+{
+  "test_models": {
+    "test_game_speed": {
+      "query-count": 31,
+      "duplicates": 11
+    }
+  }
+}

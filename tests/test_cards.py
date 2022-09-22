@@ -7,73 +7,92 @@ import pytest
 from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
 
 
-@pytest.mark.parametrize(['input_data', 'expected'], [
-    ((Card(14, 1), Card(14, 1)),
-     {is_: False, is_not: True, eq: True, ne: False}
-     ),
-    ((Card('Ace|D'), Card('Ace|D')),
-     {is_: False, is_not: True, eq: True, ne: False}
-     ),
-    ((Card(15, 'D'), Card('Ace', 4)),
-     {lt: False, le: False, gt: True, ge: True}
-     ),
-    ((Card('2|C'), Card('Ace|D')),
-     {lt: True, le: True, gt: False, ge: False}
-     ),
-    # spades более крутая масть, чем hearts
-    ((Card('7|H'), Card('7|S')),
-     {lt: True, le: True, gt: False, ge: False}
-     ),
-    # проверим меньше или равно, больше или равно
-    ((Card('Ace|D'), Card('Ace|D')),
-     {lt: False, le: True, gt: False, ge: True}
-     ),
-    # проверим Джокеров на ==
-    ((JokerCard('red'), JokerCard('red')),
-     {is_: False, is_not: True, eq: True, ne: False}
-     ),
-    # разные джокеры не равны | black != red
-    ((JokerCard('red'), JokerCard('black')),
-     {is_: False, is_not: True, eq: False, ne: True}
-     ),
-    # проверим одинаковых Джокеров на < <=  > >=
-    ((JokerCard('red', reflection='Ace|H'), JokerCard('red', reflection='Ace|H')),
-     {lt: False, le: True, gt: False, ge: True}
-     ),
-    # проверим разных Джокеров но с одинаковым зеркалом, они должны быть !=
-    ((JokerCard('red', reflection='Ace|H'), JokerCard('black', reflection='Ace|H')),
-     {is_: False, is_not: True, eq: False, ne: True}
-     ),
-    # black > red, если отражение (reflection) одинаковое
-    ((JokerCard('black', reflection='Ace|H'), JokerCard('red', reflection='Ace|H')),
-     {lt: False, le: False, gt: True, ge: True}
-     ),
-    # red < black, если отражение (reflection) одинаковое
-    ((JokerCard('red', reflection='Ace|H'), JokerCard('black', reflection='Ace|H')),
-     {lt: True, le: True, gt: False, ge: False}
-     ),
-    # проверим Джокеров (без зеркала) на < <=  > >=
-    ((JokerCard('red'), JokerCard('black')),
-     {
-         lt: 'NotImplemented', le: 'NotImplemented',
-         gt: 'NotImplemented', ge: 'NotImplemented'
-     }
-     ),
-    # проверим Джокерa и карту на <
-    ((JokerCard('red', reflection='Ace|H'), Card('King|C')),
-     {lt: False, le: False, gt: True, ge: True}
-     ),
-    # проверим Джокерa и карту ==
-    ((JokerCard('red', reflection='Ace|H'), Card('Ace|H')),
-     {is_: False, is_not: True, eq: True, ne: False}
-     ),
-    # проверим Джокерa и карту на <=    ! they equel !
-    ((JokerCard('red', reflection='Ace|H'), Card('Ace|H')),
-     {lt: False, le: True, gt: False, ge: True}
-     ),
-])
-def test_card_ordering(input_data: tuple[Card, Card],
-                       expected: dict[Callable[[Any, Any], bool], bool]):
+@pytest.mark.parametrize(
+    ['input_data', 'expected'],
+    [
+        ((Card(14, 1), Card(14, 1)), {is_: False, is_not: True, eq: True, ne: False}),
+        (
+            (Card('Ace|D'), Card('Ace|D')),
+            {is_: False, is_not: True, eq: True, ne: False},
+        ),
+        ((Card(15, 'D'), Card('Ace', 4)), {lt: False, le: False, gt: True, ge: True}),
+        ((Card('2|C'), Card('Ace|D')), {lt: True, le: True, gt: False, ge: False}),
+        # spades более крутая масть, чем hearts
+        ((Card('7|H'), Card('7|S')), {lt: True, le: True, gt: False, ge: False}),
+        # проверим меньше или равно, больше или равно
+        ((Card('Ace|D'), Card('Ace|D')), {lt: False, le: True, gt: False, ge: True}),
+        # проверим Джокеров на ==
+        (
+            (JokerCard('red'), JokerCard('red')),
+            {is_: False, is_not: True, eq: True, ne: False},
+        ),
+        # разные джокеры не равны | black != red
+        (
+            (JokerCard('red'), JokerCard('black')),
+            {is_: False, is_not: True, eq: False, ne: True},
+        ),
+        # проверим одинаковых Джокеров на < <=  > >=
+        (
+            (
+                JokerCard('red', reflection='Ace|H'),
+                JokerCard('red', reflection='Ace|H'),
+            ),
+            {lt: False, le: True, gt: False, ge: True},
+        ),
+        # проверим разных Джокеров но с одинаковым зеркалом, они должны быть !=
+        (
+            (
+                JokerCard('red', reflection='Ace|H'),
+                JokerCard('black', reflection='Ace|H'),
+            ),
+            {is_: False, is_not: True, eq: False, ne: True},
+        ),
+        # black > red, если отражение (reflection) одинаковое
+        (
+            (
+                JokerCard('black', reflection='Ace|H'),
+                JokerCard('red', reflection='Ace|H'),
+            ),
+            {lt: False, le: False, gt: True, ge: True},
+        ),
+        # red < black, если отражение (reflection) одинаковое
+        (
+            (
+                JokerCard('red', reflection='Ace|H'),
+                JokerCard('black', reflection='Ace|H'),
+            ),
+            {lt: True, le: True, gt: False, ge: False},
+        ),
+        # проверим Джокеров (без зеркала) на < <=  > >=
+        (
+            (JokerCard('red'), JokerCard('black')),
+            {
+                lt: 'NotImplemented',
+                le: 'NotImplemented',
+                gt: 'NotImplemented',
+                ge: 'NotImplemented',
+            },
+        ),
+        # проверим Джокерa и карту на <
+        (
+            (JokerCard('red', reflection='Ace|H'), Card('King|C')),
+            {lt: False, le: False, gt: True, ge: True},
+        ),
+        # проверим Джокерa и карту ==
+        (
+            (JokerCard('red', reflection='Ace|H'), Card('Ace|H')),
+            {is_: False, is_not: True, eq: True, ne: False},
+        ),
+        # проверим Джокерa и карту на <=    ! they equel !
+        (
+            (JokerCard('red', reflection='Ace|H'), Card('Ace|H')),
+            {lt: False, le: True, gt: False, ge: True},
+        ),
+    ],
+)
+def test_card_ordering(
+    input_data: tuple[Card, Card], expected: dict[Callable[[Any, Any], bool], bool]
+):
     for operator, result in expected.items():
         try:
             assert operator(input_data[0], input_data[1]) == result
@@ -81,148 +100,167 @@ def test_card_ordering(input_data: tuple[Card, Card],
             assert result == 'NotImplemented'
 
 
-@pytest.mark.parametrize('input_data, expected_len', [
-    [CardList(), 0],
-    [CardList(Card('Ace-D'), Card('King,H')), 2],
-    [CardList(Card('Ace/D'), ('King-H')), 2],
-    [CardList('(12,3)', 'King|H'), 2],
-    [CardList('red', 'king|h'), 2],
-    [CardList('red', 'black', '(12,H)', 'Quin|C'), 4],
-])
+@pytest.mark.parametrize(
+    'input_data, expected_len',
+    [
+        [CardList(), 0],
+        [CardList(Card('Ace-D'), Card('King,H')), 2],
+        [CardList(Card('Ace/D'), ('King-H')), 2],
+        [CardList('(12,3)', 'King|H'), 2],
+        [CardList('red', 'king|h'), 2],
+        [CardList('red', 'black', '(12,H)', 'Quin|C'), 4],
+    ],
+)
 def test_cardlist_init_len(input_data: CardList, expected_len: int):
     assert input_data.length == expected_len
 
 
-@pytest.mark.parametrize('cards, expected', [
-    pytest.param(
-        [''],
-        0,
-    ),
-    pytest.param(
-        ['(),.|-'],
-        0,
-    ),
-])
+@pytest.mark.parametrize(
+    'cards, expected',
+    [
+        pytest.param(
+            [''],
+            0,
+        ),
+        pytest.param(
+            ['(),.|-'],
+            0,
+        ),
+    ],
+)
 def test_cardlist_init_by_str_cards(cards: list[str], expected: int):
     cl = CardList(*cards)
     assert len(cl) == expected
 
 
-@pytest.mark.parametrize('instance, expected', [
-    pytest.param(
-        '  ',
-        CardList(),
-    ),
-    pytest.param(
-        '    [    ]  ',
-        CardList(),
-    ),
-    pytest.param(
-        '    [  Ace-H,   10-D,    ]  ',
-        CardList('Ace-H', '10-D'),
-    ),
-    pytest.param(
-        '   11-1    ',
-        CardList('Jack-Clubs'),
-        id='init_by_integers_as_str_instances'
-    ),
-    pytest.param(
-        '0-0',
-        CardList(Card(0, 0)),
-        id='01 init_by_integers_as_str_instances'
-    ),
-    pytest.param(
-        '   [  A-1,    K-D,   ]   ',
-        CardList('Ace|C', 'King|D'),
-    ),
-])
+@pytest.mark.parametrize(
+    'instance, expected',
+    [
+        pytest.param(
+            '  ',
+            CardList(),
+        ),
+        pytest.param(
+            '    [    ]  ',
+            CardList(),
+        ),
+        pytest.param(
+            '    [  Ace-H,   10-D,    ]  ',
+            CardList('Ace-H', '10-D'),
+        ),
+        pytest.param(
+            '   11-1    ',
+            CardList('Jack-Clubs'),
+            id='init_by_integers_as_str_instances',
+        ),
+        pytest.param(
+            '0-0', CardList(Card(0, 0)), id='01 init_by_integers_as_str_instances'
+        ),
+        pytest.param(
+            '   [  A-1,    K-D,   ]   ',
+            CardList('Ace|C', 'King|D'),
+        ),
+    ],
+)
 def test_cardlist_init_by_str_instance(instance: str, expected: CardList):
     cl = CardList(instance=instance)
     assert cl == expected
 
 
-@pytest.mark.parametrize('cards, expected', [
-    pytest.param(
-        [' '],
-        AssertionError(
-            'card contains space symbol, but it reserved for CardList seperator'
+@pytest.mark.parametrize(
+    'cards, expected',
+    [
+        pytest.param(
+            [' '],
+            AssertionError(
+                'card contains space symbol, but it reserved for CardList seperator'
+            ),
         ),
-    ),
-    pytest.param(
-        ['Ace Hearts'],
-        AssertionError(
-            'card contains space symbol, but it reserved for CardList seperator'
+        pytest.param(
+            ['Ace Hearts'],
+            AssertionError(
+                'card contains space symbol, but it reserved for CardList seperator'
+            ),
         ),
-    ),
-    pytest.param(
-        ['Ace', 'H'],
-        ValueError(
-            "not supported: card = 'Ace'\n",
-            "not supported: rank='Ace' | suit=None",
-            "not supported: kind='Ace'"
-        )
-    ),
-    pytest.param(
-        ['red', 'Ace', 'H'],
-        ValueError(
-            "not supported: card = 'Ace'\n",
-            "not supported: rank='Ace' | suit=None",
-            "not supported: kind='Ace'"
-        )
-    ),
-    pytest.param(
-        (['red', 'Ace', 'H'],),
-        ValueError(
-            "Invalid card type <class 'list'>. Can by <class 'str'>"
-            "<class 'games.services.cards.Card'>"
-            "<class 'games.services.cards.JokerCard'>. ",
-            "Did you forget to unpack(*) list of cards? ",
-            "card=['red', 'Ace', 'H'] in cards=(['red', 'Ace', 'H'],). "
-        )
-    ),
-    pytest.param(
-        ['[Ace-H]'],
-        AssertionError('card contains [] symbols, but it reserved for Stacks seperator')
-    ),
-    pytest.param(
-        [' Ace-H '],
-        AssertionError(
-            'card contains space symbol, but it reserved for CardList seperator'
-        )
-    ),
-    # pytest.param(
-    #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
-    #     ValueError(),
-    # ),
-])
+        pytest.param(
+            ['Ace', 'H'],
+            ValueError(
+                "not supported: card = 'Ace'\n",
+                "not supported: rank='Ace' | suit=None",
+                "not supported: kind='Ace'",
+            ),
+        ),
+        pytest.param(
+            ['red', 'Ace', 'H'],
+            ValueError(
+                "not supported: card = 'Ace'\n",
+                "not supported: rank='Ace' | suit=None",
+                "not supported: kind='Ace'",
+            ),
+        ),
+        pytest.param(
+            (['red', 'Ace', 'H'],),
+            ValueError(
+                "Invalid card type <class 'list'>. Can by <class 'str'>"
+                "<class 'games.services.cards.Card'>"
+                "<class 'games.services.cards.JokerCard'>. ",
+                "Did you forget to unpack(*) list of cards? ",
+                "card=['red', 'Ace', 'H'] in cards=(['red', 'Ace', 'H'],). ",
+            ),
+        ),
+        pytest.param(
+            ['[Ace-H]'],
+            AssertionError(
+                'card contains [] symbols, but it reserved for Stacks seperator'
+            ),
+        ),
+        pytest.param(
+            [' Ace-H '],
+            AssertionError(
+                'card contains space symbol, but it reserved for CardList seperator'
+            ),
+        ),
+        # pytest.param(
+        #     ['    [ Ace-H, red(10-d)  ]  [ black ]'],
+        #     ValueError(),
+        # ),
+    ],
+)
 def test_cardlist_init_by_str_cards_raises(cards: list[str], expected: Exception):
     with pytest.raises(expected_exception=type(expected)) as exp_info:
         CardList(*cards)
     assert exp_info.value.args == expected.args
 
 
-@pytest.mark.parametrize('instance, expected', [
-    pytest.param(
-        '    Ace H    ',
-        ValueError(
-            "not supported: card = 'Ace'\n",
-            "not supported: rank='Ace' | suit=None", "not supported: kind='Ace'"
-        )
-    ),
-    pytest.param(
-        '  A-1, K-D,   ]',
-        ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'")
-    ),
-])
+@pytest.mark.parametrize(
+    'instance, expected',
+    [
+        pytest.param(
+            '    Ace H    ',
+            ValueError(
+                "not supported: card = 'Ace'\n",
+                "not supported: rank='Ace' | suit=None",
+                "not supported: kind='Ace'",
+            ),
+        ),
+        pytest.param(
+            '  A-1, K-D,   ]',
+            ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'"),
+        ),
+    ],
+)
 def test_cardlist_init_by_str_instances_raises(instance: str, expected: Exception):
     with pytest.raises(expected_exception=type(expected)) as exp_info:
         CardList(instance=instance)
     assert exp_info.value.args == expected.args
 
 
-@pytest.mark.parametrize('input_data', [
-    CardList('Ace|H', 'King|H', 'Quin|C'),
-])
+@pytest.mark.parametrize(
+    'input_data',
+    [
+        CardList('Ace|H', 'King|H', 'Quin|C'),
+    ],
+)
 def test_cardlist_item_insances_behavior(input_data: CardList):
     # copy behavior
     new = input_data.copy()
@@ -268,27 +306,38 @@ def test_cardlist_item_insances_behavior(input_data: CardList):
     assert isinstance(input_data[:], CardList)
 
 
-@pytest.mark.parametrize('input_data, reverse', [
-    (
-        CardList(
-            '10.s', 'black(10.s)', 'red(10.s)',
-            '10.d',
-            'red(6.h)', 'red(6.d)',
-            'black', 'red'
+@pytest.mark.parametrize(
+    'input_data, reverse',
+    [
+        (
+            CardList(
+                '10.s',
+                'black(10.s)',
+                'red(10.s)',
+                '10.d',
+                'red(6.h)',
+                'red(6.d)',
+                'black',
+                'red',
+            ),
+            True,
         ),
-        True
-    ),
-    pytest.param(
-        CardList(
-            '10.s', 'black(10.s)', 'red(10.s)',
-            '10.d',
-            'red(6.h)', 'red(6.d)',
-            'black', 'red'
+        pytest.param(
+            CardList(
+                '10.s',
+                'black(10.s)',
+                'red(10.s)',
+                '10.d',
+                'red(6.h)',
+                'red(6.d)',
+                'black',
+                'red',
+            ),
+            False,
+            marks=pytest.mark.xfail,
         ),
-        False,
-        marks=pytest.mark.xfail
-    ),
-])
+    ],
+)
 def test_sortby_jokers_behavior(input_data: CardList, reverse: bool):
     sorted_data = input_data.copy().shuffle().sortby('rank', reverse=reverse)
 
@@ -298,20 +347,29 @@ def test_sortby_jokers_behavior(input_data: CardList, reverse: bool):
         assert test_card is input_card
 
 
-@pytest.mark.parametrize('input_data, expected_list, expected_jokers', [
-    (
-        CardList(
-            'red', 'A|s', 'K|s', 'K|c', '10|h', '2|c', 'black', '2|d', 'red(J|c)'
+@pytest.mark.parametrize(
+    'input_data, expected_list, expected_jokers',
+    [
+        (
+            CardList(
+                'red', 'A|s', 'K|s', 'K|c', '10|h', '2|c', 'black', '2|d', 'red(J|c)'
             ),
-        CardList('A|s', 'K|s', 'K|c', 'red(J|c)', '10|h', '2|d', '2|c', ),
-        CardList('red', 'black')
-    ),
-])
+            CardList(
+                'A|s',
+                'K|s',
+                'K|c',
+                'red(J|c)',
+                '10|h',
+                '2|d',
+                '2|c',
+            ),
+            CardList('red', 'black'),
+        ),
+    ],
+)
 def test_isolate_jokers(
-        input_data: CardList,
-        expected_list: CardList,
-        expected_jokers: CardList
-        ):
+    input_data: CardList, expected_list: CardList, expected_jokers: CardList
+):
     input_data.shuffle()
     # straight check
     result = input_data.copy().isolate_jokers(sort_attr='rank')
@@ -321,141 +379,185 @@ def test_isolate_jokers(
     assert not [c for c in input_data if c.is_joker and not c.is_mirror]
 
 
-@pytest.mark.parametrize('input_data, expected_list, expected_jokers', [
-    pytest.param(CardList(
-        'red', 'A|s', 'K|s', 'K|c', '10|h', '2|c', 'black', '2|d', 'red(J|c)'
+@pytest.mark.parametrize(
+    'input_data, expected_list, expected_jokers',
+    [
+        pytest.param(
+            CardList(
+                'red', 'A|s', 'K|s', 'K|c', '10|h', '2|c', 'black', '2|d', 'red(J|c)'
+            ),
+            CardList(
+                'A|s',
+                'K|s',
+                'K|c',
+                'red(J|c)',
+                '10|h',
+                '2|d',
+                '2|c',
+            ),
+            CardList('red', 'black'),
+            marks=pytest.mark.xfail,
         ),
-     CardList('A|s', 'K|s', 'K|c', 'red(J|c)', '10|h', '2|d', '2|c', ),
-     CardList('red', 'black'),
-     marks=pytest.mark.xfail),
-])
+    ],
+)
 def test_isolate_jokers_reverse(
-        input_data: CardList,
-        expected_list: CardList,
-        expected_jokers: CardList
-        ):
+    input_data: CardList, expected_list: CardList, expected_jokers: CardList
+):
     input_data.shuffle()
     # check reverse
     result = input_data.copy().isolate_jokers(sort_attr='rank', sort_reverse=False)
     assert result == (list(reversed(expected_list)), list(reversed(expected_jokers)))
 
 
-@pytest.mark.parametrize('input_data, expected', [
-    (
-        CardList('A|h', 'A|s', 'K|s', 'K|c', '10|h', '2|c', '2|d', '2|d',),
-        {
-            'rank': [
-                CardList('A|s', 'A|h'),  # spades > hearts
-                CardList('K|s', 'K|c'),
-                CardList('10|h'),
-                CardList('2|d', '2|d', '2|c')
+@pytest.mark.parametrize(
+    'input_data, expected',
+    [
+        (
+            CardList(
+                'A|h',
+                'A|s',
+                'K|s',
+                'K|c',
+                '10|h',
+                '2|c',
+                '2|d',
+                '2|d',
+            ),
+            {
+                'rank': [
+                    CardList('A|s', 'A|h'),  # spades > hearts
+                    CardList('K|s', 'K|c'),
+                    CardList('10|h'),
+                    CardList('2|d', '2|d', '2|c'),
                 ],
-            'suit': [
+                'suit': [
                     CardList('A|s', 'K|s'),
                     CardList('A|h', '10|h'),
                     CardList('2|d', '2|d'),
-                    CardList('K|c', '2|c')
-                    ]
-        }
-    ),
-    # add mirrored jokers
-    (
-        CardList(
-            'red(A|h)',
-            'A|s', 'K|s', 'K|c', '10|h', '2|c',
-            JokerCard('red', reflection='2|d'), '2|d',
-        ),
-        {
-            'rank': [
-                CardList('A|s', 'red(A|h)'),
-                CardList('K|s', 'K|c'),
-                CardList('10|h'),
-                CardList('2|d', JokerCard('red', reflection='2|d'), '2|c')
-            ],
-            'suit': [
-                CardList('A|s', 'K|s'),
-                CardList(JokerCard('red', reflection='A|h'), '10|h'),
-                CardList('2|d', JokerCard('red', reflection='2|d')),
-                CardList('K|c', '2|c')
-            ]
-        }
-     ),
-    # add mirrored jokers in other places
-    (
-        CardList(
-            JokerCard('red', reflection='A|h'),
-            'A|s', 'K|s', 'K|c', '10|h', '2|c', '2|d',
-            JokerCard('red', reflection='2|d')
-        ),
-        {
-            'rank': [
-                CardList('A|s', JokerCard('red', reflection='A|h')),
-                CardList('K|s', 'K|c'),
-                CardList('10|h'),
-                CardList('2|d', JokerCard('red', reflection='2|d'), '2|c')
-            ],
-            'suit': [
-                CardList('A|s', 'K|s'),
-                CardList(JokerCard('red', reflection='A|h'), '10|h'),
-                CardList('2|d', JokerCard('red', reflection='2|d')),
-                CardList('K|c', '2|c')
-            ]
-        }
-    ),
-    # add mirrored jokers with different ranks
-    (
-        CardList(
-            JokerCard('red', reflection='A|h'),
-            'A|s', 'K|s', 'K|c', '10|h', '2|c',
-            JokerCard('red', reflection='2|d'),
-            JokerCard('black', reflection='2|d')
-        ),
-        {
-            'rank': [
-                CardList('A|s', JokerCard('red', reflection='A|h')),
-                CardList('K|s', 'K|c'),
-                CardList('10|h'),
-                CardList(
-                    JokerCard('black', reflection='2|d'),
-                    JokerCard('red', reflection='2|d'),
-                    '2|c'
-                    )
+                    CardList('K|c', '2|c'),
                 ],
-            'suit': [
-                CardList('A|s', 'K|s'),
-                CardList(JokerCard('red', reflection='A|h'), '10|h'),
-                CardList(
-                    JokerCard('black', reflection='2|d'),
-                    JokerCard('red', reflection='2|d')),
-                CardList('K|c', '2|c')
-                ]
-        },
-     ),
-    # add NOT mirrored jokers
-    (
-        CardList(
-            JokerCard('red'),
-            'A|s', 'K|s', 'K|c', '10|h', '2|c',
-            JokerCard('black'), '2|d', JokerCard('red')
+            },
+        ),
+        # add mirrored jokers
+        (
+            CardList(
+                'red(A|h)',
+                'A|s',
+                'K|s',
+                'K|c',
+                '10|h',
+                '2|c',
+                JokerCard('red', reflection='2|d'),
+                '2|d',
             ),
-        {
-            'rank': [
-                CardList('A|s'),
-                CardList('K|s', 'K|c'),
-                CardList('10|h'),
-                CardList('2|d', '2|c'),
-                CardList('black', 'red', 'red'),
-            ],
-            'suit': [
-                CardList('A|s', 'K|s'),
-                CardList('10|h'),
-                CardList('2|d'),
-                CardList('K|c', '2|c'),
-                CardList('black', 'red', 'red'),
-            ]
-        }
-    ),
-])
+            {
+                'rank': [
+                    CardList('A|s', 'red(A|h)'),
+                    CardList('K|s', 'K|c'),
+                    CardList('10|h'),
+                    CardList('2|d', JokerCard('red', reflection='2|d'), '2|c'),
+                ],
+                'suit': [
+                    CardList('A|s', 'K|s'),
+                    CardList(JokerCard('red', reflection='A|h'), '10|h'),
+                    CardList('2|d', JokerCard('red', reflection='2|d')),
+                    CardList('K|c', '2|c'),
+                ],
+            },
+        ),
+        # add mirrored jokers in other places
+        (
+            CardList(
+                JokerCard('red', reflection='A|h'),
+                'A|s',
+                'K|s',
+                'K|c',
+                '10|h',
+                '2|c',
+                '2|d',
+                JokerCard('red', reflection='2|d'),
+            ),
+            {
+                'rank': [
+                    CardList('A|s', JokerCard('red', reflection='A|h')),
+                    CardList('K|s', 'K|c'),
+                    CardList('10|h'),
+                    CardList('2|d', JokerCard('red', reflection='2|d'), '2|c'),
+                ],
+                'suit': [
+                    CardList('A|s', 'K|s'),
+                    CardList(JokerCard('red', reflection='A|h'), '10|h'),
+                    CardList('2|d', JokerCard('red', reflection='2|d')),
+                    CardList('K|c', '2|c'),
+                ],
+            },
+        ),
+        # add mirrored jokers with different ranks
+        (
+            CardList(
+                JokerCard('red', reflection='A|h'),
+                'A|s',
+                'K|s',
+                'K|c',
+                '10|h',
+                '2|c',
+                JokerCard('red', reflection='2|d'),
+                JokerCard('black', reflection='2|d'),
+            ),
+            {
+                'rank': [
+                    CardList('A|s', JokerCard('red', reflection='A|h')),
+                    CardList('K|s', 'K|c'),
+                    CardList('10|h'),
+                    CardList(
+                        JokerCard('black', reflection='2|d'),
+                        JokerCard('red', reflection='2|d'),
+                        '2|c',
+                    ),
+                ],
+                'suit': [
+                    CardList('A|s', 'K|s'),
+                    CardList(JokerCard('red', reflection='A|h'), '10|h'),
+                    CardList(
+                        JokerCard('black', reflection='2|d'),
+                        JokerCard('red', reflection='2|d'),
+                    ),
+                    CardList('K|c', '2|c'),
+                ],
+            },
+        ),
+        # add NOT mirrored jokers
+        (
+            CardList(
+                JokerCard('red'),
+                'A|s',
+                'K|s',
+                'K|c',
+                '10|h',
+                '2|c',
+                JokerCard('black'),
+                '2|d',
+                JokerCard('red'),
+            ),
+            {
+                'rank': [
+                    CardList('A|s'),
+                    CardList('K|s', 'K|c'),
+                    CardList('10|h'),
+                    CardList('2|d', '2|c'),
+                    CardList('black', 'red', 'red'),
+                ],
+                'suit': [
+                    CardList('A|s', 'K|s'),
+                    CardList('10|h'),
+                    CardList('2|d'),
+                    CardList('K|c', '2|c'),
+                    CardList('black', 'red', 'red'),
+                ],
+            },
+        ),
+    ],
+)
 def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
     for _ in range(2):
         for key in expected:
@@ -492,5 +594,3 @@ def test_standart_52_card_deck_plus_jokers():
     # use new_generator again
     # be carefull, becouse in that way no cards will be yield
     assert CardList(instance=new_generator).length == 0
-
-

@@ -1,14 +1,12 @@
-"""
-
-developing:
-[X] doc string
-[X] doc test
-"""
 import functools
 from operator import getitem, setitem
+import time
 from typing import Any
 
 from core.functools.looptools import looptools
+from core.functools.utils import StrColors, init_logger, get_func_name
+
+logger = init_logger(__name__)
 
 
 class TemporaryContext:
@@ -34,7 +32,7 @@ class TemporaryContext:
         'If definition of global at another module than decorator or manager is '
         'calling, you should import it before or pass class (not globals) as initial '
         'arument directly. ',
-        'Invalid `{attr}` for {source}. Check class attrubutes and redefenitions keys. ',
+        'Invalid `{attr}` for {source}. Check class attrubutes and redefenitions keys.',
     )
 
     def __init__(self, source: dict[str, Any] | type, **redefenitions):
@@ -107,3 +105,52 @@ class TemporaryContext:
 
 
 temporally = TemporaryContext
+
+
+@functools.total_ordering
+class ProcessingTimer:
+    def __init__(self, __logger=logger, name='') -> None:
+        self.__logger = __logger
+        self.process_period: float | None = None
+        self.name = name or get_func_name(back=True)
+
+    def __enter__(self):
+        self.__logger.info(f'Mark processing timer for {self.name}. ')
+        self.__in = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.process_period = time.time() - self.__in
+        rounded = round(self.process_period, 3)
+        self.__logger.info(
+            f'Processing period for {self.name}: {StrColors.bold(rounded)}'
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ProcessingTimer):
+            return NotImplemented
+        return self.process_period == other.process_period
+
+    def __lt__(self, other: object) -> bool:
+        if (
+            not isinstance(other, ProcessingTimer)
+            or self.process_period is None
+            or other.process_period is None
+        ):
+            return NotImplemented
+        return self.process_period < other.process_period
+
+    def __call__(self, wrapped):
+        self.name = self.name or wrapped.__name__
+
+        @functools.wraps(wrapped=wrapped)
+        def wrapper(*args, **kwargs):
+            self.__enter__()
+            result = wrapped(*args, **kwargs)
+            self.__exit__()
+            return result
+
+        return wrapper
+
+
+processing_timer = ProcessingTimer

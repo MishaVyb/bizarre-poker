@@ -1,19 +1,13 @@
-import logging
-from typing import Any, TypeVar
-
+from __future__ import annotations
 import pytest
 
-from core.functools.utils import StrColors
-from games.services import stages, actions, auto
+from games.services import actions, auto
 
 from core.functools.utils import init_logger
-from tests.base import BaseGameProperties, param_kwargs_list
+from tests.base import BaseGameProperties
 from games.services.configurations import DEFAULT
-from games.services.combos import Combo
-from games.models import Player
 
-logger = init_logger(__name__, logging.INFO)
-_AT = TypeVar('_AT', bound=actions.BaseGameAction)
+logger = init_logger(__name__)
 
 
 @pytest.mark.django_db
@@ -74,17 +68,15 @@ class TestAuto(BaseGameProperties):
 
     def test_autoplay_game_after_action_with_actions(self, setup_users_banks):
         bet_value = 100
-        bet = actions.PlaceBet.preform(self.users_list[0], value=bet_value, stage='BiddingsStage-1')
+        bet = actions.PlaceBet.preform(
+            self.users_list[0], value=bet_value, stage='BiddingsStage-1'
+        )
         pass_ = actions.PassAction.preform(self.users_list[1], stage='BiddingsStage-1')
         auto.autoplay_game(
             self.game, stop_after_stage='BiddingsStage-1', with_actions=[bet, pass_]
         )
-        assert self.users_list[0].profile.bank == self.input_users_bank[self.usernames[0]] - bet_value
-        assert self.game.players.get(is_active=False) == self.users_list[1].player_at(self.game)
-
-
-    # test raises:
-        # 1- stop_after_stage=BiddingStage-2 with actions = for BiddingStage-1 ..
-        # stop before ... with_stage[0]
-        # stop after ... with_stage[0]
-
+        assert (
+            self.users_list[0].profile.bank
+            == self.input_users_bank[self.usernames[0]] - bet_value
+        )
+        assert next(self.game.players.passed) == self.users_list[1].player_at(self.game)

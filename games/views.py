@@ -38,17 +38,16 @@ class IndexView(views.View):
     @temporally(Card.Text, str_method='classic')
     def get(self, request: WSGIRequest, *args, **kwargs) -> HttpResponse:
         """handling GET request"""
+        context = {}
         if request.user.is_authenticated:
-            context = {
-                'not_user_games': models.Game.objects.filter(
-                    ~Q(players__user=self.request.user)
-                ),
-                'user_games': models.Game.objects.filter(
-                    players__user=self.request.user
-                ),
-            }
+            context['user_games'] = models.Game.objects.prefetch_players().filter(
+                players_manager__user=self.request.user
+            )
+            context['not_user_games'] = models.Game.objects.prefetch_players().exclude(
+                players_manager__user=self.request.user
+            )
         else:
-            context = {'not_user_games': models.Game.objects.all()}
+            context['not_user_games'] = models.Game.objects.all()
 
         return render(request, self.template, context)
 
@@ -105,9 +104,9 @@ class GameView(views.View):
         )
         games_serializer = GameSerializer(instance=game, context={'request': request})
 
-        _game=dict(games_serializer.data),
-        _pluser=dict(pluser_serializer.data),
-        #_other=dict(other_players_serializer.data),
+        _game = (dict(games_serializer.data),)
+        _pluser = (dict(pluser_serializer.data),)
+        # _other=dict(other_players_serializer.data),
 
         log = {"game": _game, 'pluser': _pluser}
         logger.info(f'GAME INFO: \n {pformat(log)}')

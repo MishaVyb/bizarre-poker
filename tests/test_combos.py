@@ -1,12 +1,11 @@
-from glob import escape
 import itertools
+import operator
 import random
 from copy import deepcopy
-from typing import Any, Callable, Literal
+from typing import Callable
 
 import pytest
-
-from games.services.cards import Card, CardList, JokerCard, Stacks
+from games.services.cards import CardList, Stacks
 from games.services.combos import (
     CLASSIC_COMBOS,
     Combo,
@@ -15,8 +14,8 @@ from games.services.combos import (
     ComboStacks,
     Conditions,
 )
-from tests.base import param_kwargs, param_kwargs_list
-import operator
+
+from tests.tools import param_kwargs_list
 
 
 @pytest.mark.parametrize(

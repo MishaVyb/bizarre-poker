@@ -21,7 +21,7 @@ class UserProxy(FullCleanSavingMixin, _UserModel):
     profile: Profile  # OneToOne related field initialize by Django after Bet creation
 
     def player_at(self, game: Game) -> Player:
-        return self.players.get(game=game)
+        return game.players.get(user=self)
 
     def clean(self):
         if not hasattr(self, 'profile'):
@@ -47,15 +47,6 @@ class Profile(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     def __str__(self) -> str:
         return f'{self.user.username}`s profile'
-
-    def withdraw_money(self, value: int) -> int:
-        self.bank -= value
-        self.save()
-        return value
-
-    def deposit_in(self, value: int):
-        self.bank += value
-        self.save()
 
     def clean(self):
         pass

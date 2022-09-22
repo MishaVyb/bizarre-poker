@@ -1,39 +1,32 @@
 from __future__ import annotations
-from typing import TypeVar
+
+from typing import Type, TypeVar
 
 import pytest
 from core.functools.decorators import temporally
-from core.functools.utils import StrColors, init_logger, logging, get_func_name
-from games.services.cards import CardList, Decks
-from games.services.combos import Combo
+from core.functools.utils import StrColors, get_func_name, init_logger
 from games.models import Game
+from games.services.cards import Decks, get_deck_from
 from games.services.configurations import DEFAULT
-from rest_framework import status
 from rest_framework.test import APIClient
 from tests.base import BaseGameProperties
 from users.models import User
-from games.services.cards import get_deck_from
 
-logger = init_logger(__name__, logging.DEBUG)
+logger = init_logger(__name__)
 _T = TypeVar('_T')
 
 
 def assert_base_class(
-    instance: BaseGameProperties, _type: type[_T] = BaseGameProperties
+    instance: BaseGameProperties, _type: Type[_T] = BaseGameProperties
 ) -> _T:
-    assert isinstance(
-        instance, _type
-    ), 'This fixture is only for BaseGameProperties methods. '
+    message = 'This fixture is only for BaseGameProperties methods. '
+    assert isinstance(instance, _type), message
     logger.info(StrColors.purple(f'{get_func_name(back=True)} for {instance}'))
     return instance
 
 
-# !?
-# scope='class' -- пока что нет необходимости, тк только один тест в классе
 @pytest.fixture
-def setup_users(
-    request: pytest.FixtureRequest,
-):
+def setup_users(request: pytest.FixtureRequest):
     # this fixture is used as enter point to all class fixutres,
     # so new line for more readable logging
     print('\n')
@@ -47,9 +40,7 @@ def setup_users(
 
 
 @pytest.fixture
-def setup_clients(
-    request: pytest.FixtureRequest,
-):
+def setup_clients(request: pytest.FixtureRequest):
     self: BaseGameProperties = assert_base_class(request.instance)
 
     # clients
@@ -85,19 +76,6 @@ def setup_game(
 
 
 @pytest.fixture
-def setup_game_by_api(
-    request: pytest.FixtureRequest,
-):
-    self: BaseGameProperties = assert_base_class(request.instance)
-
-    self.assert_response(
-        'create game', 'vybornyy', 'POST', 'games', r'', status.HTTP_201_CREATED
-    )
-    # remember game pk to operate test data
-    self.game_pk = self.response_data['id']  # type: ignore
-
-
-@pytest.fixture
 def setup_deck_get_expected_combos(
     request: pytest.FixtureRequest, table_and_hands_and_expected_combos: dict
 ):
@@ -118,7 +96,6 @@ def setup_deck_get_expected_combos(
         yield data['expected_combos'], data['rate_groups']
         self.game.update(deck_generator=DEFAULT.deck_container_name)
     delattr(Decks, 'TEST_DECK')
-
 
 
 @pytest.fixture

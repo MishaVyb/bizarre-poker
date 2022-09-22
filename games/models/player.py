@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import logging
-from typing import TypeVar
+
+from typing import Any, TypeVar
 
 from core.functools.utils import StrColors, init_logger
 from core.models import (
@@ -13,15 +13,14 @@ from core.models import (
 from core.validators import bet_multiplicity
 from django.db import IntegrityError, models
 from django.db.models import F, functions
-from django.db.models.query import QuerySet
+from games.selectors import PlayerSelector
 from games.services.cards import CardList
 from games.services.combos import Combo, ComboStacks
 from games.models import Game
 from games.models.fields import CardListField
 from users.models import User
-from core.functools.looptools import circle_after
 
-logger = init_logger(__name__, logging.INFO)
+logger = init_logger(__name__)
 
 _T = TypeVar('_T')
 
@@ -32,17 +31,30 @@ class PlayerQuerySet(models.QuerySet):
 
 class PlayerManager(IterableManager[_T]):
     def get_queryset(self):
-        qs = PlayerQuerySet(model=self.model, using=self._db, hints=self._hints)
-        # dealer attribute
-        qs = qs.annotate(
-            is_dealer=models.Case(
-                models.When(position=0, then=models.Value(True)),
-                models.When(position__gt=0, then=models.Value(False)),
+        return (
+            PlayerQuerySet(model=self.model, using=self._db, hints=self._hints)
+            .annotate(
+                is_dealer=models.Case(
+                    models.When(position=0, then=models.Value(True)),
+                    models.When(position__gt=0, then=models.Value(False)),
+                )
             )
+            .annotate(bet_total=functions.Coalesce(models.Sum('bets__value'), 0))
         )
-        # bet_total attribute
-        qs = qs.annotate(bet_total=functions.Coalesce(models.Sum('bets__value'), 0))
-        return qs
+
+    def update_annotation(self, *fields, **fields_values):
+        """Update annotaion for every player."""
+        for field in fields:
+            # load value from db
+            raise NotImplementedError
+
+        for field, value in fields_values.items():
+            for player in self:
+                setattr(player, field, value)
+
+    def all_bets(self):
+        """Call in for delete all bets (for example, after BiddingStage ended)."""
+        return PlayerBet.objects.filter(player__in=[p.pk for p in self])
 
     def aggregate_max_bet(self) -> int:
         return self.aggregate(max=models.Max('bet_total'))['max']
@@ -51,7 +63,11 @@ class PlayerManager(IterableManager[_T]):
         return self.game.players.aggregate(models.Sum('bet_total'))
 
     def check_bet_equality(self):
-        """True if all beds equal (for active players)."""
+        """True if all beds equal (for active players).
+
+        No bets - True
+        0 bet vs No bet - True
+        """
         agregated = self.active.aggregate(
             diff=models.Max('bet_total') - models.Min('bet_total')
         )
@@ -62,9 +78,10 @@ class PlayerManager(IterableManager[_T]):
         return self.order_by('-bet_total').first()
 
     @property
-    def order_by_bet(self):
-        """Order active players with None bet first then 0 then ascending.
-        Starting after dealer."""
+    def ordered_by_bet(self):
+        """Get ordered active players with None bet first then 0 then ascending.
+        Starting after dealer.
+        """
         # we need that special annotation to differentiate two types of player bet:
         # [1] player who say check (bets sum = 0)
         # [2] player who has not placed bet yet (bets sum = None)
@@ -124,25 +141,25 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         related_name='players',
     )
     game: Game = models.ForeignKey(
-        to=Game, on_delete=models.CASCADE, related_name='players'
+        to=Game, on_delete=models.CASCADE, related_name='players_manager'
     )
     hand: CardList = CardListField('cards in players hand', blank=True)
     bets: PlayerBetManager[PlayerBet]
     bet_total: int  # annotated by PlayerQuerySet
     position: int = models.PositiveSmallIntegerField(
-        'player`s number in a circle starting from 0',
+        'player`s number in a circle starting from 0'
     )
     is_host: bool = models.BooleanField('game host')
-    is_dealer: bool  # annotated by PlayerQuerySet
+    is_dealer: bool  # annotated by PlayerQuerySet # ?! move to @property !?
     is_active: bool = models.BooleanField('player did not say "pass" yet', default=True)
 
     @property
-    def other_players(self) -> QuerySet[Player]:
-        return self.game.players.filter(~models.Q(pk=self.pk))
+    def other_players(self):
+        return self.game.players.exclude(self)
 
     @property
     def combo(self):
-        if not self.hand and not self.table:
+        if not self.hand and not self.game.table:
             return None
 
         stacks = ComboStacks()
@@ -170,33 +187,41 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             n = self.position if self.position is not None else '?'
             h = '(h)' if self.is_host else ''
             d = '(d)' if self.is_dealer else ''
-            return StrColors.underline(f'({n}) {self.user.username}{h}{d}')
+            name = self.user.username
+            return StrColors.underline(f'({n}) {name}{h}{d}')
         except Exception:
-            return f'{self.__class__.__name__} ({self.pk})'
+            return f'{self.__class__.__name__}'
 
     def __str__(self) -> str:
-        return StrColors.underline(self.__repr__())
+        return self.__repr__()
+
+    def pre_save(self):
+        self._presave_flag = True
 
     def init_clean(self):
         if self.is_host is None:
             # if no other players, this player become a host
-            self.is_host = not self.game.players
+            self.is_host = not self.game.players_manager
 
         if self.position is None:
-            last = self.game.players.last()
+            last = self.game.players_manager.last()
             self.position = last.position + 1 if last else 0
 
     def clean(self) -> None:
         "Check constraints and clean values if could, otherwise raising IntegrityError."
-        # validate only this player instance
+        # [1] validate only this player instance
         ...
 
-        # validate all player dependences at this player Game with this player instance
+        # [2] validate players dependences
+        # validate all player dependences at this Game with this player instance
         # replace game player list with self instence and operate with new list
         game = self.game
-        players = list(game.players)
-        index = players.index(self)
-        players[index] = self
+        players = game.get_players() or self.game.players_manager.all()
+
+        if isinstance(players, PlayerSelector):
+            players = self.game.players
+            if not list(filter(lambda p: self is p, players)):
+                logger.error('Player instance should appear at player selector. ')
 
         # check host
         amount = len(list(filter(lambda p: p.is_host, players)))
@@ -207,20 +232,17 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
         # chek dealer
         # checking dealer has no sense, because it not an attribute, but jast a rule,
-        # that player at 0 position is dealer
+        # that player at 0 position is dealer (annotated via PlayerQuerySet)
 
         # ckeck players ordering by positions
-        # start from position = 0 (from dealer)
-        after_dealer = circle_after(lambda p: not p.position, players)
-        positions = [p.position for p in after_dealer]
+        positions = [p.position for p in players]
         if list(range(len(players))) != positions:
             raise IntegrityError(f'{game} has invalid players positions: {positions}')
 
 
 ########################################################################################
-
-# def type_is_list_int(*args, **kwargs):
-#     raise NotImplementedError
+# PlayerBet
+########################################################################################
 
 
 class PlayerBetQuerySet(models.QuerySet):
@@ -235,14 +257,10 @@ class PlayerBetManager(IterableManager[_T]):
     def was_placed(self):
         return self.exists()
 
-    @property
-    def total(self) -> int:
-        """Sum of all bets.
-
-        The same as `player.bet_total` annotated at every player instance by
-        `PlayerQuerySet`.
-        """
-        return self.aggregate(total=models.Sum('value'))['total'] or 0
+    def create(self, **kwargs: Any) -> _T:
+        obj: PlayerBet = super().create(**kwargs)
+        obj.player.bet_total += kwargs['value']  # update player agregation:
+        return obj
 
     def __str__(self) -> str:
         return ' '.join(str(b) for b in self.all())
@@ -252,13 +270,12 @@ class PlayerBet(FullCleanSavingMixin, CreatedModifiedModel):
     """Single player bet.
 
     When game accepted all players bets they all will be deleted.
-    To find out total current player bet could be used:
-        `total` property at bet manager
-        `bets_total` annotation field at player manager
+    To find out total current player bet could be used `bets_total` annotation field at
+    player manager.
     """
 
     _manager_for_related_fields: PlayerBetManager[PlayerBet] = PlayerBetManager()
-    objects: models.Manager[PlayerBet] = models.Manager()
+    objects: models.Manager[PlayerBet] = PlayerBetManager()
 
     player: Player = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name='bets'

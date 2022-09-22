@@ -1,22 +1,9 @@
-import itertools
-from pickle import MARK
-import random
-from copy import deepcopy
-
 import pytest
 from _pytest.fixtures import SubRequest as PytestSubRequest
 
-from games.services.cards import Card, CardList, Stacks
-from games.services.combos import (
-    CLASSIC_COMBOS,
-    ComboKind,
-    ComboKindList,
-    ComboStacks,
-    Conditions,
-)
+from games.services.cards import CardList, Stacks
 
-from tests.base import param_kwargs
-
+from tests.tools import param_kwargs
 
 
 @pytest.fixture(

@@ -33,7 +33,7 @@ from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 
 from core.functools.utils import eq_first, range_inclusevly, split
 from core.functools.decorators import temporally
-from core.functools.utils import StrColors, init_logger
+from core.functools.utils import init_logger
 
 logger = init_logger(__name__)
 

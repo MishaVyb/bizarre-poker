@@ -1,12 +1,4 @@
-"""Tools for handling poker combinations.
-
-developing:
-[ ] get_condition -- refactoring
-[ ] track row -- refactoring
-[ ] ComboStacks.__init__(...)
-[ ] doc string
-
-"""
+"""Tools for handling poker combinations."""
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -15,13 +7,11 @@ import functools
 import itertools
 from copy import deepcopy
 import logging
-from operator import attrgetter
 from typing import TYPE_CHECKING, ClassVar, Iterable
 
-from core.functools.looptools import looptools
-from core.functools.utils import StrColors, init_logger
+from core.functools.utils import init_logger
 from core.functools.utils import is_sorted
-from games.services.cards import Card, CardList, JokerCard, Stacks
+from games.services.cards import Card, CardList, Stacks
 from games.services import combo_trackers
 
 if TYPE_CHECKING:
@@ -339,7 +329,3 @@ class ComboStacks:
 class Combo:
     kind: ComboKind
     stacks: ComboStacks
-
-
-if __name__ == '__main__':
-    pass
