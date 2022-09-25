@@ -6,5 +6,6 @@
     "deck_container_name": "standart_52_card_deck_plus_jokers",
 
     "deal_cards_amount": 2,
-    "flops_amounts": [3, 1, 1]
+    "flops_amounts": [3, 1, 1],
+    "jokers_amount": 10
 }

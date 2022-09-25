@@ -1,15 +1,16 @@
+from re import L
 from typing import Any, Dict
 
 from games.models import Game, Player, PlayerBet
 
-from rest_framework import serializers
+from rest_framework import serializers, validators
 from rest_framework.validators import UniqueTogetherValidator
 from games.services.stages import OpposingStage
 
 from users.models import User
 from django.db.models import Q
 from core.functools.decorators import temporally
-from games.services.cards import Card
+from games.services.cards import Card, CardList
 
 from rest_framework.request import Request
 
@@ -20,10 +21,48 @@ from rest_framework.request import Request
 #         exclude = ('id',)
 
 
-class PlayerBetSerializer(serializers.ModelSerializer):
+# class PlayerBetSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = PlayerBet
+#         fields = ('value',)
+
+
+class StageSeroalizer(serializers.Serializer):
+    name = serializers.CharField()
+    performer = serializers.CharField()
+
+
+class GameSerializer(serializers.ModelSerializer):
+    players = serializers.StringRelatedField(
+        many=True, read_only=True, source='players_manager'
+    )
+    deck = serializers.SerializerMethodField()
+    table = serializers.CharField(read_only=True)
+    stage = StageSeroalizer(read_only=True)
+
+    def get_deck(self, obj: Game):
+        return obj.deck.hiden()  # always
+
     class Meta:
-        model = PlayerBet
-        fields = ('value',)
+        model = Game
+        fields = (
+            'id',
+            'deck',
+            # 'deck_generator',
+            'begins',
+            'stage_index',
+            'stage',
+            'table',
+            'bank',
+            'players',
+        )
+
+
+class ComboSerializer(serializers.Serializer):
+    kind = serializers.StringRelatedField()
+
+    class Meta:
+        fields = ('kind',)
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -33,31 +72,48 @@ class PlayerSerializer(serializers.ModelSerializer):
     game = serializers.PrimaryKeyRelatedField(
         write_only=True, queryset=Game.objects.all()
     )
+    bets = serializers.BooleanField(read_only=True, allow_null=True)
     bet_total = serializers.IntegerField(read_only=True)
     is_dealer = serializers.BooleanField(read_only=True)
-
-    # def get_bet(self, obj: Player):
-    #     return obj.bet._values
-
-    # combo = PlayerComboSerializer(source='_combo', read_only=True)
     hand = serializers.SerializerMethodField()
+    profile_bank = serializers.SerializerMethodField()
+    combo = serializers.SerializerMethodField()
+    is_performer = serializers.SerializerMethodField()
+
+
+    def permition(self, obj: Player):
+        """player hand and combo visability permitions"""
+        request: Request = self.context.get('request')
+        assert request, 'you should pass request trhough context'
+
+        user_players: list[Player] = request.user.players
+        permition = [
+            obj.game.stage == OpposingStage,  # show hand of all players at Opposing
+            obj in user_players,  # show hand if it requested by owner
+        ]
+        return any(permition)
 
     def get_hand(self, obj: Player):
-        request: Request = self.context.get('request')
-        user_players: list[Player] = request.user.players if request else []
-
-        permition = any(
-            [
-                obj.game.stage == OpposingStage,  # show hand of all players at Opposing
-                obj in user_players,  # show hand if it requested by owner
-            ]
-        )
-
-        if permition:
+        if self.permition(obj):
             return str(obj.hand)
-        else:
-            with temporally(Card.Text, str_method='emoji_shirt'):
-                return str(obj.hand)
+        with temporally(Card.Text, str_method='emoji_shirt'):
+            return str(obj.hand)
+
+    def get_profile_bank(self, obj: Player):
+        return obj.user.profile.bank
+
+    def get_combo(self, obj: Player):
+        if self.permition(obj):
+            combo = obj.combo
+            if not combo:
+                return {}
+            return {
+                'name': combo.kind.name,
+                'stacks': str(CardList(instance=combo.stacks.cases_chain)),
+            }
+
+    def get_is_performer(self, obj: Player):
+        return obj == obj.game.stage.performer
 
     class Meta:
         model = Player
@@ -65,16 +121,17 @@ class PlayerSerializer(serializers.ModelSerializer):
             'user',
             'game',
             'hand',
+            'bets',  # exist or not
             'bet_total',
             'position',
             'is_host',
             'is_dealer',
             'is_active',
-            #'combo',
+            'is_performer',
+            'profile_bank',
+            'combo',
         )
-        extra_kwargs = {
-            'is_dealer': {'read_only': True}
-        }
+        extra_kwargs = {'is_dealer': {'read_only': True}}
         # validators = [
         #     UniqueTogetherValidator(
         #         message='User already playing this game',
@@ -84,49 +141,7 @@ class PlayerSerializer(serializers.ModelSerializer):
         # ]
 
 
-class GameSerializer(serializers.ModelSerializer):
-    players = serializers.StringRelatedField(
-        many=True, read_only=True
+class BetValueSerializer(serializers.Serializer):
+    value = serializers.IntegerField(
+        # validators=[],
     )
-    players_detail = PlayerSerializer(many=True, source='players', read_only=True)
-
-    stage = serializers.CharField(read_only=True)
-
-    # pluser = serializers.SerializerMethodField()
-    # other_players = serializers.SerializerMethodField()
-
-    # def get_pluser(self, obj: Game):
-    #     request: Request = self.context.get('request')
-    #     if request is None:
-    #         return []
-
-    #     pluser = request.user.players.get(game=obj)
-    #     serializer = PlayerSerializer(instance=pluser, context=self.context)
-    #     return serializer.data
-
-    # def get_other_players(self, obj: Game):
-    #     request: Request = self.context.get('request')
-    #     if request is None:
-    #         return []
-
-    #     other_players = obj.players.filter(~Q(user=request.user))
-
-    #     serializer = PlayerSerializer(other_players, many=True, context=self.context)
-    #     return serializer.data
-
-    class Meta:
-        model = Game
-        fields = (
-            'id',
-            #'deck'
-            #'deck_generator'
-            'begins',
-            # 'stage_index',
-            'stage',  # ~ status
-            'table',
-            'bank',
-            'players',
-            'players_detail',
-            #'pluser',
-            #'other_players',
-        )

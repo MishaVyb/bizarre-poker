@@ -1,9 +1,13 @@
-from typing import Type, Union
+from typing import Any, OrderedDict, Type, Union
 
-_JSON_SUPPORTED = Type[str | int | bool | float | None | list | dict]
+_JSON_SUPPORTED = str | int | bool | float | None | list | dict | OrderedDict
 
-JSON = Union[dict[str, _JSON_SUPPORTED], list[_JSON_SUPPORTED]]
+JSON_FULL = Union[dict[str, _JSON_SUPPORTED], list[_JSON_SUPPORTED]]
 """Type that represents a JSON dict."""
+
+JSON = dict[str, Any] | list[_JSON_SUPPORTED]
+"""Type that represents a JSON dict."""
+
 
 NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 """Object for represent absence of value at defaults. Wnen None can't be used. """

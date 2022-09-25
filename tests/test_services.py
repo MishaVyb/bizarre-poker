@@ -192,7 +192,7 @@ class TestGameActions(BaseGameProperties):
             '[1] PlaceBet by simusik with invalid value 10, but expectd 5 (small blind)'
         )
         logger.info(StrColors.purple(test))
-        condition_name = 'value_in_valid_range_condition'
+        condition_name = 'value_in_necessary_range'
         match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['simusik'], value=10)
@@ -210,18 +210,18 @@ class TestGameActions(BaseGameProperties):
         test = '[4] PlaceBet by arthur_morgan with invalid values'
         logger.info(StrColors.purple(test))
 
-        condition_name = 'value_in_valid_range_condition'
+        condition_name = 'value_in_necessary_range'
         match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=0)
 
-        condition_name = 'value_in_valid_range_condition'
+        condition_name = 'value_in_necessary_range'
         match = r'Acting .* failed. ' rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=10000)
 
         condition_name = 'It is not multiples of small blind'
-        match = r'Acting .* failed. ' rf'.*{condition_name}.*'
+        match = rf'.*{condition_name}.*'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBet(self.game, self.users['arthur_morgan'], value=13)
 
@@ -353,7 +353,7 @@ class TestGameBetActions(BaseGameProperties):
             '[11] arthur_morgan trying say "check" when there are other bet were placed'
         )
         logger.info(StrColors.purple(test))
-        condition_name = 'value_in_valid_range_condition'
+        condition_name = 'value_in_necessary_range'
         match = rf'Condition {condition_name} are not satisfied'
         with pytest.raises(actions.ActError, match=match):
             actions.PlaceBetCheck(self.game, self.users['arthur_morgan'])

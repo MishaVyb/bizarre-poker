@@ -32,12 +32,10 @@ class GameManager(models.Manager[_T]):
     def prefetch_players(self):
         prefetch_lookups = (
             'players_manager',
-
             # we need to load this:
             # [1] to know player name (for logging) | player.user.username
             # [2] to find a player for user who make Action | user.player_at(game)
             'players_manager__user',
-
             # we need to load this:
             # [1] to know other players bank wich is max possible value for bet (VaBank)
             # [2] to chance players bank when placing bet or taking benefint
@@ -131,7 +129,11 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         return reverse("games:game", kwargs={"pk": self.pk})
 
     def select_players(
-        self, source: Sequence[Player] | None = None, *, force_cashing=False
+        self,
+        source: Sequence[Player] | None = None,
+        *,
+        force_cashing=False,
+        force_prefetching=False,
     ):
         """Call to update `self.players`.
 
@@ -145,7 +147,12 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
         return `self`
         """
-        default_source = self.players_manager.all()
+        if force_prefetching:
+            lookup = 'user__profile'
+            default_source = self.players_manager.prefetch_related(lookup).all()
+        else:
+            default_source = self.players_manager.all()
+
         if force_cashing:
             # it's wierd make cashe for source
             # (it already should be as `real` data, not prepared QuerySet)
@@ -157,7 +164,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             # because it well evulte db inside to check is QuerySet empty or not
             source = default_source
 
-        self._players_selector = PlayerSelector(source, self.players_manager)
+        self._players_selector = PlayerSelector(source)
         return self
 
     def reselect_players(self):
@@ -189,7 +196,15 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     @property
     def players(self) -> PlayerSelector:
         if self._players_selector is None:
-            raise RuntimeError('None selector. Call for select_players(..) before.')
+            # raise RuntimeError('None selector. Call for select_players(..) before.')
+            logger.warning(
+                StrColors.red(
+                    'None selector. Call for select_players(..) before. '
+                    'They will be selected here to continue. '
+                )
+            )
+            self.select_players(force_cashing=True, force_prefetching=True)
+            return self.players
         return self._players_selector
 
     def get_players(self) -> PlayerSelector | None:

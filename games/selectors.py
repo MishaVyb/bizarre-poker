@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 class PlayerSelector:
-    def __init__(self, _source: Sequence[Player], _manager) -> None:
-        self._source = _source
+    def __init__(self, source: Sequence[Player]) -> None:
+        self._source = source
 
     def __iter__(self) -> Iterator[Player]:
         return iter(self._source)
@@ -66,11 +66,18 @@ class PlayerSelector:
     def aggregate_sum_all_bets(self) -> int:
         """for active and passed(!) players"""
         return sum(p.bet_total for p in self._source)
-        return self._manager.game.players.aggregate(models.Sum('bet_total'))
 
     def aggregate_min_users_bank(self) -> int:
         """for active players"""
         return min(p.user.profile.bank for p in self.active)
+
+    def aggregate_possible_max_bet(self) -> int:
+        """for active players.
+
+        To find out pissoble max bet for player we are loking for minimal bank of all
+        players with som of his bet already playced.
+        """
+        return min(p.user.profile.bank + p.bet_total for p in self.active)
 
     def check_bet_equality(self) -> bool:
         """True if all beds equal (for active players)."""

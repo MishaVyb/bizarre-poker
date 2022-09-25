@@ -1,0 +1,20 @@
+
+
+<div class="
+    {% if player.is_performer%}card bg-success mb-3{% elif not player.is_active %}card bg-dark mb-3{% else %}card bg-light mb-3{% endif %}
+    " style="max-width: 20rem;">
+
+    <div class="card-header">
+        {{player.user}}
+        {% if player.is_host %}👑{% endif %}
+        {% if player.is_dealer %}🎩{% endif %}
+
+    </div>
+    <div class="card-body">
+      <p class="card-text"><h5>{{player.profile_bank}}<h5></p>
+      <p class="card-text">{{player.bet_total}}</p>
+      <p class="card-text">{{player.combo.name}} {{player.combo.stacks}}</p>
+
+
+    </div>
+  </div>

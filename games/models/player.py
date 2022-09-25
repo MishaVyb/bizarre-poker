@@ -133,7 +133,7 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     """
 
     _manager_for_related_fields: PlayerManager[Player] = PlayerManager()
-    objects: models.Manager[Player] = models.Manager()
+    objects: PlayerManager[Player] = PlayerManager()
 
     user: User = models.ForeignKey(
         to=User,
@@ -188,7 +188,7 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             h = '(h)' if self.is_host else ''
             d = '(d)' if self.is_dealer else ''
             name = self.user.username
-            return StrColors.underline(f'({n}) {name}{h}{d}')
+            return f'({n}) {name}{h}{d}'
         except Exception:
             return f'{self.__class__.__name__}'
 
@@ -222,6 +222,8 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             players = self.game.players
             if not list(filter(lambda p: self is p, players)):
                 logger.error('Player instance should appear at player selector. ')
+        else:
+            logger.warning('Player selector is None. Player manager will be used insted. ')
 
         # check host
         amount = len(list(filter(lambda p: p.is_host, players)))
@@ -235,9 +237,20 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # that player at 0 position is dealer (annotated via PlayerQuerySet)
 
         # ckeck players ordering by positions
-        positions = [p.position for p in players]
-        if list(range(len(players))) != positions:
-            raise IntegrityError(f'{game} has invalid players positions: {positions}')
+        current = [p.position for p in players]
+        expected = list(range(len(players)))
+        if current != expected:
+            current.sort()
+            if current != expected:
+                raise IntegrityError(f'{game} has invalid players positions: {current}')
+
+            logger.warning(f'{game} has invalid players ordering. Will be re-oredered here. ')
+            game.players.reorder_source()
+
+            # mmm = list(game.players_manager)
+            # ppp = list(game.players)
+            # mmm
+            # ppp
 
 
 ########################################################################################

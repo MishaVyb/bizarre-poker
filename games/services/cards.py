@@ -34,6 +34,7 @@ from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 from core.functools.utils import eq_first, range_inclusevly, split
 from core.functools.decorators import temporally
 from core.functools.utils import init_logger
+from games.services.configurations import DEFAULT
 
 logger = init_logger(__name__)
 
@@ -756,7 +757,7 @@ Stacks = list[CardList]
 
 class Decks:
     @staticmethod
-    def standart_52_card_deck_plus_jokers(jokers_amount: int = 2):
+    def standart_52_card_deck_plus_jokers():
         """yield all 52 cards from highes to smallest and then red/black jokers"""
         _2 = Card.Text.get_rank_value('2')
         ace = Card.Text.get_rank_value('Ace')
@@ -767,7 +768,7 @@ class Decks:
             for suit in reversed(range_inclusevly(clubs, spades)):
                 yield Card(rank, suit)
 
-        for i in range(jokers_amount):
+        for i in range(DEFAULT.jokers_amount):
             yield JokerCard('red') if i % 2 else JokerCard('black')
 
 

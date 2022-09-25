@@ -66,6 +66,9 @@ class BaseGameStage:
         return {}
 
     def check_requirements(self, *, raises=True):
+        # base requirements
+
+        # sub classes requirements
         for r in self.requirements:
             if not r(self):
                 if raises:
@@ -74,7 +77,20 @@ class BaseGameStage:
         return True
 
     def process(self) -> None:
+        # [1]
         self.check_requirements()
+        # [2]....
+        self.process_subclass()
+        # [3] ckeck game end condition
+        if len(list(self.game.players.active)) == 1:
+            # -1 because after game process have done, contionue_processing(..) will
+            # incrase stage_index by 1
+            self.game.stage_index = (
+                StagesContainer.stages.index(StagesContainer.get('OpposingStage')) - 1
+            )
+
+    def process_subclass(self):
+        raise NotImplementedError
 
     @classmethod
     def factory(cls, name: str | None = None, **kwargs) -> type[BaseGameStage]:
@@ -84,10 +100,16 @@ class BaseGameStage:
 class SetupStage(BaseGameStage):
     necessary_action = 'StartAction'
 
+    def players_more_than_one(self):
+        return len(self.game.players) > 1
+
     def host_approved_game_start(self):
         return self.game.begins
 
-    requirements = [host_approved_game_start]
+    requirements = [
+        players_more_than_one,
+        host_approved_game_start,
+    ]
 
     @property
     def performer(self):
@@ -95,8 +117,7 @@ class SetupStage(BaseGameStage):
             return None
         return self.game.players.host if self.game.players else None
 
-    def process(self):
-        super().process()
+    def process_subclass(self):
         self.fill_and_shuffle_deck()
 
     def fill_and_shuffle_deck(self):
@@ -137,13 +158,16 @@ class BiddingsStage(BaseGameStage):
 
     def get_necessary_action_values(self) -> dict:
         if self.performer is None:
-            raise NotImplementedError
+            logger.error('Asking for necessary values when there are no performer. ')
+            return {}
 
         max_bet = self.game.players.aggregate_max_bet()
         performer_bet = self.performer.bet_total
         min_value = max_bet - performer_bet
 
-        max_value = self.game.players.aggregate_min_users_bank()
+        # challenger = self.game.players.with_max_bet
+        # max_value = challenger.bet_total + challenger.user.profile.bank
+        max_value = self.game.players.aggregate_possible_max_bet()
         return {'min': min_value, 'max': max_value}
 
     def every_player_place_bet_or_say_pass(self):
@@ -157,12 +181,11 @@ class BiddingsStage(BaseGameStage):
         all_beds_equal,
     ]
 
-    def process(self) -> None:
-        super().process()
+    def process_subclass(self):
         self.accept_bets()
 
     def accept_bets(self) -> None:
-        logger.info(f'Accepting beds: {[p.bet_total for p in self.game.players]}')
+        logger.info(f'Accepting bets: {[p.bet_total for p in self.game.players]}')
 
         income = self.game.players.aggregate_sum_all_bets()
         self.game.players_manager.all_bets().delete()
@@ -209,10 +232,10 @@ class PlacingBlindsStage(BiddingsStage):
             'max': DEFAULT.big_blind,
         }
 
-    def process(self) -> None:
-        # do not calling for super().process() becouse it will call accept_bets, but we
+    def process_subclass(self):
+        # we need to ovveride super().process() because it will call accept_bets, but we
         # do not need it at PlacingBlinds stage
-        self.check_requirements()
+        pass  # do nothing
 
 
 class FlopStage(BaseGameStage):
@@ -221,9 +244,9 @@ class FlopStage(BaseGameStage):
     amount: int
 
     def process(self) -> None:
-        flop = self.game.deck[-self.amount:]
+        flop = self.game.deck[-self.amount :]
         self.game.table.extend(reversed(flop))
-        del self.game.deck[-self.amount:]
+        del self.game.deck[-self.amount :]
         self.game.presave()
 
 
@@ -280,11 +303,14 @@ class MoveDealerButton(BaseGameStage):
 
         # re-order PlayerSelector
         self.game.players.reorder_source()
+        positions = [p.position for p in self.game.players]
+        logger.info(f'Moving dealer button. New players postions: {positions}')
 
 
 ########################################################################################
 # Stages Container - Main Game Processing
 ########################################################################################
+
 
 def save_game_objects(game: Game):
     """Saving game, players, and users banks. Only if presave flag is True."""
@@ -307,7 +333,6 @@ class StagesContainer:
         FlopStage.factory('FlopStage-3', amount=1),
         BiddingsStage.factory('BiddingsStage-4(final)'),
         OpposingStage,
-
         # stages for preparing next game:
         TearDownStage,
         MoveDealerButton,
@@ -349,6 +374,7 @@ class StagesContainer:
             game.stage.process()  # process curent stage:
         except StageProcessingError as e:
             logger.info(f'{e}. ')
+            #game.
             if cls._save_after_proces_stoped:  # SAVING
                 save_game_objects(game)
             return {'status': 'forced_stop', 'error': e}

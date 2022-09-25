@@ -6,7 +6,7 @@ from typing import Callable, Generic, Type, TypeVar
 from core.functools.utils import StrColors, init_logger
 from core.types import NONE_ATTRIBUTE
 from django.core.exceptions import ValidationError
-from games.models import Game
+from games.models import Game, PlayerBet
 from games.services.stages import (
     BaseGameStage,
     BiddingsStage,
@@ -25,6 +25,7 @@ class ActError(Exception):
 
 class BaseGameAction:
     suitable_stage: type[BaseGameStage]
+    values_expected = False
     conditions: list[Callable] = []
     error_messages: dict[str, str] = {
         'invalid_stage': (
@@ -59,8 +60,10 @@ class BaseGameAction:
         **kwargs,
     ) -> None:
         self.game = game
-        self.user = user.player_at(game).user  # !!!!!!!!!!!!!
-        self.player = user.player_at(game)  # player who made an action
+        # at user instance from players profile bank is prefetched, not at request user
+        # therefore we use this trick to get the same user but with prefethed fields:
+        self.user = game.players.get(user=user).user
+        self.player = game.players.get(user=user)  # player who made an action
         self.conditions = [
             BaseGameAction.stage_condition,
             BaseGameAction.performer_condition,
@@ -85,6 +88,9 @@ class BaseGameAction:
         return (
             type(self) == type(__o) and self.game == __o.game and self.user == __o.user
         )
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
 
     @classmethod
     def preform(
@@ -216,12 +222,23 @@ class StartAction(BaseGameAction):
 
 class PlaceBet(BaseGameAction):
     suitable_stage = BiddingsStage
+    values_expected = True
 
     def future_bet_total(self) -> int:
         return self.player.bet_total + self.value
 
-    def value_in_valid_range_condition(self):
+    def value_is_valid(self):
+        try:
+            PlayerBet(player=self.player, value=self.value).full_clean()
+        except ValidationError as e:
+            raise ActError(e.error_dict.get('value') or e)
+        return True
+
+    def value_in_necessary_range(self):
         necessary = self.game.stage.get_necessary_action_values()
+        necessary_min = necessary['min']
+        necessary_max = necessary['max']
+        logger.debug(f'{necessary_min} <= {self.value} <= {necessary_max}')
         return necessary['min'] <= self.value <= necessary['max']
 
     def if_already_placed_bet_is_not_more_than_other_max_bet_condition(self):
@@ -236,7 +253,8 @@ class PlaceBet(BaseGameAction):
         return True
 
     conditions = [
-        value_in_valid_range_condition,
+        value_is_valid,
+        value_in_necessary_range,
         if_already_placed_bet_is_not_more_than_other_max_bet_condition,
     ]
 
@@ -266,10 +284,15 @@ class PlaceBet(BaseGameAction):
 
 class PlaceBlind(PlaceBet):
     suitable_stage = PlacingBlindsStage
+    values_expected = False
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
         value = self.suitable_stage(game).get_necessary_action_values().get('min')
-        assert value is not None, 'invalid suitable stage'
+        if value is None:
+            raise ValueError(
+                'Necessary value is None. Probably invalid suitable stage for action. '
+                'Or probably performer is None. '
+            )
 
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
@@ -280,6 +303,8 @@ class PlaceBetCheck(PlaceBet):
     In that case we place 0 to mark that plyer made his desigion about bet.
     """
 
+    values_expected = False
+
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
         value = 0
         super().__init__(game, user, value=value, act_immediately=act_immediately)
@@ -288,14 +313,19 @@ class PlaceBetCheck(PlaceBet):
 class PlaceBetReply(PlaceBet):
     """Reply to other player bet. Place min possible bet value."""
 
+    values_expected = False
+
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
         value = self.suitable_stage(game).get_necessary_action_values().get('min')
-        assert value is not None, 'invalid suitable stage'
+        if value is None:
+            raise ValueError(
+                'Necessary value is None. Probably invalid suitable stage for action. '
+                'Or probably performer is None. '
+            )
 
         if value == 0:
-            logger.warning(
-                f'Acting {self} when there are not bets att all. '
-                'Go ahead with value = 0, that equal to PlaceBetCheck. '
+            raise ValueError(
+                f'{self} with 0 when there are no other bet was placed. '
             )
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
@@ -303,9 +333,15 @@ class PlaceBetReply(PlaceBet):
 class PlaceBetVaBank(PlaceBet):
     """All in. Place max possible bet value."""
 
+    values_expected = False
+
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
         value = self.suitable_stage(game).get_necessary_action_values().get('max')
-        assert value is not None, 'invalid suitable stage'
+        if value is None:
+            raise ValueError(
+                'Necessary value is None. Probably invalid suitable stage for action. '
+                'Or probably performer is None. '
+            )
 
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
@@ -346,3 +382,48 @@ class ActionContainer:
                 f'Invalid action name: {name}. '
                 f'Available actions: {[a.__name__ for a in cls.actions]}'
             )
+
+    @classmethod
+    def get_avaliable_and_not(cls, at_game: Game, by_user: User):
+        game = at_game
+        user = by_user
+
+        avaliable = []
+        not_avaliable = []
+        for action_type in cls.actions:
+            action_type.values = (
+                game.stage.get_necessary_action_values()
+                if action_type.values_expected
+                else {}
+            )
+            try:
+                action = action_type(
+                    game,
+                    user,
+                    action_type.values.get('min'),
+                    act_immediately=False,
+                )
+            except ValueError as e:
+                logger.error(f'Eror at action init: {e}')
+                action_type.error = e
+                not_avaliable.append(action_type)
+                continue
+
+            # find out: avaliable or not
+            try:
+                action.check_conditions()
+                avaliable.append(action_type)
+            except ActError as e:
+                action_type.error = e
+                not_avaliable.append(action_type)
+
+        # trim avaliable actions:
+        excess = []
+        if PlaceBlind in avaliable and PlaceBet in avaliable:
+            excess.append(PlaceBet)
+            avaliable.remove(PlaceBet)
+        if PassAction in avaliable and PlaceBetCheck in avaliable:
+            excess.append(PassAction)
+            avaliable.remove(PassAction)
+
+        return avaliable, not_avaliable, excess

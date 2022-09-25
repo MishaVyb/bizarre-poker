@@ -80,3 +80,10 @@ class TestAuto(BaseGameProperties):
             == self.input_users_bank[self.usernames[0]] - bet_value
         )
         assert next(self.game.players.passed) == self.users_list[1].player_at(self.game)
+
+    def test_autoplay_game_actions_amount(self, setup_users_banks):
+        auto.autoplay_game(self.game, stop_after_actions_amount=1)
+        auto.autoplay_game(self.game, stop_after_actions_amount=1)
+        auto.autoplay_game(self.game, stop_after_actions_amount=1)
+        auto.autoplay_game(self.game, stop_after_actions_amount=1)
+        assert [p.bet_total for p in self.players_list] == [10, 5, 10]
