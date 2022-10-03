@@ -19,7 +19,7 @@ class GameAdmin(admin.ModelAdmin):
 
 @admin.register(models.Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'position', 'hand', 'is_host')
+    list_display = ('pk', 'game', 'user', 'position', 'hand', 'is_host')
     list_editable = ('position', 'is_host')
 
     empty_value_display = 'empty'

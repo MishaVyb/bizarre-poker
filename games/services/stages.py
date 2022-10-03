@@ -17,9 +17,11 @@ logger = init_logger(__name__)
 
 
 class StageProcessingError(Exception):
-    def __init__(self, stage: BaseGameStage, requirement_name: str) -> None:
+    def __init__(self, stage: BaseGameStage, requirement_name: str, verbose_message) -> None:
         self.stage = stage
         self.requirement_name = requirement_name
+        self.verbose_message = verbose_message
+
         super().__init__()
 
     def __str__(self) -> str:
@@ -35,6 +37,12 @@ class BaseGameStage:
     # We can not import actions module here because it using StagesContainer defined
     # here. Еherefore using str name to splecify a necessart action.
     necessary_action: str | None = None
+
+    message: str = ''
+    message_stop_processing: str = '{player}'
+
+    def get_message_format(self):
+        return self.message
 
     def __init__(self, game: Game) -> None:
         self.game = game
@@ -69,10 +77,14 @@ class BaseGameStage:
         # base requirements
 
         # sub classes requirements
-        for r in self.requirements:
-            if not r(self):
+        for requirement in self.requirements:
+            if not requirement(self):
                 if raises:
-                    raise StageProcessingError(self, r.__name__)
+                    raise StageProcessingError(
+                        self,
+                        requirement.__name__,
+                        self.message_stop_processing.format(player=self.performer),
+                    )
                 return False
         return True
 
@@ -81,13 +93,27 @@ class BaseGameStage:
         self.check_requirements()
         # [2]....
         self.process_subclass()
+
         # [3] ckeck game end condition
-        if len(list(self.game.players.active)) == 1:
-            # -1 because after game process have done, contionue_processing(..) will
-            # incrase stage_index by 1
-            self.game.stage_index = (
-                StagesContainer.stages.index(StagesContainer.get('OpposingStage')) - 1
+        if self.get_message_format():
+            self.game.actions_history.append(
+                {
+                    'performer': None,
+                    'class': self.__class__.__name__,
+                    'repr': repr(self),
+                    'message': self.get_message_format(),
+                }
             )
+
+        # only one active player ----> go to last stage
+        if len(list(self.game.players.active)) == 1:
+            opposing_index = StagesContainer.stages.index(
+                StagesContainer.get('OpposingStage')
+            )
+            if self.game.stage_index < opposing_index:
+                # -1 because after game process have done, contionue_processing(..)
+                # will incrase stage_index by 1
+                self.game.stage_index = opposing_index - 1
 
     def process_subclass(self):
         raise NotImplementedError
@@ -99,6 +125,8 @@ class BaseGameStage:
 
 class SetupStage(BaseGameStage):
     necessary_action = 'StartAction'
+    message: str = 'game begins'
+    message_stop_processing: str = 'wait while {player} start this game'
 
     def players_more_than_one(self):
         return len(self.game.players) > 1
@@ -138,8 +166,12 @@ class DealCardsStage(BaseGameStage):
     """Pre-flop: draw cards to all players."""
 
     amount: int
+    message: str = 'deal {amount} cards to players'
 
-    def process(self):
+    def get_message_format(self):
+        return self.message.format(amount=self.amount)
+
+    def process_subclass(self):
         for _ in range(self.amount):
             for player in self.game.players:
                 player.hand.append(self.game.deck.pop())
@@ -148,6 +180,8 @@ class DealCardsStage(BaseGameStage):
 
 class BiddingsStage(BaseGameStage):
     necessary_action = 'PlaceBet'
+    message: str = 'bets are accepted'
+    message_stop_processing: str = 'wait while {player} place his bet'
 
     @property
     def performer(self):
@@ -195,6 +229,8 @@ class BiddingsStage(BaseGameStage):
 
 class PlacingBlindsStage(BiddingsStage):
     necessary_action = 'PlaceBlind'
+    message: str = 'blinds are accepted'
+    message_stop_processing: str = 'wait while {player} place his blind'
 
     def players_have_placed_blinds_or_passed(self):
         iterator = self.game.players.after_dealer_all
@@ -241,9 +277,14 @@ class PlacingBlindsStage(BiddingsStage):
 class FlopStage(BaseGameStage):
     """Place cards on the table."""
 
+    message: str = 'flop {amount} cards on game table. '
+
+    def get_message_format(self):
+        return self.message.format(amount=self.amount)
+
     amount: int
 
-    def process(self) -> None:
+    def process_subclass(self):
         flop = self.game.deck[-self.amount :]
         self.game.table.extend(reversed(flop))
         del self.game.deck[-self.amount :]
@@ -251,7 +292,13 @@ class FlopStage(BaseGameStage):
 
 
 class OpposingStage(BaseGameStage):
-    def process(self) -> None:
+    message: str = '{winners} has {combo} and wins {benefit}'
+    message_format_kwargs: dict = {}
+
+    def get_message_format(self):
+        return self.message.format(**self.message_format_kwargs)
+
+    def process_subclass(self):
         combo, winners_iter = next(
             itertools.groupby(self.game.players.active, attrgetter('combo'))
         )
@@ -268,15 +315,32 @@ class OpposingStage(BaseGameStage):
             player.user.profile.presave()
         self.game.presave()
 
-        logger.info(
-            f'{StrColors.underline("Game summary")}'
-            f'Combos: {[p.combo for p in self.game.players.active]}'
-            f'Winners: {winners}'
+        self.message_format_kwargs['winners'] = ' '.join(
+            [p.user.username for p in winners]
         )
+        self.message_format_kwargs['combo'] = winners[0].combo.kind.name
+        self.message_format_kwargs['benefit'] = round(share/100, 2)
 
 
 class TearDownStage(BaseGameStage):
-    def process(self) -> None:
+    necessary_action = 'EndAction'
+    message: str = ''
+    message_stop_processing: str = 'wait while {player} confirm ending this game'
+
+    def host_approved_tear_down(self):
+        return not self.game.begins
+
+    requirements = [
+        host_approved_tear_down,
+    ]
+
+    @property
+    def performer(self):
+        if self.check_requirements(raises=False):
+            return None
+        return self.game.players.host if self.game.players else None
+
+    def process_subclass(self):
         self.game.begins = False
         self.game.deck.clear()
         self.game.table.clear()
@@ -287,7 +351,7 @@ class TearDownStage(BaseGameStage):
 
 
 class MoveDealerButton(BaseGameStage):
-    def process(self) -> None:
+    def process_subclass(self):
         n = len(self.game.players)
         self.game.players[0].is_dealer = False
         self.game.players[0].position = n - 1  # become last
@@ -323,14 +387,14 @@ def save_game_objects(game: Game):
 class StagesContainer:
     stages: tuple[type[BaseGameStage], ...] = (
         SetupStage,
-        DealCardsStage.factory(amount=2),
+        DealCardsStage.factory(amount=3),
         PlacingBlindsStage,
         BiddingsStage.factory('BiddingsStage-1'),
         FlopStage.factory('FlopStage-1', amount=3),
         BiddingsStage.factory('BiddingsStage-2'),
-        FlopStage.factory('FlopStage-2', amount=1),
+        FlopStage.factory('FlopStage-2', amount=2),
         BiddingsStage.factory('BiddingsStage-3'),
-        FlopStage.factory('FlopStage-3', amount=1),
+        FlopStage.factory('FlopStage-3', amount=2),
         BiddingsStage.factory('BiddingsStage-4(final)'),
         OpposingStage,
         # stages for preparing next game:
@@ -374,9 +438,12 @@ class StagesContainer:
             game.stage.process()  # process curent stage:
         except StageProcessingError as e:
             logger.info(f'{e}. ')
-            #game.
+            game.status = e.verbose_message
+            game.presave()
+
             if cls._save_after_proces_stoped:  # SAVING
                 save_game_objects(game)
+
             return {'status': 'forced_stop', 'error': e}
 
         # successfully! go to the next stage:

@@ -13,7 +13,9 @@
     <div class="card-body">
       <p class="card-text"><h5>{{player.profile_bank}}<h5></p>
       <p class="card-text">{{player.bet_total}}</p>
-      <p class="card-text">{{player.combo.name}} {{player.combo.stacks}}</p>
+      {% if player.combo %}<span class="badge bg-light">{{player.combo.name}} {{player.combo.stacks}}</span>{% endif %}
+      {% if player.hand %}<span class="badge bg-primary"><h5> hand: {{player.hand}} </h5></span>{% endif %}
+
 
 
     </div>

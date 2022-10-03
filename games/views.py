@@ -91,7 +91,7 @@ class GameView(views.View):
         response: Response = api_views.GamesViewSet.as_view({'get': 'retrieve'})(
             request, pk=pk
         )
-        game: JSON = response.data
+        game: dict = response.data
 
         response = api_views.PlayersViewSet.as_view({'get': 'me'})(request, game_pk=pk)
         if response.status_code != 200:
@@ -128,6 +128,7 @@ class GameView(views.View):
             'reply': 'btn btn-outline-success',
             'blind': 'btn btn-outline-success',
             'start': 'btn btn-info',
+            'end': 'btn btn-info',
             'vabank': 'btn btn-success',
             'place bet': 'btn btn-outline-success',
             'next': 'btn btn-primary',
@@ -136,16 +137,26 @@ class GameView(views.View):
 
         if avaliable and avaliable[0]['name'] == 'bet':
             avaliable[0]['name'] = 'place bet'
-            avaliable.append(avaliable.pop(0))
+            min = avaliable[0]['values']['min']
+            max = avaliable[0]['values']['max']
+            avaliable.pop(0)
+
+            for extra in [5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200]:
+                if min <= extra <= max:
+                    pk = game['id']
+                    avaliable.append(
+                        {
+                            'name': '💵 {bet:.2f}'.format(bet=extra/100),
+                            'url': f'/api/v1/games/{pk}/actions/bet_{extra}/',
+                        }
+                    )
 
         if player['is_host']:
             avaliable.append({'name': 'next'})
 
         for action in avaliable:
             action['bet_values'] = action.get('values')
-            action['button_class'] = BUTTON_CLASSES[action['name']]
-
-
+            action['button_class'] = BUTTON_CLASSES.get(action['name'], 'btn btn-outline-success')
 
         context = {
             'game': game,
@@ -160,6 +171,20 @@ class GameView(views.View):
         assert isinstance(game, dict)
         n = int(game.get('bank', 0) / DEFAULT.bet_multiplicity)
         game['bank'] = '🍔 ' * n
+        game['actions_history'] = list(reversed(game['actions_history']))
+        for action in game['actions_history']:
+
+            if action['performer'] is None:
+                badge_class = 'badge bg-info'
+            elif action['performer'] == self.request.user.username:
+                badge_class = 'badge bg-warning'
+            else:
+                badge_class = 'badge bg-dark'
+
+            if action['class'] == 'OpposingStage':
+                badge_class = 'badge bg-success'
+
+            action['badge_class'] = badge_class
 
     def reformat_player(self, player: JSON | _JSON_SUPPORTED):
         assert isinstance(player, dict)
@@ -170,7 +195,7 @@ class GameView(views.View):
             player['bet_total'] = '🍔 ' * n or 'check'
 
         bank = player['profile_bank']
-        player['profile_bank'] = f'💵 {round(bank/100, 2)}'
+        player['profile_bank'] = '💵 {bank:.2f}'.format(bank=player['profile_bank']/100)
 
     def make_log(self, data_dict: JSON = None, **kwargs):
         data = copy(data_dict or kwargs)

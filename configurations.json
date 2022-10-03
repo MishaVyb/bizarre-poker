@@ -3,9 +3,10 @@
     "big_blind": 10,
     "bet_multiplicity": 5,
     "deck_shuffling": true,
-    "deck_container_name": "standart_52_card_deck_plus_jokers",
+    "deck_container_name": "full_deck_plus_jokers",
 
-    "deal_cards_amount": 2,
-    "flops_amounts": [3, 1, 1],
-    "jokers_amount": 10
+    "deal_cards_amount": 3,
+    "flops_amounts": [3, 2, 2],
+    "jokers_amount": 5,
+    "multy_decks_amount": 1
 }

@@ -1,9 +1,4 @@
 from __future__ import annotations
-from copy import copy
-
-import re
-from pprint import pformat
-from typing import Iterable, Literal, OrderedDict
 
 import pytest
 from core.functools.utils import StrColors, init_logger
@@ -12,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
+from games.services.configurations import DEFAULT
 from tests.base import BaseGameProperties, APIGameProperties
 from games.services.combos import Combo
 from games.services.auto import autoplay_game
@@ -63,8 +59,8 @@ class TestGameAPI(APIGameProperties):
             'games',
             expected_status=status.HTTP_201_CREATED,
         )
-        # assert that user join that game as host
-        assert '(0) vybornyy(h)(d)' in self.response_data['players'][0]
+        # assert that user join that game (as a host)
+        assert self.response_data['players'][0] == 'vybornyy'
 
         autoplay_game(self.game, stop_after_stage='FlopStage-1')
 
@@ -118,7 +114,7 @@ class TestGameAPI(APIGameProperties):
         assert self.response_data[0]['user'] == str(self.players_list[1].user)
         assert self.response_data[1]['user'] == str(self.players_list[2].user)
 
-    def test_actions_endpoint(self, setup_users_banks):
+    def test_actions_endpoint(self, setup_users_banks: list[int]):
         self.assert_response(
             '[1] get all actions by host | assert start is avaliable',
             'vybornyy',
@@ -132,18 +128,19 @@ class TestGameAPI(APIGameProperties):
             '[2] vybornyy make avaliable action', 'vybornyy', 'POST', 'start'
         )
         self.assert_response(
-            '[3] get all actions by small blind maker', 'simusik', 'GET', 'actions'
+            '[3] get all actions by small blind maker | ensure that `pass` is not avaliable',
+            'simusik',
+            'GET',
+            'actions',
         )
-        assert self.avaliable_action_names == ['blind', 'pass']
-        # pass action has no value:
-        assert self.response_data['avaliable'][1].get('value') is None
+        assert self.avaliable_action_names == ['blind']
 
         self.assert_response('[4] act invalid action', 'simusik', 'POST', 'start')
         expected = r'Game has another current stage'
         assert expected in self.response_data['act_error']
 
         self.assert_response('[5] act valid', 'simusik', 'POST', 'blind')
-        self.assert_response('[6] act valid', 'barticheg', 'POST', 'pass')
+        self.assert_response('[6] act valid', 'barticheg', 'POST', 'blind')
         self.assert_response(
             '[7] act invalid value', 'vybornyy', 'POST', 'bet', {'value': -20}
         )
@@ -163,19 +160,19 @@ class TestGameAPI(APIGameProperties):
             '[8] act valid value', 'vybornyy', 'POST', 'bet', {'value': valid_bet}
         )
         self.assert_response('[9]', 'simusik', 'POST', 'reply')
-        self.assert_response('[10]', 'vybornyy', 'POST', 'check')
-        self.assert_response('[11]', 'simusik', 'POST', 'vabank')
-        self.assert_response('[12]', 'vybornyy', 'POST', 'pass')
+        self.assert_response('[10]', 'barticheg', 'POST', 'pass')
+        self.assert_response('[11]', 'vybornyy', 'POST', 'check')
+        self.assert_response('[12]', 'simusik', 'POST', 'vabank')
+        self.assert_response('[13]', 'vybornyy', 'POST', 'pass')
 
         # winner got his benefit
-        assert self.users_list[1].profile.bank == setup_users_banks[1] + valid_bet
+        # benefit -- bet place by vybornyy and big blind placed by barticheg
+        benefit = valid_bet + DEFAULT.big_blind
+        winner = 1  # simusik
+        bank = self.users_list[winner].profile.bank
+        assert bank == setup_users_banks[winner] + benefit
 
-        # game waiting for new game round begins
-        assert self.response_data['stage']['name'] == 'SetupStage'
-        assert self.response_data['stage']['performer'] == '(2) vybornyy(h)'
 
-        # self.assert_response('', 'simusik', 'GET', 'game_detail')
-        # self.make_log()
 
     def test_players_endpoint_bet_total(self):
         autoplay_game(self.game, stop_before_stage='BiddingsStage-1')

@@ -1,5 +1,6 @@
 from copy import deepcopy
-from typing import Any, Iterable, Iterator, Optional, TypeAlias, TypeVar
+import functools
+from typing import Any, Callable, Iterable, Iterator, Optional, TypeAlias, TypeVar
 import typing
 from django.db import models
 from core.functools.utils import StrColors, init_logger
@@ -14,6 +15,23 @@ else:
 
 
 _T = TypeVar('_T')
+
+
+def get_list_default():
+    return []
+
+
+def related_manager_method(wrapped: Callable):
+    @functools.wraps(wrapped)
+    def wrapper(self: models.Manager, *args, **kwargs):
+        assert isinstance(self, models.Manager), 'decorator is only for Manager methods'
+        if hasattr(self, 'instance'):
+            return wrapped(self, *args, **kwargs)
+        raise AttributeError(
+            f'{wrapped.__name__} is forbidden to use via class manager. '
+        )
+
+    return wrapper
 
 
 class IterableManager(models.Manager[_T]):

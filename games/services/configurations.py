@@ -11,6 +11,7 @@ class ConfigSchema(pydantic.BaseModel):
     deal_cards_amount: int
     flops_amounts: list[int]
     jokers_amount: int
+    multy_decks_amount: int
 
 
 DEFAULT = ConfigSchema.parse_file('configurations.json')

@@ -5,7 +5,7 @@ from typing import Any, Callable
 import pytest
 
 from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
-
+from games.services.configurations import DEFAULT
 
 @pytest.mark.parametrize(
     ['input_data', 'expected'],
@@ -574,12 +574,12 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
         input_data.shuffle()
 
 
-def test_standart_52_card_deck_plus_jokers():
-    jokers_amount = 5
-
-    generator = Decks.standart_52_card_deck_plus_jokers(jokers_amount)
+def test_full_deck_plus_jokers():
+    expected_length = 52 * DEFAULT.multy_decks_amount + DEFAULT.jokers_amount
+    generator = Decks.full_deck_plus_jokers()
     cl = CardList(instance=generator)
-    assert cl.length == 52 + jokers_amount
+
+    assert cl.length == expected_length
 
     # check joker kind amounts
     red = JokerCard('red')
@@ -587,10 +587,10 @@ def test_standart_52_card_deck_plus_jokers():
     assert len(list(filter(lambda c: c == red, cl))) == 2
     assert len(list(filter(lambda c: c == black, cl))) == 3
 
-    # check generator for not exhausness
-    new_generator = Decks.standart_52_card_deck_plus_jokers(jokers_amount)
-    assert CardList(instance=new_generator).length == 52 + jokers_amount
+    # check new_generator is not exhaused
+    new_generator = Decks.full_deck_plus_jokers()
+    assert CardList(instance=new_generator).length == expected_length
 
     # use new_generator again
-    # be carefull, becouse in that way no cards will be yield
+    # be carefull, because in that way no cards will be yield
     assert CardList(instance=new_generator).length == 0

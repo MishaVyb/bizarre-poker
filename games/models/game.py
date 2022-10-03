@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
 
 from core.functools.utils import StrColors, init_logger
 from core.models import CreatedModifiedModel, FullCleanSavingMixin, UpdateMethodMixin
@@ -12,6 +12,7 @@ from games.services import configurations
 from games.services.cards import CardList
 from games.services.stages import BaseGameStage, StagesContainer
 from tests.tools import ExtendedQueriesContext
+from core.models import get_list_default
 
 if TYPE_CHECKING:
     from .player import Player, PlayerManager
@@ -68,6 +69,17 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     bank: int = models.PositiveIntegerField(
         'all accepted beds for game round', default=0
     )
+    status: str = models.CharField(max_length=200, blank=True)
+    actions_history: list[dict[str, Any]] = models.JSONField(
+        default=get_list_default, blank=True
+    )
+    # [
+    #     {
+    #         'performer': player.user.username or None if it was game stage,
+    #         'action_class': class_name
+    #         'message': '....'
+    #     }
+    # ]
 
     begins: bool = models.BooleanField(default=False)
     """Is game started or not."""

@@ -1,7 +1,8 @@
 from __future__ import annotations
+import functools
 
 
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 from core.functools.utils import StrColors, init_logger
 from core.models import (
@@ -9,6 +10,7 @@ from core.models import (
     FullCleanSavingMixin,
     UpdateMethodMixin,
     IterableManager,
+    related_manager_method
 )
 from core.validators import bet_multiplicity
 from django.db import IntegrityError, models
@@ -20,6 +22,7 @@ from games.models import Game
 from games.models.fields import CardListField
 from users.models import User
 
+
 logger = init_logger(__name__)
 
 _T = TypeVar('_T')
@@ -30,18 +33,21 @@ class PlayerQuerySet(models.QuerySet):
 
 
 class PlayerManager(IterableManager[_T]):
+
+
     def get_queryset(self):
+        dealer_case = models.Case(
+            models.When(position=0, then=models.Value(True)),
+            models.When(position__gt=0, then=models.Value(False)),
+        )
         return (
             PlayerQuerySet(model=self.model, using=self._db, hints=self._hints)
-            .annotate(
-                is_dealer=models.Case(
-                    models.When(position=0, then=models.Value(True)),
-                    models.When(position__gt=0, then=models.Value(False)),
-                )
-            )
+            .annotate(is_dealer=dealer_case)
             .annotate(bet_total=functions.Coalesce(models.Sum('bets__value'), 0))
+            .order_by('position')  # !!!
         )
 
+    @related_manager_method
     def update_annotation(self, *fields, **fields_values):
         """Update annotaion for every player."""
         for field in fields:
@@ -52,16 +58,20 @@ class PlayerManager(IterableManager[_T]):
             for player in self:
                 setattr(player, field, value)
 
+    @related_manager_method
     def all_bets(self):
         """Call in for delete all bets (for example, after BiddingStage ended)."""
         return PlayerBet.objects.filter(player__in=[p.pk for p in self])
 
+    @related_manager_method
     def aggregate_max_bet(self) -> int:
         return self.aggregate(max=models.Max('bet_total'))['max']
 
+    @related_manager_method
     def aggregate_sum_all_bets(self) -> int:
         return self.game.players.aggregate(models.Sum('bet_total'))
 
+    @related_manager_method
     def check_bet_equality(self):
         """True if all beds equal (for active players).
 
@@ -73,11 +83,13 @@ class PlayerManager(IterableManager[_T]):
         )
         return agregated['diff'] == 0
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def with_max_bet(self) -> Player:
         return self.order_by('-bet_total').first()
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def ordered_by_bet(self):
         """Get ordered active players with None bet first then 0 then ascending.
         Starting after dealer.
@@ -93,31 +105,37 @@ class PlayerManager(IterableManager[_T]):
     def _annotate_bet_total_with_none(qs: PlayerQuerySet):
         return qs.annotate(bet_total_none=models.Sum('bets__value'))
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def without_bet(self):
         """for active players starting after dealer"""
         return self.after_dealer.filter(is_active=True, bets__isnull=True)
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def after_dealer(self):
         """active players starting after dealer button."""
         return self.order_by('is_dealer', 'position').filter(is_active=True)
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def after_dealer_all(self):
         """All players (active and passive) starting after dealer button."""
         return self.order_by('is_dealer', 'position')
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def active(self):
         """Players that have not said `pass`."""
         return self.filter(is_active=True)
 
-    @property
+    @property   # type: ignore
+    @related_manager_method
     def host(self):
         return self.get(is_host=True)
 
-    @property
+    @property  # type: ignore
+    @related_manager_method
     def dealer(self):
         return self.get(is_dealer=True)
 
@@ -193,7 +211,7 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             return f'{self.__class__.__name__}'
 
     def __str__(self) -> str:
-        return self.__repr__()
+        return self.user.username
 
     def pre_save(self):
         self._presave_flag = True
@@ -208,49 +226,7 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             self.position = last.position + 1 if last else 0
 
     def clean(self) -> None:
-        "Check constraints and clean values if could, otherwise raising IntegrityError."
-        # [1] validate only this player instance
-        ...
-
-        # [2] validate players dependences
-        # validate all player dependences at this Game with this player instance
-        # replace game player list with self instence and operate with new list
-        game = self.game
-        players = game.get_players() or self.game.players_manager.all()
-
-        if isinstance(players, PlayerSelector):
-            players = self.game.players
-            if not list(filter(lambda p: self is p, players)):
-                logger.error('Player instance should appear at player selector. ')
-        else:
-            logger.warning('Player selector is None. Player manager will be used insted. ')
-
-        # check host
-        amount = len(list(filter(lambda p: p.is_host, players)))
-        if not amount:
-            raise IntegrityError(f'{game} has no host. ')
-        if amount > 1:
-            raise IntegrityError(f'Many hosts at {game}. ')
-
-        # chek dealer
-        # checking dealer has no sense, because it not an attribute, but jast a rule,
-        # that player at 0 position is dealer (annotated via PlayerQuerySet)
-
-        # ckeck players ordering by positions
-        current = [p.position for p in players]
-        expected = list(range(len(players)))
-        if current != expected:
-            current.sort()
-            if current != expected:
-                raise IntegrityError(f'{game} has invalid players positions: {current}')
-
-            logger.warning(f'{game} has invalid players ordering. Will be re-oredered here. ')
-            game.players.reorder_source()
-
-            # mmm = list(game.players_manager)
-            # ppp = list(game.players)
-            # mmm
-            # ppp
+        pass
 
 
 ########################################################################################

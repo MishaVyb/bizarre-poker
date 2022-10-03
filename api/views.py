@@ -1,34 +1,20 @@
-from functools import cached_property
 import logging
+from functools import cached_property
 from typing import Type
-from api.serializers import (
-    BetValueSerializer,
-    GameSerializer,
-    PlayerSerializer,
-)
-from django.shortcuts import get_object_or_404, get_list_or_404
-from games.models import Game, Player
-from rest_framework import filters, mixins, viewsets, views
-from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from rest_framework.serializers import BaseSerializer
-from rest_framework.exceptions import NotFound
 
-from users.models import User
-from rest_framework.decorators import action
-from rest_framework.request import Request
-from django.db import IntegrityError
-from rest_framework.response import Response
-from rest_framework import status
 from core.functools.utils import init_logger
-from django.db.models import Q
-from games.selectors import PlayerSelector
-from core.functools.decorators import temporally
-from games.services.cards import Card
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
+from games.models import Game, Player
+from games.services import actions
+from rest_framework import views, viewsets
+from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from api.serializers import BetValueSerializer, GameSerializer, PlayerSerializer
 
 logger = init_logger(__name__, logging.INFO)
-from games.services import actions
 
 
 class GamesViewSet(viewsets.ModelViewSet):
@@ -63,6 +49,7 @@ class ActionsViewSet(viewsets.ViewSet):
         actions.PlaceBetCheck: '/api/v1/games/{pk}/actions/check/',
         actions.PlaceBetReply: '/api/v1/games/{pk}/actions/reply/',
         actions.PlaceBetVaBank: '/api/v1/games/{pk}/actions/vabank/',
+        actions.EndAction: '/api/v1/games/{pk}/actions/end/',
     }
 
     @cached_property
@@ -126,7 +113,7 @@ class ActionsViewSet(viewsets.ViewSet):
             return Response({'act_error': str(e)})
 
         serializer = GameSerializer(instance=game)
-        return redirect('games:game', pk=self.kwargs['pk'])
+
         return Response(serializer.data)
 
     @action(methods=['post'], detail=False)
@@ -160,6 +147,9 @@ class ActionsViewSet(viewsets.ViewSet):
     def vabank(self, request, pk: int):
         return self.exicute(actions.PlaceBetVaBank)
 
+    @action(methods=['post'], detail=False)
+    def end(self, request, pk: int):
+        return self.exicute(actions.EndAction)
 
 
 class PlayersViewSet(viewsets.ReadOnlyModelViewSet):
@@ -182,11 +172,6 @@ class PlayersViewSet(viewsets.ReadOnlyModelViewSet):
             instance=other, context={'request': request}, many=True
         )
         return Response(serializer.data)
-
-
-# class ActionsView(views.APIView):
-
-#     def get()
 
 
 class TestView(views.APIView):

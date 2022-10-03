@@ -169,6 +169,45 @@ CLASSIC_COMBOS = ComboKindList(
     ]
 )
 
+CLASSIC_COMBOS_EXTENDED = ComboKindList(
+    [
+        ComboKind(highest_card=[1], name='high card'),
+        ComboKind(rank=[2], name='one pair'),
+        ComboKind(rank=[2, 2], name='two pair'),
+
+        ComboKind(row=[3], name='loh straight'),
+        ComboKind(suit=[3], name='loh flush'),
+
+        ComboKind(rank=[3], name='three of kind'),
+
+        ComboKind(row=[4], name='small straight'),
+        ComboKind(suit=[4], name='small flush'),
+
+        ComboKind(rank=[2, 2, 2], name='three pair'),
+        ComboKind(row=[5], name='straight'),
+        ComboKind(suit=[5], name='flush'),
+        ComboKind(rank=[3, 2], name='full house'),
+        ComboKind(rank=[4], name='four of kind'),
+        ComboKind(row=[5], suit=[5], name='straight flush'),
+        ComboKind(rank=[5], name='pocker'),
+
+        ComboKind(row=[6], name='midi straight'),
+        ComboKind(suit=[6], name='midi  flush'),
+
+        ComboKind(row=[7], name='big straight'),
+        ComboKind(suit=[7], name='big flush'),
+        ComboKind(rank=[4, 3], name='big full house'),
+
+        ComboKind(rank=[6], name='sixxxx'),
+        ComboKind(rank=[7], name='sevennnn'),
+
+        ComboKind(rank=[5, 4], name='mega full house'),
+
+        ComboKind(rank=[8], name='eightttttt'),
+        ComboKind(rank=[9], name='nineeeeeeee'),
+    ]
+)
+
 
 @functools.total_ordering
 class ComboStacks:

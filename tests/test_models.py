@@ -41,9 +41,8 @@ class TestGameModel:
         assert isinstance(game.table, CardList)
         assert game.deck, game.table == (deck, table)
 
-        # no player selector, because they were not selected
-        with pytest.raises(RuntimeError, match=r'None selector'):
-            game.players
+        # no player selector - no rises, but warning log
+        game.players
 
         game.select_players()
         assert game.players
@@ -372,19 +371,6 @@ class TestGamePlayersInterface(BaseGameProperties):
         assert game.players[0].is_active is False
 
 
-@pytest.mark.django_db
-class TestPlayerModel:
-    def test_clean_rises(self, game: Game):
-        if not game.get_players():
-            pytest.skip('test has no sense for game without players')
-
-        with pytest.raises(IntegrityError):
-            game.players[0].is_host = False
-            game.players[0].save()
-        with pytest.raises(IntegrityError):
-            game.players[0].position = 123
-            game.players[0].save()
-
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures('setup_game')
@@ -415,12 +401,11 @@ class TestPlayerManager(BaseGameProperties):
         # crete another Game
         self.game_pk = Game(players=User.objects.all(), commit=True).pk
 
-        # via class -- forbidden, becaues default manaeg is setted for `objects`
-        with pytest.raises(AttributeError, match="no attribute 'host'"):
-            Player.objects.host
 
-        # via related instance -- okey
-        assert game.players_manager.host
+        self.game.players_manager.host      # not rises via instance
+        with pytest.raises(AttributeError):
+            Player.objects.host             # but forbidden via class
+
 
         # player manager has custom query set for redefine some methods
         assert isinstance(game.players_manager.all(), PlayerQuerySet)

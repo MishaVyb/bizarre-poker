@@ -1,30 +1,13 @@
-from re import L
-from typing import Any, Dict
 
-from games.models import Game, Player, PlayerBet
+from games.models import Game, Player
 
-from rest_framework import serializers, validators
-from rest_framework.validators import UniqueTogetherValidator
-from games.services.stages import OpposingStage
+from rest_framework import serializers
 
 from users.models import User
-from django.db.models import Q
-from core.functools.decorators import temporally
-from games.services.cards import Card, CardList
+from games.services.cards import CardList
 
 from rest_framework.request import Request
 
-# class PlayerComboSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = PlayerCombo
-#         # fields = '__all__'
-#         exclude = ('id',)
-
-
-# class PlayerBetSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = PlayerBet
-#         fields = ('value',)
 
 
 class StageSeroalizer(serializers.Serializer):
@@ -41,7 +24,7 @@ class GameSerializer(serializers.ModelSerializer):
     stage = StageSeroalizer(read_only=True)
 
     def get_deck(self, obj: Game):
-        return obj.deck.hiden()  # always
+        return obj.deck.hiden()     # always hiden
 
     class Meta:
         model = Game
@@ -55,6 +38,8 @@ class GameSerializer(serializers.ModelSerializer):
             'table',
             'bank',
             'players',
+            'status',
+            'actions_history',
         )
 
 
@@ -80,7 +65,6 @@ class PlayerSerializer(serializers.ModelSerializer):
     combo = serializers.SerializerMethodField()
     is_performer = serializers.SerializerMethodField()
 
-
     def permition(self, obj: Player):
         """player hand and combo visability permitions"""
         request: Request = self.context.get('request')
@@ -88,7 +72,10 @@ class PlayerSerializer(serializers.ModelSerializer):
 
         user_players: list[Player] = request.user.players
         permition = [
-            obj.game.stage == OpposingStage,  # show hand of all players at Opposing
+            obj.game.stage.name
+            == 'OpposingStage',  # show hand of all players at Opposing
+            obj.game.stage.name
+            == 'TearDownStage',  # show hand of all players at TearDownStage
             obj in user_players,  # show hand if it requested by owner
         ]
         return any(permition)
@@ -96,8 +83,8 @@ class PlayerSerializer(serializers.ModelSerializer):
     def get_hand(self, obj: Player):
         if self.permition(obj):
             return str(obj.hand)
-        with temporally(Card.Text, str_method='emoji_shirt'):
-            return str(obj.hand)
+        else:
+            return obj.hand.hiden()
 
     def get_profile_bank(self, obj: Player):
         return obj.user.profile.bank
@@ -132,16 +119,7 @@ class PlayerSerializer(serializers.ModelSerializer):
             'combo',
         )
         extra_kwargs = {'is_dealer': {'read_only': True}}
-        # validators = [
-        #     UniqueTogetherValidator(
-        #         message='User already playing this game',
-        #         queryset=Player.objects.all(),
-        #         fields=('user', 'game'),
-        #     )
-        # ]
 
 
 class BetValueSerializer(serializers.Serializer):
-    value = serializers.IntegerField(
-        # validators=[],
-    )
+    value = serializers.IntegerField()

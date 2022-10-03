@@ -5,5 +5,8 @@
 ###############################
 
 1. Biddings
-    1.1 Blind Fixed to Player -- False.
-    If player wich is blind-maker said [pass], blind won't go next player and game won't require this blind anymore.
+
+    1.1 Blind doesn't go to the next player, if previous one skip it.
+    If player who is blind-maker said [pass], next player should not place this blind and game won't require this blind anymore.
+
+    1.2 But saying pass at Placing Blinds Stage is forbiden. Only [came out].

@@ -6,7 +6,7 @@ import pytest
 from core.functools.decorators import temporally
 from core.functools.utils import StrColors, get_func_name, init_logger
 from games.models import Game
-from games.services.cards import Decks, get_deck_from
+from games.services.cards import Decks
 from games.services.configurations import DEFAULT
 from rest_framework.test import APIClient
 from tests.base import BaseGameProperties
@@ -81,7 +81,7 @@ def setup_deck_get_expected_combos(
 ):
     self: BaseGameProperties = assert_base_class(request.instance)
     data = table_and_hands_and_expected_combos
-    deck = get_deck_from(table=data['table'], hands=data['hands'])
+    deck = Decks.factory_from(table=data['table'], hands=data['hands'])
 
     # check test arrange
     flops = sum(DEFAULT.flops_amounts)

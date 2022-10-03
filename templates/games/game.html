@@ -4,41 +4,78 @@
 
 
 
-<!---------- ACTIONS -------------->
+
+<script>
+  setTimeout(function(){
+    window.location.reload();
+ }, 5000);
+</script>
 
 
-<div class="row d-flex justify-content-center" style='padding-top: 15px;' style='padding-right: 15px;'>
 
 
+<div class="alert alert-dismissible alert-success">
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  <h5>{{game.status}}</h5>
+</div>
 
+{% comment %} <div class="alert alert-dismissible alert-info">
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  {{game.actions_history.0.message}}
+</div> {% endcomment %}
 
-    <div class="card-header">
-      your next step?
-    </div>
-    <div class="card-body">
-      <div class="btn-group" role="group" aria-label="Basic example">
-      {% for action in actions %}
+<div class="accordion" id="accordionExample">
+    <div class="accordion-item">
 
-      <form method="post" enctype="multipart/form-data"
-        {% if action.url %}
-        action="{{ action.url }}"
-        {% endif %}
-        >
-        {% csrf_token %}
-        {% if action.bet_values %}
-        <input id="value" type="text" name="value" value="{{action.bet_values.min}}">
-        {% endif %}
-        <button type="submit" class="{{action.button_class}}">{{action.name}}</button>
-      </form>
+      {% with game.actions_history.0 as action %}
+      <h2 class="accordion-header" id="headingOne">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          <span class="{{action.badge_class}}"><h5>{{action.message}}<h5></span>
+        </button>
+      </h2>
+      {% endwith %}
 
-      {% endfor %}
+      <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionExample" style="">
+        <div class="accordion-body">
+          {% for action in game.actions_history %}
+          {% if not forloop.first %}
+          <span class="{{action.badge_class}}"><h6>{{action.message}}</h6></span>
+          <br>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
     </div>
   </div>
 
+<!---------- ACTIONS -------------->
+<div class="row d-flex justify-content-center" style='padding-top: 15px;' style='padding-right: 15px;'>
+  <div class="card-header">
+    {% comment %} your next step? {% endcomment %}
+  </div>
+  <div class="card-body">
+    <div class="btn-group" role="group" aria-label="Basic example">
+    {% for action in actions %}
+
+    <form method="post" enctype="multipart/form-data"
+      {% if action.url %}
+      action="{{ action.url }}"
+      {% endif %}
+      >
+      {% csrf_token %}
+      {% if action.bet_values %}
+      <input id="value" type="text" name="value" value="{{action.bet_values.min}}">
+      {% else %}
+      <button type="submit" class="{{action.button_class}}">{{action.name}}</button>
+      {% endif %}
+    </form>
+
+    {% endfor %}
+  </div>
 </div>
 
-
-
+</div>
 <!----------- CARDS ---------------->
 <div class="card text-white bg-info mb-3" style="max-width: 20rem;">
   <div class="card-body">
@@ -67,13 +104,6 @@
 {% include 'games/includes/player_card.html' %}
 {% endfor %}
 
-<div class="card border-light mb-3" style="max-width: 20rem;">
-  {% comment %} <div class="card-header">Header</div> {% endcomment %}
-  <div class="card-body">
-    <h4 class="card-title">Light card title</h4>
-    <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-  </div>
-</div>
 
 
 

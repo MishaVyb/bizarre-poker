@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from email import message
 from typing import Callable, Generic, Type, TypeVar
 
 from core.functools.utils import StrColors, init_logger
@@ -13,8 +14,10 @@ from games.services.stages import (
     PlacingBlindsStage,
     SetupStage,
     StagesContainer,
+    TearDownStage
 )
 from users.models import User
+from games.services.configurations import DEFAULT
 
 logger = init_logger(__name__)
 
@@ -27,6 +30,7 @@ class BaseGameAction:
     suitable_stage: type[BaseGameStage]
     values_expected = False
     conditions: list[Callable] = []
+    message: str = '{user} did action'
     error_messages: dict[str, str] = {
         'invalid_stage': (
             'Acting {self} failed. Game has another current stage: {stage}'
@@ -40,6 +44,9 @@ class BaseGameAction:
             'Player say `pass` and can not make game actions till next round. '
         ),
     }
+
+    def get_message_format(self):
+        return self.message.format(user=self.user)
 
     @property
     def error_messages_formated(self):
@@ -136,6 +143,16 @@ class BaseGameAction:
         except ValidationError as e:
             raise ActError(f'Acting {self} failed. {e}')
         # [3]
+
+        self.game.actions_history.append(
+            {
+                'performer': self.user.username,
+                'class': self.__class__.__name__,
+                'repr': repr(self),
+                'message': self.get_message_format(),
+            }
+        )
+
         if continue_processing_after:
             StagesContainer.continue_processing(self.game)
 
@@ -213,16 +230,30 @@ class ActionPreform(Generic[_ACTION_TYPE]):
 
 class StartAction(BaseGameAction):
     suitable_stage = SetupStage
+    message: str = '{user} make this game beggins'
     conditions = [lambda action: action.player.is_host]
 
     def act_subclass(self):
         self.game.begins = True
         self.game.presave()
 
+class EndAction(BaseGameAction):
+    suitable_stage = TearDownStage
+    message: str = '{user} make this game ends'
+    conditions = [lambda action: action.player.is_host]
+
+    def act_subclass(self):
+        self.game.begins = False
+        self.game.presave()
+
 
 class PlaceBet(BaseGameAction):
     suitable_stage = BiddingsStage
+    message: str = '{user} place bet {value:.2f}'
     values_expected = True
+
+    def get_message_format(self):
+        return self.message.format(user=self.user, value=self.value/100)
 
     def future_bet_total(self) -> int:
         return self.player.bet_total + self.value
@@ -284,7 +315,14 @@ class PlaceBet(BaseGameAction):
 
 class PlaceBlind(PlaceBet):
     suitable_stage = PlacingBlindsStage
+    message: str = '{user} place {blind} blind'
     values_expected = False
+
+    def get_message_format(self):
+        return self.message.format(
+            user=self.user,
+            blind='small' if self.value == DEFAULT.small_blind else 'big',
+        )
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
         value = self.suitable_stage(game).get_necessary_action_values().get('min')
@@ -302,6 +340,7 @@ class PlaceBetCheck(PlaceBet):
 
     In that case we place 0 to mark that plyer made his desigion about bet.
     """
+    message: str = '{user} says check'
 
     values_expected = False
 
@@ -324,15 +363,13 @@ class PlaceBetReply(PlaceBet):
             )
 
         if value == 0:
-            raise ValueError(
-                f'{self} with 0 when there are no other bet was placed. '
-            )
+            raise ValueError(f'{self} with 0 when there are no other bet was placed. ')
         super().__init__(game, user, value=value, act_immediately=act_immediately)
 
 
 class PlaceBetVaBank(PlaceBet):
     """All in. Place max possible bet value."""
-
+    message: str = '{user} placed all in (vabank)'
     values_expected = False
 
     def __init__(self, game: Game, user: User, *args, act_immediately=True, **kwargs):
@@ -348,6 +385,14 @@ class PlaceBetVaBank(PlaceBet):
 
 class PassAction(BaseGameAction):
     suitable_stage = BiddingsStage
+    message: str = '{user} says pass'
+
+    def player_is_not_blindmaker(self):
+        return 'BiddingsStage' in self.game.stage.name
+
+    conditions = [
+        player_is_not_blindmaker,
+    ]
 
     def act_subclass(self):
         self.player.is_active = False
@@ -368,6 +413,7 @@ class ActionContainer:
         PlaceBetReply,
         PlaceBetVaBank,
         PassAction,
+        EndAction,
     )
 
     @classmethod

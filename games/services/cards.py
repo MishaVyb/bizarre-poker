@@ -42,6 +42,9 @@ SET_JOKERS_AFTER_EQUAL_CARD = True
 """To operate a curtain way of sorting, when mirrored jokers placed after card with
 other things being equal."""
 
+CARD_SHIRT = None
+"""Python value for card`s shirt used at hiden() method. """
+
 
 class EmptyValueError(Exception):
     pass
@@ -626,10 +629,9 @@ class CardList(list[Card]):
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
 
-    def hiden(self, str_method: str = 'emoji_shirt') -> str:
-        """Return hiden card list representation (shirts up)"""
-        with temporally(Card.Text, str_method=str_method):
-            return self.__str__()
+    def hiden(self):
+        """Return list contained card`s shirts. """
+        return [CARD_SHIRT] * self.length
 
     # пришлось переопределить, чтобы сохраить тип возвращаемого значения CardList
     @overload
@@ -757,24 +759,27 @@ Stacks = list[CardList]
 
 class Decks:
     @staticmethod
-    def standart_52_card_deck_plus_jokers():
+    def full_deck_plus_jokers():
         """yield all 52 cards from highes to smallest and then red/black jokers"""
         _2 = Card.Text.get_rank_value('2')
         ace = Card.Text.get_rank_value('Ace')
         clubs = Card.Text.get_suit_value('Clubs')
         spades = Card.Text.get_suit_value('Spades')
 
-        for rank in reversed(range_inclusevly(_2, ace)):
-            for suit in reversed(range_inclusevly(clubs, spades)):
-                yield Card(rank, suit)
 
-        for i in range(DEFAULT.jokers_amount):
-            yield JokerCard('red') if i % 2 else JokerCard('black')
+        for _ in range(DEFAULT.multy_decks_amount):
+            for rank in reversed(range_inclusevly(_2, ace)):
+                for suit in reversed(range_inclusevly(clubs, spades)):
+                    yield Card(rank, suit)
+
+            for i in range(DEFAULT.jokers_amount):
+                yield JokerCard('red') if i % 2 else JokerCard('black')
 
 
-def get_deck_from(table: CardList, hands: Stacks):
-    deck = CardList()
-    deck.extend(table)
-    for cards in zip(*reversed(hands), strict=True):
-        deck.extend(cards)
-    return deck
+    @staticmethod
+    def factory_from(table: CardList, hands: Stacks):
+        deck = CardList()
+        deck.extend(table)
+        for cards in zip(*reversed(hands), strict=True):
+            deck.extend(cards)
+        return deck
