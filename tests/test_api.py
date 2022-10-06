@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 import pytest
 from core.functools.utils import StrColors, init_logger
@@ -7,10 +8,12 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
+from games.services import stages
 from games.services.configurations import DEFAULT
+from games.services.processors import AutoProcessor
 from tests.base import BaseGameProperties, APIGameProperties
 from games.services.combos import Combo
-from games.services.auto import autoplay_game
+
 
 logger = init_logger(__name__)
 
@@ -48,8 +51,8 @@ class TestGameAPI(APIGameProperties):
     }
 
     @property
-    def avaliable_action_names(self):
-        return [action['name'] for action in self.response_data['avaliable']]
+    def possible_actions_names(self):
+        return [action['name'] for action in self.response_data]
 
     def test_games_endpoint(self):
         self.assert_response(
@@ -62,7 +65,7 @@ class TestGameAPI(APIGameProperties):
         # assert that user join that game (as a host)
         assert self.response_data['players'][0] == 'vybornyy'
 
-        autoplay_game(self.game, stop_after_stage='FlopStage-1')
+        AutoProcessor(self.game, stop_after_stage=stages.FlopStage_1).run()
 
         self.assert_response(
             '[2] game detail after flop | assert that deck is hiden',
@@ -81,7 +84,7 @@ class TestGameAPI(APIGameProperties):
         )
 
     def test_players_endpoint(self):
-        autoplay_game(self.game, stop_after_stage='DealCardsStage')
+        AutoProcessor(self.game, stop_after_stage=stages.DealCardsStage).run()
 
         self.assert_response(
             '[1] get players',
@@ -114,6 +117,21 @@ class TestGameAPI(APIGameProperties):
         assert self.response_data[0]['user'] == str(self.players_list[1].user)
         assert self.response_data[1]['user'] == str(self.players_list[2].user)
 
+    def test_players_endpoint_bet_total(self):
+        AutoProcessor(self.game, stop_before_stage=stages.BiddingsStage_1).run()
+
+        self.assert_response('', 'vybornyy', 'GET', 'players')
+        assert [p['bet_total'] for p in self.response_data] == [0, 5, 10]
+        assert [p['bet_is_placed'] for p in self.response_data] == [False, True, True]
+
+        self.assert_response('', 'vybornyy', 'GET', 'players/me')
+        assert self.response_data['bet_total'] == 0
+        assert self.response_data['bet_is_placed'] == False
+
+        self.assert_response('', 'vybornyy', 'GET', 'players/other')
+        assert [p['bet_total'] for p in self.response_data] == [5, 10]
+        assert [p['bet_is_placed'] for p in self.response_data] == [True, True]
+
     def test_actions_endpoint(self, setup_users_banks: list[int]):
         self.assert_response(
             '[1] get all actions by host | assert start is avaliable',
@@ -121,8 +139,8 @@ class TestGameAPI(APIGameProperties):
             'GET',
             'actions',
         )
-        assert self.avaliable_action_names == ['start']
-        assert self.response_data['avaliable'][0]['url'] == self.urls['start']
+        assert self.possible_actions_names == ['start']
+        assert self.response_data[0]['url'] == self.urls['start']
 
         self.assert_response(
             '[2] vybornyy make avaliable action', 'vybornyy', 'POST', 'start'
@@ -133,32 +151,26 @@ class TestGameAPI(APIGameProperties):
             'GET',
             'actions',
         )
-        assert self.avaliable_action_names == ['blind']
+        assert self.possible_actions_names == ['blind']
 
         self.assert_response('[4] act invalid action', 'simusik', 'POST', 'start')
-        expected = r'Game has another current stage'
-        assert expected in self.response_data['act_error']
+        expected = r'Acitng failed.* not in game stage possible action prototypes. '
+        assert re.match(expected, self.response_data['action_error'])
 
         self.assert_response('[5] act valid', 'simusik', 'POST', 'blind')
         self.assert_response('[6] act valid', 'barticheg', 'POST', 'blind')
-        self.assert_response(
-            '[7] act invalid value', 'vybornyy', 'POST', 'bet', {'value': -20}
-        )
-        expected = r'Condition value_in_necessary_range are not satisfied'
-        assert expected in self.response_data['act_error']
+        self.assert_response('[7] invalid value', 'vybornyy', 'POST', 'bet', value=-20)
+        assert re.match(expected, self.response_data['action_error'])
 
-        self.assert_response('', 'vybornyy', 'POST', 'bet', {'value': 1000000})
-        expected = r'Condition value_in_necessary_range are not satisfied'
-        assert expected in self.response_data['act_error']
+        self.assert_response('', 'vybornyy', 'POST', 'bet', value=1000000)
+        assert re.match(expected, self.response_data['action_error'])
 
-        self.assert_response('', 'vybornyy', 'POST', 'bet', {'value': 17})
-        expected = r'It is not multiples of small blind'
-        assert expected in self.response_data['act_error']
+        self.assert_response('', 'vybornyy', 'POST', 'bet', value=17)
+        expected = r'.*Value error: 17. It is not multiples of small blind.*'
+        assert re.match(expected, self.response_data['action_error'])
 
-        valid_bet = 20
-        self.assert_response(
-            '[8] act valid value', 'vybornyy', 'POST', 'bet', {'value': valid_bet}
-        )
+        bet = 20
+        self.assert_response('[8] valid value', 'vybornyy', 'POST', 'bet', value=bet)
         self.assert_response('[9]', 'simusik', 'POST', 'reply')
         self.assert_response('[10]', 'barticheg', 'POST', 'pass')
         self.assert_response('[11]', 'vybornyy', 'POST', 'check')
@@ -167,30 +179,10 @@ class TestGameAPI(APIGameProperties):
 
         # winner got his benefit
         # benefit -- bet place by vybornyy and big blind placed by barticheg
-        benefit = valid_bet + DEFAULT.big_blind
-        winner = 1  # simusik
-        bank = self.users_list[winner].profile.bank
-        assert bank == setup_users_banks[winner] + benefit
-
-
-
-    def test_players_endpoint_bet_total(self):
-        autoplay_game(self.game, stop_before_stage='BiddingsStage-1')
-        # autoplay_game(self.game, stop_after_actions_amount=1)
-
-        self.assert_response('', 'vybornyy', 'GET', 'players')
-        assert [p['bet_total'] for p in self.response_data] == [0, 5, 10]
-        assert [p['bets'] for p in self.response_data] == [False, True, True]
-
-        self.assert_response('', 'vybornyy', 'GET', 'players/me')
-        assert self.response_data['bet_total'] == 0
-        assert self.response_data['bets'] == False
-
-        self.assert_response('', 'vybornyy', 'GET', 'players/other')
-        assert [p['bet_total'] for p in self.response_data] == [5, 10]
-        assert [p['bets'] for p in self.response_data] == [True, True]
-
-        autoplay_game(self.game, stop_after_actions_amount=1)
+        benefit = bet + DEFAULT.big_blind
+        winner_idx = 1  # simusik
+        bank = self.users_list[winner_idx].profile.bank
+        assert bank == setup_users_banks[winner_idx] + benefit
 
     def test_game_api(self):
 

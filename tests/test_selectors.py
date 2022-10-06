@@ -102,13 +102,39 @@ class TestPlayerSelector(BaseGameProperties):
         game.players[1].bets.create(value=0)
         assert self.game.players_manager.check_bet_equality() is True  # still true
 
-        # [8] order by bet
+        # # [8] order by bet
+        # expected = [
+        #     game.players[2],  # no bets
+        #     game.players[0],  # no bets
+        #     game.players[1],  # bet = 0
+        # ]
+        # assert list(self.game.players.order_by_bet) == expected
+
+        # game.players[0].bets.create(value=10)
+        # game.players[1].bets.create(value=20)
+        # expected = [
+        #     game.players[2],  # no bets
+        #     game.players[0],  # bet = 10
+        #     game.players[1],  # bet = 0 + 20
+        # ]
+        # assert list(self.game.players.order_by_bet) == expected
+
+        # game.players[2].bets.create(value=20)
+        # game.players[0].bets.create(value=20)
+        # expected = [
+        #     game.players[1],  # bet = 0 + 20
+        #     game.players[2],  # bet = 20
+        #     game.players[0],  # bet = 10 + 20
+        # ]
+        # assert list(self.game.players.order_by_bet) == expected
+
+        # [9] next_betmaker
         expected = [
             game.players[2],  # no bets
             game.players[0],  # no bets
             game.players[1],  # bet = 0
         ]
-        assert list(self.game.players.order_by_bet) == expected
+        assert self.game.players.next_betmaker == expected[0]
 
         game.players[0].bets.create(value=10)
         game.players[1].bets.create(value=20)
@@ -117,7 +143,7 @@ class TestPlayerSelector(BaseGameProperties):
             game.players[0],  # bet = 10
             game.players[1],  # bet = 0 + 20
         ]
-        assert list(self.game.players.order_by_bet) == expected
+        assert self.game.players.next_betmaker == expected[0]
 
         game.players[2].bets.create(value=20)
         game.players[0].bets.create(value=20)
@@ -126,7 +152,7 @@ class TestPlayerSelector(BaseGameProperties):
             game.players[2],  # bet = 20
             game.players[0],  # bet = 10 + 20
         ]
-        assert list(self.game.players.order_by_bet) == expected
+        assert self.game.players.next_betmaker == expected[0]
 
     def test_player_bet_another_player_instance(self):
         # be carefull here

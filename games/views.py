@@ -32,7 +32,7 @@ from games.services.cards import Card
 from rest_framework.test import APIClient
 from api.serializers import GameSerializer, PlayerSerializer
 from django.urls import reverse
-from games.services import auto
+
 from games.services.configurations import DEFAULT
 from core.functools.looptools import looptools
 

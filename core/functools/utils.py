@@ -1,19 +1,25 @@
 """
 Utilities.
-
-developing:
-[ ] Argument 1 has incompatible type "_TC"; expected "Union[
-    _SupportsDunderLE, _SupportsDunderGE, _SupportsDunderGT, _SupportsDunderLT]
 """
 
 from __future__ import annotations
+from abc import ABCMeta, abstractmethod
 import inspect
 
 import itertools
 import logging
 import operator
 import re
-from typing import Any, Callable, Iterable, Sequence, SupportsIndex, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Literal,
+    Sequence,
+    SupportsIndex,
+    TypeVar,
+    Generic,
+)
 
 
 def init_logger(name, level=logging.DEBUG) -> logging.Logger:
@@ -114,12 +120,45 @@ class StrColors:
         return cls._ENDC + cls._YELLOW + __str + cls._ENDC
 
 
-_TC = TypeVar('_TC')
+class Comparable(metaclass=ABCMeta):
+    @abstractmethod
+    def __lt__(self, other: Any) -> bool:
+        ...
+
+
+class TotalComparable(metaclass=ABCMeta):
+    @abstractmethod
+    def __lt__(self, other: Any) -> bool:
+        ...
+
+    @abstractmethod
+    def __le__(self, other: Any) -> bool:
+        ...
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> bool:
+        ...
+
+    @abstractmethod
+    def __ne__(self, other: Any) -> bool:
+        ...
+
+    @abstractmethod
+    def __ge__(self, other: Any) -> bool:
+        ...
+
+    @abstractmethod
+    def __gt__(self, other: Any) -> bool:
+        ...
+
+
+_CT = TypeVar('_CT', bound=Comparable)  # _CT -- compariable type
+_TCT = TypeVar('_TCT', bound=TotalComparable)  # _TCT -- total compariable type
 
 
 def is_sorted(
-    *sequences: Sequence[_TC],
-    key: str | Callable[[_TC], Any] | None = None,
+    *sequences: Sequence[_CT],
+    key: str | Callable[[_CT], Any] | None = None,
     reverse: bool = False,
 ) -> bool:
     # comparisons operator
@@ -128,8 +167,7 @@ def is_sorted(
     if not key:
         for sequence in sequences:
             if not all(
-                compr(sequence[i], sequence[i + 1])  # type: ignore
-                for i in range(len(sequence) - 1)
+                compr(sequence[i], sequence[i + 1]) for i in range(len(sequence) - 1)
             ):
                 return False
     elif isinstance(key, str):
@@ -191,3 +229,48 @@ def get_func_name(back=False) -> str:
 
 def reverse_attrgetter(*attrs: str):
     return lambda x: not bool(operator.attrgetter(*attrs)(x))
+
+
+class Interval(Generic[_TCT]):
+    """
+    Interval represents value range (both max and min inclusevly).
+
+    >>> 12 in Interval(10, 20)
+    True
+    >>> 20 in Interval(10, 20)  # inclusevly 20
+    True
+    >>> 0.1 in Interval(0.11, 1)
+    False
+
+    """
+
+    def __init__(self, min_: _TCT, max_: _TCT) -> None:
+        self.min = min_
+        self.max = max_
+        self._check_constraints()
+
+    def __repr__(self) -> str:
+        return f'[{self.min}]->[{self.max}]'
+
+    def __getitem__(self, index: Literal[0, 1]) -> _TCT:
+        if index not in [0, 1]:
+            raise IndexError
+        return self.max if index else self.min
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Interval):
+            return (self.min, self.max) == (other.min, other.max)
+        return NotImplemented
+
+    def __contains__(self, items: _TCT | Iterable[_TCT]):
+        self._check_constraints()
+        if not isinstance(items, Iterable):
+            items = [items]
+
+        return all(self.min <= item <= self.max for item in items)
+
+    def _check_constraints(self):
+        if not self.min <= self.max:
+            raise ValueError('Invalid interval with min > max. ')
+        elif self.min == self.max:
+            logger.warning('Iterval with min == max. That`s how it should be?')

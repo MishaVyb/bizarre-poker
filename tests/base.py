@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from core.functools.utils import init_logger
 from games.models import Game, Player
+from tests.tools import ExtendedQueriesContext
 from users.models import User
 from typing import Iterable, Literal, OrderedDict
 from rest_framework import status
@@ -22,7 +23,7 @@ from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
 
 from games.services.combos import Combo
-from games.services.auto import autoplay_game
+
 
 logger = init_logger(__name__)
 
@@ -85,11 +86,9 @@ class APIGameProperties(BaseGameProperties):
         by_users: str | Iterable[str],
         method: Literal['GET'] | Literal['POST'],
         url_name: str,
-        data: JSON = {},
-        status_pattern: str = '',
         expected_status: int = status.HTTP_200_OK,
-        assertion_messages: tuple[str | None, ...] = (None, None),
-
+        assertion_message: str = '',
+        **post_data,
     ):
         if isinstance(by_users, str):
             by_users = (by_users,)
@@ -100,22 +99,23 @@ class APIGameProperties(BaseGameProperties):
         for user in by_users:
             # act
             call = getattr(self.clients[user], method.lower())
-            response: Response = call(self.urls[url_name], data)
+            response: Response = call(self.urls[url_name], post_data)
 
             if isinstance(response, HttpResponsePermanentRedirect):
                 logger.warning(
                     f'Recieved Permanent Redirect Response: '
-                    f'frorm {self.urls[url_name]} to {response.url}. '
+                    f'from {self.urls[url_name]} to {response.url}. '
                     f'Hint: check requested url, it shoul be ended with / (slash)'
                 )
 
             # assert response status code
-            assert response.status_code == expected_status, (
-                assertion_messages[0]
+            assertion_message = (
+                assertion_message
                 or f'Get unexpected response code: {response.status_code} {response}. '
                 f'Response data: {getattr(response, "data", None)}. '
                 f'Request detail: {request_detail}. '
             )
+            assert response.status_code == expected_status, assertion_message
         self.request_username = user
         self.response_data = response.data
 
@@ -135,5 +135,5 @@ class APIGameProperties(BaseGameProperties):
 
         data_str = pformat(data, width=width, sort_dicts=False)
         data_str = re.sub(user, StrColors.green(user), data_str)
-        
+
         logger.info(f'RESPONSE: \n {data_str}')

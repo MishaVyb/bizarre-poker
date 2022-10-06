@@ -38,18 +38,18 @@ class PlayerSelector:
 
     @property
     def _list(self):
-        """For debuging properties."""
+        """tool for debuging"""
         return list(self)
 
-    # ############################################ objects searshing:
+    # ############################################ players searshing:
 
-    def get(self, user: User) -> Player:
+    def get(self, *, user: User) -> Player:
         return next(filter(lambda p: p.user == user, self._source))
 
     def exclude(self, player) -> list[Player]:
         return list(filter(lambda p: p != player, self._source))
 
-    # ############################################ objects updating:
+    # ############################################ players updating:
 
     def reorder_source(self):
         self._source = sorted(self._source, key=attrgetter('position'))
@@ -75,7 +75,7 @@ class PlayerSelector:
         """for active players.
 
         To find out pissoble max bet for player we are loking for minimal bank of all
-        players with som of his bet already playced.
+        players with sum of his bet already playced.
         """
         return min(p.user.profile.bank + p.bet_total for p in self.active)
 
@@ -83,41 +83,53 @@ class PlayerSelector:
         """True if all beds equal (for active players)."""
         return self.aggregate_max_bet() - self.aggregate_min_bet() == 0
 
-    @property
-    def order_by_bet(self):
-        # RECODE THIS WITH circle_after -- нам по сути не нужна здесь сортировка...
+    # @property
+    # def order_by_bet(self):
+    #     # RECODE THIS WITH circle_after -- нам по сути не нужна здесь сортировка...
 
-        """Yield ordered active players with None bet first then 0 then ascending.
-        Starting after dealer.
+    #     """Yield ordered active players with None bet first then 0 then ascending.
+    #     Starting after dealer.
+    #     """
+    #     # we need that special annotation to differentiate two types of player bet:
+    #     # [1] player who say check (bets sum = 0)
+    #     # [2] player who has not placed bet yet (bets sum = None)
+    #     # at default annotation when bet_total is None it value replaced by default=0
+    #     key = lambda p: (p.bets.exists(), p.bet_total)
+    #     for player in sorted(self.after_dealer, key=key):
+    #         yield player
+
+    @property
+    def next_betmaker(self):
         """
-        # we need that special annotation to differentiate two types of player bet:
-        # [1] player who say check (bets sum = 0)
-        # [2] player who has not placed bet yet (bets sum = None)
-        # at default annotation when bet_total is None it value replaced by default=0
-        key = lambda p: (p.bets.exists(), p.bet_total)
-        for player in sorted(self.after_dealer, key=key):
-            yield player
+        First active player after player who just has place his bet.
+        If all players have placed their bets and they are equal - StopIteration raised.
+        """
+        try:
+            key = lambda p: not p.bet_is_placed
+            return next(circle_after(key, self.after_dealer, raises=True))
+        except ValueError:
+            chellenging_bet = self.aggregate_max_bet()
+            key = lambda p: p.bet_total < chellenging_bet
+            return next(circle_after(key, self.after_dealer, raises=True))
 
     @property
     def without_bet(self):
         """for active players starting after dealer"""
-        key = lambda p: not p.bets.exists() and p.is_active
-        return filter(key, self._source)
+        key = lambda p: not p.bet_is_placed and p.is_active
+        return filter(key, self.after_dealer)
 
     @property
     def with_max_bet(self) -> Player:
         return max(self._source, key=attrgetter('bet_total'))
-        return self._manager.order_by('-bet_total').first()
 
-    # ############################################ base:
+    # ############################################ base filtering:
 
     @property
     def after_dealer(self) -> Iterator[Player]:
         """active players starting after dealer button."""
-        key = lambda p: not p.is_active
-        return circle_after(
-            attrgetter('is_dealer'), self._source, inclusive=False, exclude=key
-        )
+        key = attrgetter('is_dealer')
+        exclude = lambda p: not p.is_active
+        return circle_after(key, self._source, inclusive=False, exclude=exclude)
 
     @property
     def after_dealer_all(self) -> Iterator[Player]:

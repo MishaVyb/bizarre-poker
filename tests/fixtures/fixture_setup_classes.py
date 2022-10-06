@@ -10,6 +10,7 @@ from games.services.cards import Decks
 from games.services.configurations import DEFAULT
 from rest_framework.test import APIClient
 from tests.base import BaseGameProperties
+from tests.test_api import TestGameAPI
 from users.models import User
 
 logger = init_logger(__name__)
@@ -41,7 +42,7 @@ def setup_users(request: pytest.FixtureRequest):
 
 @pytest.fixture
 def setup_clients(request: pytest.FixtureRequest):
-    self: BaseGameProperties = assert_base_class(request.instance)
+    self: TestGameAPI = assert_base_class(request.instance)
 
     # clients
     self.clients = {}
@@ -56,13 +57,9 @@ def setup_clients(request: pytest.FixtureRequest):
             username,
             'GET',
             'games',
-            '',
-            assertion_messages=(
-                (
-                    'Authetication failed. '
-                    'Check auth backends: SessionAuthetication should be aplyed. '
-                ),
-                None,
+            assertion_message=(
+                'Authetication failed. '
+                'Check auth backends: SessionAuthetication should be aplyed. '
             ),
         )
 
@@ -87,7 +84,10 @@ def setup_deck_get_expected_combos(
     flops = sum(DEFAULT.flops_amounts)
     neccessary_amount = len(self.usernames) * DEFAULT.deal_cards_amount + flops
     if deck.length != neccessary_amount:
-        pytest.skip('Current test deck intended for another players amount. ')
+        pytest.skip(
+            'Current test deck intended for another players amount. '
+            f'{deck.length} != {neccessary_amount}'
+        )
 
     # set our test deck to the game
     setattr(Decks, 'TEST_DECK', deck)

@@ -10,7 +10,7 @@ from core.models import (
     FullCleanSavingMixin,
     UpdateMethodMixin,
     IterableManager,
-    related_manager_method
+    related_manager_method,
 )
 from core.validators import bet_multiplicity
 from django.db import IntegrityError, models
@@ -20,6 +20,7 @@ from games.services.cards import CardList
 from games.services.combos import Combo, ComboStacks
 from games.models import Game
 from games.models.fields import CardListField
+from poker.settings import DB_CONTEXT
 from users.models import User
 
 
@@ -33,8 +34,6 @@ class PlayerQuerySet(models.QuerySet):
 
 
 class PlayerManager(IterableManager[_T]):
-
-
     def get_queryset(self):
         dealer_case = models.Case(
             models.When(position=0, then=models.Value(True)),
@@ -44,7 +43,8 @@ class PlayerManager(IterableManager[_T]):
             PlayerQuerySet(model=self.model, using=self._db, hints=self._hints)
             .annotate(is_dealer=dealer_case)
             .annotate(bet_total=functions.Coalesce(models.Sum('bets__value'), 0))
-            .order_by('position')  # !!!
+            .annotate(bet_total_none=models.Sum('bets__value'))
+            .order_by('position')
         )
 
     @related_manager_method
@@ -129,7 +129,7 @@ class PlayerManager(IterableManager[_T]):
         """Players that have not said `pass`."""
         return self.filter(is_active=True)
 
-    @property   # type: ignore
+    @property  # type: ignore
     @related_manager_method
     def host(self):
         return self.get(is_host=True)
@@ -164,6 +164,7 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     hand: CardList = CardListField('cards in players hand', blank=True)
     bets: PlayerBetManager[PlayerBet]
     bet_total: int  # annotated by PlayerQuerySet
+    bet_total_none: int | None  # annotated by PlayerQuerySet
     position: int = models.PositiveSmallIntegerField(
         'player`s number in a circle starting from 0'
     )
@@ -183,6 +184,11 @@ class Player(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         stacks = ComboStacks()
         kind = stacks.track_and_merge(self.hand, self.game.table)
         return Combo(kind, stacks)
+
+    @property
+    def bet_is_placed(self):
+        return self.bet_total_none is not None
+
 
     class Meta(CreatedModifiedModel.Meta):
         verbose_name = 'user in game (player)'
@@ -249,7 +255,13 @@ class PlayerBetManager(IterableManager[_T]):
     def create(self, **kwargs: Any) -> _T:
         obj: PlayerBet = super().create(**kwargs)
         obj.player.bet_total += kwargs['value']  # update player agregation:
+        obj.player.bet_total_none = obj.player.bet_total # is not None anymore
         return obj
+
+    def exists(self) -> bool:
+        raise RuntimeError(
+            'Is forboden to prevent a lot of queries. Use bet_total_none instead.'
+        )
 
     def __str__(self) -> str:
         return ' '.join(str(b) for b in self.all())

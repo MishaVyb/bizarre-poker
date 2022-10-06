@@ -578,14 +578,7 @@ def test_full_deck_plus_jokers():
     expected_length = 52 * DEFAULT.multy_decks_amount + DEFAULT.jokers_amount
     generator = Decks.full_deck_plus_jokers()
     cl = CardList(instance=generator)
-
     assert cl.length == expected_length
-
-    # check joker kind amounts
-    red = JokerCard('red')
-    black = JokerCard('black')
-    assert len(list(filter(lambda c: c == red, cl))) == 2
-    assert len(list(filter(lambda c: c == black, cl))) == 3
 
     # check new_generator is not exhaused
     new_generator = Decks.full_deck_plus_jokers()

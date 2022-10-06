@@ -3,16 +3,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
 
 from core.functools.utils import StrColors, init_logger
-from core.models import CreatedModifiedModel, FullCleanSavingMixin, UpdateMethodMixin
+from core.models import (
+    CreatedModifiedModel,
+    FullCleanSavingMixin,
+    UpdateMethodMixin,
+    get_list_default,
+)
 from django.db import models
 from django.urls import reverse
 from games.models.fields import CardListField
 from games.selectors import PlayerSelector
 from games.services import configurations
 from games.services.cards import CardList
-from games.services.stages import BaseGameStage, StagesContainer
+from games.services.processors import BaseProcessor
+from games.services.stages import DEFAULT_STAGES
 from tests.tools import ExtendedQueriesContext
-from core.models import get_list_default
 
 if TYPE_CHECKING:
     from .player import Player, PlayerManager
@@ -20,13 +25,11 @@ if TYPE_CHECKING:
 from users.models import User
 
 logger = init_logger(__name__)
+_T = TypeVar('_T')
 
 
 def get_deck_default():
     return configurations.DEFAULT.deck_container_name
-
-
-_T = TypeVar('_T')
 
 
 class GameManager(models.Manager[_T]):
@@ -56,41 +59,59 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     # call init with players to deftine PlayerSelector or call to prefetch_related
     _players_selector: PlayerSelector | None = None
 
+    @property
+    def players(self) -> PlayerSelector:
+        if self._players_selector is None:
+            # raise RuntimeError('None selector. Call for select_players(..) before.')
+            logger.warning(
+                StrColors.red(
+                    'None selector. Call for select_players(..) before. '
+                    'They will be selected here to continue. '
+                )
+            )
+            self.select_players(force_cashing=True, force_prefetching=True)
+            return self.players
+        return self._players_selector
+
     # test tool
     _db_context: ExtendedQueriesContext | None = None
 
-    deck: CardList = CardListField('deck of cards', blank=True)
-    deck_generator: str = models.CharField(
-        'name of deck generator method or contaianer',
-        max_length=79,
-        default=get_deck_default,
-    )
-    table: CardList = CardListField('cards on the table', blank=True)
-    bank: int = models.PositiveIntegerField(
-        'all accepted beds for game round', default=0
-    )
+    deck: CardList = CardListField(blank=True)
+    deck_generator: str = models.CharField(max_length=79, default=get_deck_default)
+    table: CardList = CardListField(blank=True)
+    bank: int = models.PositiveIntegerField(default=0)
     status: str = models.CharField(max_length=200, blank=True)
     actions_history: list[dict[str, Any]] = models.JSONField(
-        default=get_list_default, blank=True
+        default=get_list_default,
+        blank=True,
     )
     # [
     #     {
-    #         'performer': player.user.username or None if it was game stage,
-    #         'action_class': class_name
-    #         'message': '....'
+    #         'performer':
+    #         'class':
+    #         'message':
     #     }
     # ]
 
     begins: bool = models.BooleanField(default=False)
-    """Is game started or not."""
-
     stage_index: int = models.PositiveSmallIntegerField(default=0)
-    """key for GAME_STAGES dict"""
+    rounds_counter: int = models.PositiveIntegerField(default=1)
 
     @property
-    def stage(self) -> BaseGameStage:
-        stage_type = StagesContainer.stages[self.stage_index]
-        return stage_type(self)
+    def stage(self):
+        stage_class = DEFAULT_STAGES[self.stage_index]
+        return stage_class(self)
+
+    @property
+    def stages(self):
+        return DEFAULT_STAGES
+
+    def get_processor(self, *, autosave: bool = True) -> BaseProcessor:
+        """
+        Simple shorcut for getting processor assotiated with this game.
+        Usefull for BaseAction.run(..).
+        """
+        return BaseProcessor(self, autosave=autosave)
 
     class Meta(CreatedModifiedModel.Meta):
         verbose_name = 'poker game'
@@ -130,7 +151,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     def __repr__(self) -> str:
         try:
-            return f'({self.pk}) game at [#{self.stage_index}] {self.stage}'
+            return f'({self.pk}) game at [#{self.stage_index}] {self.stage.__class__.__name__}'
         except Exception:
             return f'{self.__class__.__name__} ({self.pk})'
 
@@ -205,38 +226,9 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
                 'There was no reason call for reselect_players(). '
             )
 
-    @property
-    def players(self) -> PlayerSelector:
-        if self._players_selector is None:
-            # raise RuntimeError('None selector. Call for select_players(..) before.')
-            logger.warning(
-                StrColors.red(
-                    'None selector. Call for select_players(..) before. '
-                    'They will be selected here to continue. '
-                )
-            )
-            self.select_players(force_cashing=True, force_prefetching=True)
-            return self.players
-        return self._players_selector
-
     def get_players(self) -> PlayerSelector | None:
         """The same as `players` property, but no raises for None value."""
         return self._players_selector
 
     def clean(self) -> None:
-        # [1] validate game properties
-        ...
-
-        # [2] validate game stage performer player
-        if self._players_selector is None or not self.players:
-            return  # nothing to do
-
-        if self.stage.performer is None:
-            message = 'Game stage performer is None at cleaning before saving. '
-            headline = StrColors.bold(StrColors.red(message))
-            logger.warning(
-                f'{headline}\n'
-                f'{self} should to be saved only after processing raises an error '
-                'and wait for some action from some performer. Exception: '
-                'when running tests, we have to stop game at different stages. '
-            )
+        pass

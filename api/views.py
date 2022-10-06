@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
-
+from django.core.exceptions import ValidationError
 from api.serializers import BetValueSerializer, GameSerializer, PlayerSerializer
 
 logger = init_logger(__name__, logging.INFO)
@@ -41,20 +41,20 @@ class GamesViewSet(viewsets.ModelViewSet):
 
 
 class ActionsViewSet(viewsets.ViewSet):
-    action_urls: dict[Type[actions.BaseGameAction], str] = {
+    action_urls: dict[Type[actions.BaseAction], str] = {
         actions.StartAction: '/api/v1/games/{pk}/actions/start/',
+        actions.EndAction: '/api/v1/games/{pk}/actions/end/',
         actions.PassAction: '/api/v1/games/{pk}/actions/pass/',
         actions.PlaceBlind: '/api/v1/games/{pk}/actions/blind/',
         actions.PlaceBet: '/api/v1/games/{pk}/actions/bet/',
         actions.PlaceBetCheck: '/api/v1/games/{pk}/actions/check/',
         actions.PlaceBetReply: '/api/v1/games/{pk}/actions/reply/',
         actions.PlaceBetVaBank: '/api/v1/games/{pk}/actions/vabank/',
-        actions.EndAction: '/api/v1/games/{pk}/actions/end/',
     }
 
     @cached_property
-    def action_names(self) -> dict[Type[actions.BaseGameAction], str]:
-        result: dict[Type[actions.BaseGameAction], str] = {}
+    def action_names(self) -> dict[Type[actions.BaseAction], str]:
+        result: dict[Type[actions.BaseAction], str] = {}
         result[actions.StartAction] = 'actions'
         for key, url in self.action_urls.items():
             result[key] = next(filter(None, reversed(url.split('/'))))
@@ -63,70 +63,46 @@ class ActionsViewSet(viewsets.ViewSet):
     def get_object(self):
         return Game.objects.prefetch_players().get(**self.kwargs).select_players()
 
-    def get_actions_representation(self):
-        assert len(actions.ActionContainer.actions) == len(self.action_urls)
-
+    def list(self, request, pk: int):
         game: Game = self.get_object()
-        result = actions.ActionContainer.get_avaliable_and_not(game, self.request.user)
-        avaliable, not_avaliable, excess = result
+        possibles = game.stage.get_possible_actions()
 
         # make representation
-        avaliable_repr = []
-        for action_type in avaliable:
+        data = []
+        for proto in possibles:
             action_detail = {}
-            action_detail['name'] = self.action_names[action_type]
-            action_detail['url'] = self.action_urls[action_type].format(**self.kwargs)
-            if action_type.values:
-                action_detail['values'] = action_type.values
-            avaliable_repr.append(action_detail)
+            action_detail['name'] = self.action_names[proto.action_class]
+            action_detail['url'] = self.action_urls[proto.action_class].format(
+                **self.kwargs
+            )
+            if proto.action_values:
+                action_detail['values'] = proto.action_values
+            data.append(action_detail)
 
-        not_avaliable_repr = []
-        for action_type in not_avaliable:
-            action_detail = {}
-            action_detail['name'] = self.action_names[action_type]
-            action_detail['url'] = self.action_urls[action_type].format(**self.kwargs)
-            action_detail['error'] = str(action_type.error)
-            not_avaliable_repr.append(action_detail)
+        return Response(data)
 
-        excess_repr = []
-        for action_type in excess:
-            action_detail = {}
-            action_detail['name'] = self.action_names[action_type]
-            action_detail['url'] = self.action_urls[action_type].format(**self.kwargs)
-            excess_repr.append(action_detail)
-
-        return {
-            'avaliable': avaliable_repr,
-            'not_avaliable': not_avaliable_repr,
-            'excess': excess_repr,
-        }
-
-    def list(self, request, pk: int):
-        return Response(self.get_actions_representation())
-
-    def exicute(self, action_type: Type[actions.BaseGameAction], **action_kwargs):
+    def exicute(self, action_type: Type[actions.BaseAction], **action_kwargs):
         game = self.get_object()
 
         try:
-            action_type(game, self.request.user, **action_kwargs)
-        except actions.ActError as e:
-            return Response({'act_error': str(e)})
+            action_type.run(game, self.request.user, **action_kwargs)
+        except (actions.ActionError, ValidationError) as e:
+            return Response({'action_error': str(e)})
 
         serializer = GameSerializer(instance=game)
-
         return Response(serializer.data)
 
     @action(methods=['post'], detail=False)
     def start(self, request, pk: int):
         return self.exicute(actions.StartAction)
 
+    @action(methods=['post'], detail=False)
+    def end(self, request, pk: int):
+        return self.exicute(actions.EndAction)
+
     @action(methods=['post'], detail=False, url_path='pass', url_name='pass')
     def pass_action(self, request, pk: int):
         return self.exicute(actions.PassAction)
-
-    @action(methods=['post'], detail=False)
-    def blind(self, request, pk: int):
-        return self.exicute(actions.PlaceBlind)
 
     @action(methods=['post'], detail=False)
     def bet(self, request, pk: int):
@@ -134,6 +110,10 @@ class ActionsViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             return self.exicute(actions.PlaceBet, **serializer.data)
         return Response(serializer.errors)
+
+    @action(methods=['post'], detail=False)
+    def blind(self, request, pk: int):
+        return self.exicute(actions.PlaceBlind)
 
     @action(methods=['post'], detail=False)
     def check(self, request, pk: int):
@@ -146,10 +126,6 @@ class ActionsViewSet(viewsets.ViewSet):
     @action(methods=['post'], detail=False)
     def vabank(self, request, pk: int):
         return self.exicute(actions.PlaceBetVaBank)
-
-    @action(methods=['post'], detail=False)
-    def end(self, request, pk: int):
-        return self.exicute(actions.EndAction)
 
 
 class PlayersViewSet(viewsets.ReadOnlyModelViewSet):

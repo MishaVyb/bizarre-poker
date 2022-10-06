@@ -229,6 +229,8 @@ def circle_after(
     *,
     inclusive=True,
     exclude: Iterable[_T] | Callable[[_T], bool] = [],
+    raises: bool = False
+
 ) -> Generator[_T, None, None]:
     """Making a circle through sequence after enter condition is satisfied.
     Starting by next value after satisfaction if not inclusive.
@@ -245,6 +247,7 @@ def circle_after(
     [4, 2]
 
     """
+
     def in_exclude_method(x: _T):
         assert isinstance(exclude, Iterable)
         return x in exclude
@@ -264,6 +267,8 @@ def circle_after(
         incoming = next(it)
     except StopIteration:
         # Enter condition for circle loop was not satisfied
+        if raises:
+            raise ValueError('Key enter_condition was not satisfied. ')
         # do not re-raising StopIteration because it will make RuntimeError
         # there are another syntaxis for generators: use `return` statement
         return

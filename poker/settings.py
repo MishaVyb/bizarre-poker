@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 from datetime import timedelta
 import os
 
+from tests.tools import ExtendedQueriesContext
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -192,3 +194,7 @@ SIMPLE_JWT = {
         'JWT',
     ),
 }
+
+
+# test tool
+DB_CONTEXT: list[ExtendedQueriesContext] = [None]
