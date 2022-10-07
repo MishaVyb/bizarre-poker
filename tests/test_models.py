@@ -349,7 +349,7 @@ class TestGamePlayersInterface(BaseGameProperties):
             assert context.amount == 0, context.formated_quries  # none SELECT queries
 
             # act save:
-            BaseProcessor(game)._save_game_objects()
+            BaseProcessor(game)._save_game_objects(BaseProcessor.STOP)
 
             # 1- UPDATE game
             # 4- for every player:

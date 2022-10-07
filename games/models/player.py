@@ -76,7 +76,7 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
 
     @property
     def other_players(self):
-        return self.game.players.exclude(self)
+        return self.game.players.exclude(player=self)
 
     @property
     def combo(self):

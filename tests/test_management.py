@@ -13,4 +13,4 @@ class TestComands:
             'static/management/data.json',
             stdout=out,
         )
-        assert 'success' in out.getvalue()
+        assert 'Success' in out.getvalue()
