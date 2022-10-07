@@ -5,6 +5,7 @@ from typing import Type
 from core.functools.utils import init_logger
 from django.shortcuts import get_object_or_404
 from games.models import Game, Player
+from games.selectors import PlayerSelector
 from games.services import actions
 from rest_framework import views, viewsets
 from rest_framework.decorators import action
@@ -132,18 +133,22 @@ class PlayersViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PlayerSerializer
 
     def get_queryset(self):
-        game_pk = self.kwargs['game_pk']
-        return Player.objects.filter(game=game_pk)
+        game = (
+            Game.objects.prefetch_players()
+            .get(pk=self.kwargs['game_pk'])
+            .select_players()
+        )
+        return game.players_manager.all()
 
     @action(detail=False, methods=['get'])
     def me(self, request: Request, game_pk: int):
-        me = get_object_or_404(Player, game=game_pk, user=request.user)
+        me = PlayerSelector(self.get_queryset()).get(user=request.user)
         serializer = PlayerSerializer(instance=me, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def other(self, request: Request, game_pk: int):
-        other = Player.objects.filter(game=game_pk).exclude(user=request.user)
+        other = PlayerSelector(self.get_queryset()).exclude(user=request.user)
         serializer = PlayerSerializer(
             instance=other, context={'request': request}, many=True
         )

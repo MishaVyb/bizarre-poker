@@ -120,7 +120,7 @@ class TestGameAPI(APIGameProperties):
     def test_players_endpoint_bets_fields(self):
         AutoProcessor(self.game, stop_before_stage=stages.BiddingsStage_1).run()
         self.assert_response('', 'vybornyy', 'GET', 'players')
-        
+
         assert [p['bet_total'] for p in self.response_data] == [0, 5, 10]
         assert [bool(p['bets']) for p in self.response_data] == [False, True, True]
         assert [p['bets'] for p in self.response_data] == [[], [5], [10]]

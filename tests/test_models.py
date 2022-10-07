@@ -16,7 +16,6 @@ from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
 from tests.base import BaseGameProperties
 from tests.tools import ExtendedQueriesContext
-from poker.settings import DB_CONTEXT
 
 logger = init_logger(__name__)
 
@@ -329,7 +328,6 @@ class TestGamePlayersInterface(BaseGameProperties):
             # 4- SELECT profile (prefetche_related)
             assert context.amount == 4, context.formated_quries
 
-    @pytest.mark.xfail # beceause of a lot of queries to create a del every bet
     def test_queries_amount_full_round(self, setup_game):
         game = self.game
         rounds = 1
@@ -390,11 +388,6 @@ class TestPlayerManager(BaseGameProperties):
         # but obviosly coild be accessed via game instance
         self.game.players_manager.host
 
-    def test_players_ordering(self):
-        assert self.game.players_manager.all()[0].user.username == 'vybornyy'
-        assert self.game.players_manager.all()[0].position == 0
-        assert self.game.players_manager.after_dealer[0].user.username == 'simusik'
-        assert self.game.players_manager.after_dealer[0].position == 1
 
     def test_players_after_dealer(self):
         expected = [

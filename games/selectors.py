@@ -46,8 +46,18 @@ class PlayerSelector:
     def get(self, *, user: User) -> Player:
         return next(filter(lambda p: p.user == user, self._source))
 
-    def exclude(self, player) -> list[Player]:
-        return list(filter(lambda p: p != player, self._source))
+    def exclude(self, *, player: Player | None = None, user: User | None = None) -> list[Player]:
+        if player and user:
+            raise ValueError('Too many exclude parameters. ')
+
+        if player:
+            return list(filter(lambda p: p != player, self._source))
+        elif user:
+            user_player = self.get(user=user)
+            return list(filter(lambda p: p != user_player, self._source))
+
+        raise ValueError('No exclude parameters was provided. ')
+
 
     # ############################################ players updating:
 

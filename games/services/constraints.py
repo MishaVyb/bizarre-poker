@@ -53,14 +53,16 @@ def check_objects_continuity(
         raise GameContinuityError(one, another)
 
 
-def validate_constraints(game: Game):
+def validate_constraints(game: Game, *, skip = []):
     """Check constraints and clean values if could, otherwise raising IntegrityError."""
+    assert not skip or skip == ['performer'], 'other options is not implemented yet'
+
     # [1] validate game properties
     if not isinstance(game.get_players(), PlayerSelector):
         logger.warning('Player selector is None at validate_constraints(). ')
 
     # [2] validate game stage performer player
-    if game.stage.performer is None:
+    if 'performer' not in skip and game.stage.performer is None:
         message = 'Game stage performer is None at cleaning before saving. '
         headline = StrColors.bold(StrColors.red(message))
         logger.warning(

@@ -8,7 +8,6 @@ from games.services import stages
 from games.services.actions import ActionError, ActionPrototype, BaseAction
 from games.services.constraints import check_objects_continuity, validate_constraints
 from games.services.stages import BaseStage, RequirementNotSatisfied
-from poker.settings import DB_CONTEXT
 
 
 if TYPE_CHECKING:
@@ -99,11 +98,12 @@ class BaseProcessor:
 
         return self.CONTINUE
 
-    def _save_game_objects(self):
+    def _save_game_objects(self, status: ProcessingStatus):
         """
         Saving game, players, and users banks. Only if presave flag is True.
         """
-        validate_constraints(self.game)
+        skip = ['performer'] if status == self.FORCED_STOP else []
+        validate_constraints(self.game, skip=skip)
         self.game.save(only_if_presave=True)
         for player in self.game.players:
             player.save(only_if_presave=True)
@@ -117,7 +117,7 @@ class BaseProcessor:
     def run(self) -> ProcessingStatus:
         status = self._subrunner()
         if self.autosave:
-            self._save_game_objects()
+            self._save_game_objects(status)
         return status
 
     def _round_counter(self):
@@ -222,8 +222,11 @@ class AutoProcessor(BaseProcessor):
         self.stop_factor = params
         self.stop_name = next(iter(params))
 
-        self.with_actions = with_actions
+        if 'stage' in self.stop_name:
+            stage = next(iter(self.stop_factor.values()))
+            assert stage in self.game.stages, 'That stage not in this game. '
 
+        self.with_actions = with_actions
         self.actions_counter = 0
 
         stop_amount: int = self.stop_factor.get('stop_after_rounds_amount', 0)
@@ -236,9 +239,7 @@ class AutoProcessor(BaseProcessor):
         _ = 'AutoProcessor running. '
         logger.info(StrColors.purple(_) + f'Stop factor: {self.stop_factor}')
 
-        status = self._subrunner()
-        if self.autosave:
-            self._save_game_objects()
+        status = super().run()
 
         if self.with_actions:
             raise RuntimeError(
@@ -246,7 +247,7 @@ class AutoProcessor(BaseProcessor):
                 'but not all `with_actions` have been acted. '
             )
 
-        logger.info(StrColors.purple('(AutoProcessor has stoped)'))
+        logger.info(StrColors.purple('[AutoProcessor has stoped]'))
         return status
 
     def _round_counter(self):

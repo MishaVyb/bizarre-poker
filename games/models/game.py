@@ -45,7 +45,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     @property
     def players(self) -> PlayerSelector:
         if self._players_selector is None:
-            # raise RuntimeError('None selector. Call for select_players(..) before.')
+            #raise RuntimeError('None selector. Call for select_players(..) before.')
             logger.warning(
                 StrColors.red(
                     'None selector. Call for select_players(..) before. '

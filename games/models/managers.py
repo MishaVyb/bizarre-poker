@@ -20,7 +20,6 @@ from games.services.cards import CardList
 from games.services.combos import Combo, ComboStacks
 
 from games.models.fields import CardListField
-from poker.settings import DB_CONTEXT
 from users.models import User
 
 
@@ -32,8 +31,13 @@ if TYPE_CHECKING:
     from games.models import Player
     from games.models import Game
 
+
 class GameManager(models.Manager[_T]):
     def prefetch_players(self):
+        """
+        Call to prefetch all nessaccery related data to handling players.
+        Then call for game.select_players(..) method to initialize selector.
+        """
         prefetch_lookups = (
             'players_manager',
             # we need to load this:
@@ -55,15 +59,11 @@ class PlayerQuerySet(models.QuerySet):
 
 class PlayerManager(IterableManager[_T]):
     def get_queryset(self):
-        dealer_case = models.Case(
-            models.When(position=0, then=models.Value(True)),
-            models.When(position__gt=0, then=models.Value(False)),
-        )
-        return (
-            PlayerQuerySet(model=self.model, using=self._db, hints=self._hints)
-            .annotate(is_dealer=dealer_case)
-            .order_by('position')
-        )
+        return PlayerQuerySet(
+            model=self.model,
+            using=self._db,
+            hints=self._hints,
+        ).order_by('position')
 
     @related_manager_method
     def update_annotation(self, *fields, **fields_values):
@@ -79,7 +79,15 @@ class PlayerManager(IterableManager[_T]):
     @related_manager_method
     def after_dealer(self):
         """active players starting after dealer button."""
-        return self.order_by('is_dealer', 'position').filter(is_active=True)
+        dealer_case = models.Case(
+            models.When(position=0, then=models.Value(True)),
+            models.When(position__gt=0, then=models.Value(False)),
+        )
+        return (
+            self.annotate(dealer=dealer_case)
+            .order_by('dealer', 'position')
+            .filter(is_active=True)
+        )
 
     @property  # type: ignore
     @related_manager_method
@@ -102,5 +110,3 @@ class PlayerManager(IterableManager[_T]):
     @related_manager_method
     def dealer(self):
         return self.get(is_dealer=True)
-
-

@@ -49,7 +49,7 @@ class ExtendedQueriesContext(CaptureQueriesContext):
 
     def __enter__(self) -> ExtendedQueriesContext:
         if self._logger:
-            self._logger.info(StrColors.cyan('Start capturing quries. '))
+            self._logger.info(StrColors.purple('Start capturing quries. '))
         return super().__enter__()
 
     def __exit__(self, exc_type: None, exc_value: None, traceback: None) -> None:
@@ -57,7 +57,7 @@ class ExtendedQueriesContext(CaptureQueriesContext):
             if self._sql_report:
                 self.log_and_clear('final')
             self._logger.info(
-                f'{StrColors.cyan("End capturing quries")}. '
+                f'{StrColors.purple("End capturing quries")}. '
                 f'Total amount: {StrColors.bold(self.total_amount)}. '
                 f'Total dublicated: {StrColors.bold(self.total_dublicated)}. '
             )

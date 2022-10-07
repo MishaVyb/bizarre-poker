@@ -58,13 +58,15 @@ class PlayerSerializer(serializers.ModelSerializer):
     game = serializers.PrimaryKeyRelatedField(
         write_only=True, queryset=Game.objects.all()
     )
+    hand = serializers.SerializerMethodField()
     bets = serializers.JSONField(read_only=True, allow_null=True)
     bet_total = serializers.IntegerField(read_only=True)
-    is_dealer = serializers.BooleanField(read_only=True)
-    hand = serializers.SerializerMethodField()
-    profile_bank = serializers.SerializerMethodField()
-    combo = serializers.SerializerMethodField()
+    is_dealer = serializers.ReadOnlyField()
     is_performer = serializers.SerializerMethodField()
+    combo = serializers.SerializerMethodField()
+
+
+    profile_bank = serializers.SerializerMethodField()
 
     def permition(self, obj: Player):
         """player hand and combo visability permitions"""
@@ -107,7 +109,7 @@ class PlayerSerializer(serializers.ModelSerializer):
             'user',
             'game',
             'hand',
-            'bets',         
+            'bets',
             'bet_total',
             'position',
             'is_host',

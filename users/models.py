@@ -9,14 +9,20 @@ from core.models import CreatedModifiedModel, FullCleanSavingMixin
 from core.validators import bet_multiplicity
 
 
+
 if TYPE_CHECKING:
-    from games.models import Player, PlayerManager
+    from games.models.managers import PlayerManager
+    from games.models import Player
     from ..games.models.game import Game
 
 
 class UserProxy(FullCleanSavingMixin, DjangoUserModel):
     players: PlayerManager[Player]  # OneToMany related field defined by Django
-    profile: Profile                # OneToOne related field defined by Django
+    # def profile(self):
+    #     if hasattr(self, '_profile'):
+    #         return self._profile
+    #     Profile(user=self).save()
+    #     return self.profile()
 
     def player_at(self, game: Game) -> Player:
         return game.players.get(user=self)

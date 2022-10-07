@@ -10,7 +10,6 @@ from games.services import actions
 from games.services.actions import ActionPrototype, BaseAction
 from games.services.cards import CardList, Decks
 from games.services.configurations import DEFAULT
-from poker.settings import DB_CONTEXT
 
 
 if TYPE_CHECKING:
@@ -352,6 +351,12 @@ class TearDownStage(BaseStage):
             player.presave()
 
     def move_dealler_button(self):
+        reordered: list[Player] = self.game.players[1:] + [self.game.players[0]]
+        for i, player in enumerate(reordered):
+            player.position = i
+        self.game.select_players(reordered)
+
+        return
         n = len(self.game.players)
         self.game.players[0].is_dealer = False
         self.game.players[0].position = n - 1  # becomes last

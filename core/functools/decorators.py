@@ -115,7 +115,7 @@ class ProcessingTimer:
         self.name = name or get_func_name(back=True)
 
     def __enter__(self):
-        self.__logger.info(f'Mark processing timer for {self.name}. ')
+        self.__logger.info(f'Start processing timer for {self.name}. ')
         self.__in = time.time()
         return self
 

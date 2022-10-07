@@ -21,7 +21,6 @@ from games.services.cards import CardList
 from games.services.combos import Combo, ComboStacks
 from games.models import Game
 from games.models.fields import CardListField
-from poker.settings import DB_CONTEXT
 from users.models import User
 
 
@@ -64,12 +63,16 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
     )
     position: int = models.PositiveSmallIntegerField()
     is_host: bool = models.BooleanField()
-    is_dealer: bool  # annotated by PlayerQuerySet
+    #is_dealer: bool  # annotated by PlayerQuerySet
     is_active: bool = models.BooleanField('not passed player', default=True)
 
     @property
     def bet_total(self):
         return sum(self.bets)
+
+    @property
+    def is_dealer(self):
+        return self.position == 0
 
     @property
     def other_players(self):

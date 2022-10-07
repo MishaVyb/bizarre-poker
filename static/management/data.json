@@ -52,7 +52,7 @@
                 "barticheg"
             ],
             "run": {
-                "stop_before_stage": "PlacingBetsStage_2"
+                "stop_before_stage": "BiddingsStage_2"
             }
         },
         {
@@ -67,13 +67,6 @@
         },
         {
             "pk": 5,
-            "players": [
-                "vybornyy",
-                "simusik"
-            ]
-        },
-        {
-            "pk": 6,
             "players": [
                 "vybornyy"
             ]
