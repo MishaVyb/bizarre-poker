@@ -18,7 +18,7 @@ schema_view = get_schema_view(
         title="Bizarre Poker API",
         default_version='v1',
         description="Internal REST API to link fronted and backend parts of app.",
-        # terms_of_service="https://www.google.com/policies/terms/",
+        terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="vbrn.mv@gmail.com"),
         license=openapi.License(name="BSD License"),
     ),
