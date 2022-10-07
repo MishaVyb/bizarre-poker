@@ -229,7 +229,8 @@ class PlaceBet(BaseAction):
         # act
         self.player.user.profile.bank -= self.value
         self.player.user.profile.presave()
-        self.player.bets.create(value=self.value)
+        self.player.bets.append(self.value)
+        self.player.presave()
 
 
 class PlaceBlind(PlaceBet):

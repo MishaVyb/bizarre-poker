@@ -9,7 +9,7 @@ from core.functools.utils import change_loggers_level, init_logger
 from django.db import IntegrityError, models
 from django.db.models import Prefetch
 from games.models import Game, Player
-from games.models.player import PlayerBet, PlayerManager, PlayerQuerySet
+from games.models.managers import PlayerManager, PlayerQuerySet
 from games.services import actions, configurations, stages
 from games.services.cards import CardList
 from games.services.processors import AutoProcessor, BaseProcessor
@@ -285,11 +285,8 @@ class TestGamePlayersInterface(BaseGameProperties):
             assert game.players[0].user.profile.bank
             assert context.amount == 1
 
-    #@pytest.mark.skip('slow test')
+    @pytest.mark.slow
     def test_selector_vs_manager_speed(self):
-        # change_loggers_level(logging.ERROR, exclude_match=r'(.*auto)')
-        host = self.users_list[0]  # we know user from request
-
         # [1] old way - how it was before player selector
         self.game_pk = Game(players=self.users_list, commit=True).pk
         game = self.game_no_player_selector
@@ -302,7 +299,7 @@ class TestGamePlayersInterface(BaseGameProperties):
 
         # [2] new way -- recomended
         self.game_pk = Game(players=self.users_list, commit=True).pk
-        game = self.game    # players prefethed and selected already inside |self.game|
+        game = self.game # players prefethed and selected already inside |self.game|
         with processing_timer(logger) as timer_2:
             with ExtendedQueriesContext() as context_2:
                 game.players.host
@@ -406,51 +403,6 @@ class TestPlayerManager(BaseGameProperties):
             self.players_list[0],
         ]
         assert list(self.game.players_manager.after_dealer) == expected
-
-    def test_player_bet(self):
-        self.players['simusik'].bets.create(value=15)
-        self.players['simusik'].bets.create(value=25)
-        self.players['barticheg'].bets.create(value=10)
-
-        # bet total:
-        # access via annotated field at player
-        assert self.game.players_manager[1].bet_total == 40
-        # and we can use it for key lookup's
-        assert self.game.players_manager.get(bet_total=40) == self.players['simusik']
-
-        # 0 if player was not make a bet
-        assert self.game.players_manager[0].bet_total == 0
-
-        # bot None via special annotation method
-        qs = PlayerManager._annotate_bet_total_with_none(self.game.players_manager)
-        assert qs[0].bet_total_none is None
-
-        # узнаем кто не сделал ставку
-        expected = [self.game.players_manager[0]]
-        assert list(self.game.players_manager.without_bet) == expected
-
-        # узнаем наиболшую ставку в игре
-        assert self.game.players_manager.with_max_bet.bet_total == 40
-        assert self.game.players_manager.aggregate_max_bet() == 40
-
-        # bets equality
-        assert self.game.players_manager.check_bet_equality() is False
-        self.players['barticheg'].bets.create(value=30)
-        self.players['vybornyy'].bets.create(value=40)
-        assert self.game.players_manager.check_bet_equality() is True
-
-        # if there are no bets at alll
-        PlayerBet.objects.all().delete()
-        assert self.game.players_manager.check_bet_equality() is True
-
-        # if there are only one bet
-        self.players['simusik'].bets.create(value=15)
-        assert self.game.players_manager.check_bet_equality() is False
-
-        # order by bet
-        q = self.game.players_manager.ordered_by_bet
-        assert q[0] == self.players['barticheg']
-        assert q[1] == self.players['vybornyy']
 
     def test_player_queryset_cache(self):
         qs = Player.objects.filter(game=self.game)

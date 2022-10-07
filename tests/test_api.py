@@ -117,20 +117,14 @@ class TestGameAPI(APIGameProperties):
         assert self.response_data[0]['user'] == str(self.players_list[1].user)
         assert self.response_data[1]['user'] == str(self.players_list[2].user)
 
-    def test_players_endpoint_bet_total(self):
+    def test_players_endpoint_bets_fields(self):
         AutoProcessor(self.game, stop_before_stage=stages.BiddingsStage_1).run()
-
         self.assert_response('', 'vybornyy', 'GET', 'players')
+        
         assert [p['bet_total'] for p in self.response_data] == [0, 5, 10]
-        assert [p['bet_is_placed'] for p in self.response_data] == [False, True, True]
+        assert [bool(p['bets']) for p in self.response_data] == [False, True, True]
+        assert [p['bets'] for p in self.response_data] == [[], [5], [10]]
 
-        self.assert_response('', 'vybornyy', 'GET', 'players/me')
-        assert self.response_data['bet_total'] == 0
-        assert self.response_data['bet_is_placed'] == False
-
-        self.assert_response('', 'vybornyy', 'GET', 'players/other')
-        assert [p['bet_total'] for p in self.response_data] == [5, 10]
-        assert [p['bet_is_placed'] for p in self.response_data] == [True, True]
 
     def test_actions_endpoint(self, setup_users_banks: list[int]):
         self.assert_response(

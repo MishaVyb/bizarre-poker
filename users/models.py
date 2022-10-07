@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User as DjangoUserModel
 from django.db import models
-from core.models import CreatedModifiedModel, FullCleanSavingMixin, UpdateMethodMixin
+from core.models import CreatedModifiedModel, FullCleanSavingMixin
 from core.validators import bet_multiplicity
 
 
@@ -29,7 +29,7 @@ class UserProxy(FullCleanSavingMixin, DjangoUserModel):
         proxy = True
 
 
-class Profile(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
+class Profile(FullCleanSavingMixin, CreatedModifiedModel):
     """
     Model for representing users profile.
     It stores non-auth related information about a site user.

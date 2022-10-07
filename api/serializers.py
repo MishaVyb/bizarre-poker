@@ -58,7 +58,7 @@ class PlayerSerializer(serializers.ModelSerializer):
     game = serializers.PrimaryKeyRelatedField(
         write_only=True, queryset=Game.objects.all()
     )
-    #bets = serializers.BooleanField(read_only=True, allow_null=True)
+    bets = serializers.JSONField(read_only=True, allow_null=True)
     bet_total = serializers.IntegerField(read_only=True)
     is_dealer = serializers.BooleanField(read_only=True)
     hand = serializers.SerializerMethodField()
@@ -107,8 +107,8 @@ class PlayerSerializer(serializers.ModelSerializer):
             'user',
             'game',
             'hand',
+            'bets',         
             'bet_total',
-            'bet_is_placed',  # exist or not
             'position',
             'is_host',
             'is_dealer',

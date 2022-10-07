@@ -12,6 +12,7 @@ from core.models import (
 from django.db import models
 from django.urls import reverse
 from games.models.fields import CardListField
+from games.models.managers import GameManager
 from games.selectors import PlayerSelector
 from games.services import configurations
 from games.services.cards import CardList
@@ -25,28 +26,10 @@ if TYPE_CHECKING:
 from users.models import User
 
 logger = init_logger(__name__)
-_T = TypeVar('_T')
 
 
 def get_deck_default():
     return configurations.DEFAULT.deck_container_name
-
-
-class GameManager(models.Manager[_T]):
-    def prefetch_players(self):
-        prefetch_lookups = (
-            'players_manager',
-            # we need to load this:
-            # [1] to know player name (for logging) | player.user.username
-            # [2] to find a player for user who make Action | user.player_at(game)
-            'players_manager__user',
-            # we need to load this:
-            # [1] to know other players bank wich is max possible value for bet (VaBank)
-            # [2] to chance players bank when placing bet or taking benefint
-            'players_manager__user__profile',
-        )
-        # prefetch_related for other side of FogigenKey field (not select_related)
-        return super().prefetch_related(*prefetch_lookups)
 
 
 class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
@@ -148,7 +131,6 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # the same as self.select_players,
         # but we don`t need hint db because we know players
         self.select_players(prefetched_players)
-        
 
     def __repr__(self) -> str:
         try:

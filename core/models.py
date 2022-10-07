@@ -98,9 +98,6 @@ class ChangedFieldsLoggingMixin(_TYPE_MODEL):
         abstract = True
 
 
-# _Model = TypeVar('_Model', models.Model)
-
-
 class FullCleanSavingMixin(_TYPE_MODEL):
     _presave_flag = False
 
@@ -147,7 +144,7 @@ class FullCleanSavingMixin(_TYPE_MODEL):
             super().save(force_insert, force_update, using, update_fields)
 
 
-class EtendedSavingMixin(FullCleanSavingMixin, ChangedFieldsLoggingMixin):
+class ExtendedSavingMixin(FullCleanSavingMixin, ChangedFieldsLoggingMixin):
     # not implemented yet
     pass
 

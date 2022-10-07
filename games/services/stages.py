@@ -213,7 +213,7 @@ class BiddingsStage(BaseStage):
         if super().get_possible_values_for(action) is None:
             return None
 
-        assert self.performer # for mypy 
+        assert self.performer # for mypy
 
         # max bet -minus- player's bet
         min_value = self.game.players.aggregate_max_bet() - self.performer.bet_total
@@ -227,8 +227,9 @@ class BiddingsStage(BaseStage):
         logger.info(f'Accepting bets: {[p.bet_total for p in self.game.players]}')
 
         income = self.game.players.aggregate_sum_all_bets()
-        self.game.players_manager.all_bets().delete()
-        self.game.players_manager.update_annotation(bet_total=0, bet_total_none=None)
+        for player in self.game.players:
+            player.bets.clear()
+            player.presave()
         self.game.bank += income
 
 
@@ -348,21 +349,21 @@ class TearDownStage(BaseStage):
         for player in self.game.players:
             player.hand.clear()
             player.is_active = True
-            player.pre_save()
+            player.presave()
 
     def move_dealler_button(self):
         n = len(self.game.players)
         self.game.players[0].is_dealer = False
         self.game.players[0].position = n - 1  # becomes last
-        self.game.players[0].pre_save()
+        self.game.players[0].presave()
 
         self.game.players[1].is_dealer = True
         self.game.players[1].position = 0
-        self.game.players[1].pre_save()
+        self.game.players[1].presave()
 
         for player, position in zip(self.game.players[2:], range(1, n)):
             player.position = position
-            player.pre_save()
+            player.presave()
 
         # re-order PlayerSelector
         self.game.players.reorder_source()

@@ -27,7 +27,7 @@ from poker import settings
 from users.models import User
 from api import views as api_views
 from games import models
-from games.models import PlayerBet
+
 from games.services.cards import Card
 from rest_framework.test import APIClient
 from api.serializers import GameSerializer, PlayerSerializer
@@ -221,22 +221,3 @@ class GameView(views.View):
         auto.autoplay_game(game, stop_after_actions_amount=1)
         return redirect(self.namespace_name, pk=pk)
 
-
-# class MakePlayerBetView(views.View):
-#     name = 'bet'
-#     full_name = app_name + ':' + name
-
-#     def post(self, request: WSGIRequest, pk: int) -> HttpResponse:
-#         game: models.Game = get_object_or_404(models.Game, pk=pk)
-#         player: models.Player = request.user.players.get(game=game)
-
-#         form = PlayerBetForm(data=request.POST, instance=player.bet)
-
-#         if form.is_valid():
-#             form.save()
-#             logger.info('form saved')
-#             # bet: PlayerBet = form.save(commit=False)
-#             # bet.player = player
-#             # bet.save()
-
-#         return redirect(GameView.namespace_name, pk=pk)

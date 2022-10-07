@@ -81,6 +81,8 @@ class PlayerSelector:
 
     def check_bet_equality(self) -> bool:
         """True if all beds equal (for active players)."""
+        a = self.aggregate_max_bet()
+        b = self.aggregate_min_bet()
         return self.aggregate_max_bet() - self.aggregate_min_bet() == 0
 
     # @property
@@ -105,7 +107,7 @@ class PlayerSelector:
         If all players have placed their bets and they are equal - StopIteration raised.
         """
         try:
-            key = lambda p: not p.bet_is_placed
+            key = lambda p: not p.bets
             return next(circle_after(key, self.after_dealer, raises=True))
         except ValueError:
             chellenging_bet = self.aggregate_max_bet()
@@ -115,7 +117,7 @@ class PlayerSelector:
     @property
     def without_bet(self):
         """for active players starting after dealer"""
-        key = lambda p: not p.bet_is_placed and p.is_active
+        key = lambda p: not p.bets and p.is_active
         return filter(key, self.after_dealer)
 
     @property
