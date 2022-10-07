@@ -349,26 +349,12 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
-# ---------------------------- #
-
 # venv
 venv*
 
 # macOS system files
 .DS_Store
 
-# tmp files
-Untitled*
---old--*
-
-# ------- IDE settings -------- #
-
-# Black settings
-# pyproject.toml
-
-# flake8 settings
-# setup.cfg
-
-# visual studio code settings
+# IDE settings
 .vscode*
 
