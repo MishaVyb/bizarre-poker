@@ -156,8 +156,6 @@ class TestGamePlayersInterface(BaseGameProperties):
         return Game.objects.get(pk=self.game_pk)
 
     def test_game_prefecth_related(self, setup_game):
-        # change_loggers_level(logging.ERROR, exclude_match=r'(.*auto)')
-
         # [01] Test no prefetch. Get game object with empty prefetch_lookups
         game = self.game_no_player_selector
 
@@ -211,27 +209,27 @@ class TestGamePlayersInterface(BaseGameProperties):
             [p for p in game.players_manager]  # ask to all players -- no db evulation
             assert context.amount == 2
 
-            # but what if we add new player? will it breake a cash
-            # RESULT: cache won't update :(
+            # but what if we add new player? will it change a cash
+            # RESULT: cache has not updated
             new_player = Player.objects.create(game=game, user=new_user)
             assert new_player not in [p for p in game.players_manager]  # not in cache
             assert new_player in game.players_manager.active  # but in new qs
 
             # okey, add new_player in another way, via game.players manager
-            # RESULT: the same, cache won't update :(
+            # RESULT: the same, cache has not updated
             another_new_player = game.players_manager.create(user=another_new_user)
             assert another_new_player not in [p for p in game.players_manager]
             assert another_new_player in game.players_manager.active
 
             # clear prefetch_related
-            # RESULT: the same, it doesn't work, why ?!
+            # RESULT: the same, cache has not updated
             game.players_manager.prefetch_related(None)
             assert another_new_player not in [p for p in game.players_manager]
 
     def test_select_players(self, setup_game):
-        game = self.game_no_player_selector  # to work with one game instance
-        # [1]
+        game = self.game_no_player_selector
         game.select_players()
+        # [1]
         with ExtendedQueriesContext() as context:
             [p for p in game.players]  # db evulation
             [p for p in game.players]  # cache
@@ -287,33 +285,38 @@ class TestGamePlayersInterface(BaseGameProperties):
             assert game.players[0].user.profile.bank
             assert context.amount == 1
 
-    @pytest.mark.skip('slow test')
+    #@pytest.mark.skip('slow test')
     def test_selector_vs_manager_speed(self):
         # change_loggers_level(logging.ERROR, exclude_match=r'(.*auto)')
-        vybornyy = self.users_list[0]  # we know user from request
+        host = self.users_list[0]  # we know user from request
 
         # [1] old way - how it was before player selector
         self.game_pk = Game(players=self.users_list, commit=True).pk
+        game = self.game_no_player_selector
         with processing_timer(logger) as timer_1:
             with ExtendedQueriesContext() as context_1:
-                game = self.game_no_player_selector
-                game._players_selector = game.players_manager  # changes here !!
-                actions.StartAction(game, vybornyy)
+                game.players_manager.host
+                game.players_manager.active
+                game.players_manager.after_dealer
+                game.players_manager.after_dealer_all
 
         # [2] new way -- recomended
         self.game_pk = Game(players=self.users_list, commit=True).pk
+        game = self.game    # players prefethed and selected already inside |self.game|
         with processing_timer(logger) as timer_2:
             with ExtendedQueriesContext() as context_2:
-                # players prefethed and selected already inside `self.game`
-                actions.StartAction(self.game, vybornyy)
+                game.players.host
+                game.players.active
+                game.players.after_dealer
+                game.players.after_dealer_all
 
-        assert timer_1 > timer_2
         assert context_1.amount > context_2.amount
+        assert timer_1 > timer_2
 
         # [3]
         # RESULT:
         # it's faster to use python methods to handle the same data
-        # then making another specific query  (for small list in my case)
+        # then making another specific query  (for small amount of data in my case)
         change_loggers_level(logging.ERROR)
         t1 = timeit(lambda: game.players_manager.after_dealer_all)  # order_by inside
         t2 = timeit(lambda: game.players.after_dealer_all)  # sort inside
@@ -333,14 +336,14 @@ class TestGamePlayersInterface(BaseGameProperties):
     def test_queries_amount_full_round(self, setup_game):
         game = self.game
         rounds = 1
-        with ProcessingTimer(name=f'Timer for {rounds} rounds processing. ') as t:
+        with ProcessingTimer(name=f'Timer for {rounds} rounds processing. '):
             with ExtendedQueriesContext(sql_report=True) as context:
                 AutoProcessor(
                     game,
                     stop_after_rounds_amount=rounds,
                     autosave=False,
                 ).run()
-                assert context.amount == 0
+        assert context.amount == 0
 
     def test_queries_amount_game_objects_saving(self, setup_game):
         game = self.game
@@ -379,40 +382,22 @@ class TestPlayerManager(BaseGameProperties):
         return Game.objects.get(pk=self.game_pk)
 
     def test_player_manager(self):
-        game = self.game_no_player_selector
-
-        assert isinstance(Player.objects, models.Manager)
-        # players is a RelatedDescriprot class
-        assert hasattr(Game, 'players_manager')
-        # there are no access to releted manager `players` through class,
-        assert not isinstance(Game.players_manager, PlayerManager)
-        # and there are no selector
-        assert game.get_players() is None
-
-        for p in game.players_manager:
-            assert isinstance(p, Player)
-
-        p = game.players_manager.active[0]
-        assert isinstance(p, Player)
-
-        # crete another Game
-        self.game_pk = Game(players=User.objects.all(), commit=True).pk
-
-        self.game.players_manager.host  # not rises via instance
+        assert isinstance(Player.objects, PlayerManager)
         with pytest.raises(AttributeError):
-            Player.objects.host  # but forbidden via class
+            Player.objects.host         # method is forbidden for accessing via class
 
-        # player manager has custom query set for redefine some methods
-        assert isinstance(game.players_manager.all(), PlayerQuerySet)
+        # |players_manager| is a RelatedDescriprot class
+        # there are no access to releted manager |players_manager| via class
+        assert not isinstance(Game.players_manager, PlayerManager)
+
+        # but obviosly coild be accessed via game instance
+        self.game.players_manager.host
 
     def test_players_ordering(self):
         assert self.game.players_manager.all()[0].user.username == 'vybornyy'
         assert self.game.players_manager.all()[0].position == 0
         assert self.game.players_manager.after_dealer[0].user.username == 'simusik'
         assert self.game.players_manager.after_dealer[0].position == 1
-
-    def test_player_dealer(self):
-        assert [p.is_dealer for p in self.game.players_manager] == [True, False, False]
 
     def test_players_after_dealer(self):
         expected = [

@@ -132,7 +132,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         if not commit:
             return
 
-        self.save()  # commit
+        self.save()
 
         if not players:
             return
@@ -148,6 +148,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # the same as self.select_players,
         # but we don`t need hint db because we know players
         self.select_players(prefetched_players)
+        
 
     def __repr__(self) -> str:
         try:

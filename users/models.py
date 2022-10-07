@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User as _UserModel
+from django.contrib.auth.models import User as DjangoUserModel
 from django.db import models
 from core.models import CreatedModifiedModel, FullCleanSavingMixin, UpdateMethodMixin
 from core.validators import bet_multiplicity
@@ -14,11 +14,9 @@ if TYPE_CHECKING:
     from ..games.models.game import Game
 
 
-# not possible to inheritate from get_user_model()
-# so we have to use auth user model (_UserModel) directly
-class UserProxy(FullCleanSavingMixin, _UserModel):
-    players: PlayerManager[Player]  # OneToMany related field initialize by Django
-    profile: Profile  # OneToOne related field initialize by Django after Bet creation
+class UserProxy(FullCleanSavingMixin, DjangoUserModel):
+    players: PlayerManager[Player]  # OneToMany related field defined by Django
+    profile: Profile                # OneToOne related field defined by Django
 
     def player_at(self, game: Game) -> Player:
         return game.players.get(user=self)
@@ -32,7 +30,8 @@ class UserProxy(FullCleanSavingMixin, _UserModel):
 
 
 class Profile(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
-    """Model for representing users profile.
+    """
+    Model for representing users profile.
     It stores non-auth related information about a site user.
     """
 
@@ -53,7 +52,9 @@ class Profile(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
 
 User = UserProxy
-"""alias to custom proxy model which extends UserModel behaviour."""
+"""
+Alias to custom proxy model which extends UserModel behaviour.
+"""
 
 # Note: this poblems goes down after updating to a latest version of Django.
 #

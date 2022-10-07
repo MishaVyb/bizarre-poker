@@ -1,0 +1,82 @@
+{
+    "users": [
+        {
+            "username": "vybornyy",
+            "password": "vybornyy"
+        },
+        {
+            "username": "simusik",
+            "password": "simusik"
+        },
+        {
+            "username": "barticheg",
+            "password": "barticheg"
+        },
+        {
+            "username": "arthur.morgan",
+            "password": "arthur.morgan"
+        },
+        {
+            "username": "werhner.herzeg",
+            "password": "werhner.herzeg"
+        }
+    ],
+    "games": [
+        {
+            "pk": 1,
+            "players": [
+                "vybornyy",
+                "simusik",
+                "barticheg",
+                "arthur.morgan",
+                "werhner.herzeg"
+            ]
+        },
+        {
+            "pk": 2,
+            "players": [
+                "vybornyy",
+                "simusik",
+                "barticheg",
+                "arthur.morgan"
+            ],
+            "run": {
+                "stop_before_stage": "PlacingBlindsStage"
+            }
+        },
+        {
+            "pk": 3,
+            "players": [
+                "vybornyy",
+                "simusik",
+                "barticheg"
+            ],
+            "run": {
+                "stop_before_stage": "PlacingBetsStage_2"
+            }
+        },
+        {
+            "pk": 4,
+            "players": [
+                "vybornyy",
+                "simusik"
+            ],
+            "run": {
+                "stop_before_stage": "OpposingStage"
+            }
+        },
+        {
+            "pk": 5,
+            "players": [
+                "vybornyy",
+                "simusik"
+            ]
+        },
+        {
+            "pk": 6,
+            "players": [
+                "vybornyy"
+            ]
+        }
+    ]
+}
