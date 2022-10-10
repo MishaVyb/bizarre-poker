@@ -25,6 +25,7 @@ ALLOWED_HOSTS: list[str] = [
     '127.0.0.1',
     '0.0.0.0',
     '192.168.0.36',
+    'localhost',
 ]
 
 
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # other libs
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
@@ -60,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     # custom:
     'main.middleware.proxy.UserProxyMiddleware',
 ]
@@ -180,3 +183,6 @@ SWAGGER_SETTINGS = {
    }
 }
 
+CORS_ORIGIN_WHITELIST = [
+     'http://localhost:3000'
+]

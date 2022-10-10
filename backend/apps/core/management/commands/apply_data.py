@@ -1,10 +1,9 @@
-import csv
-import os
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.utils import IntegrityError
 import pydantic
+from core.functools.utils import init_logger
 from core.functools.utils import StrColors
 
 from games.models import Game, Player
@@ -12,6 +11,7 @@ from games.services import actions, stages
 from users.models import Profile, User
 from games.services.processors import AutoProcessor
 
+logger = init_logger(__name__)
 
 class GameSchema(pydantic.BaseModel):
     pk: int
@@ -45,8 +45,14 @@ class Command(BaseCommand):
         for model in [User, Player, Game]:
             model.objects.all().delete()
 
-        users = User.objects.bulk_create([User(**user) for user in data.users])
-        Profile.objects.bulk_create([Profile(user=user) for user in users])
+        for user_data in data.users:
+            user = User(**user_data)
+            password = user_data.get('password') or user.username
+            user.set_password(password)
+
+            # Profile objects creates inside at clean(..) method
+            user.save()
+            logger.info(f'User created. Authentication credentials: login "{user.username}" password "{password}"')
 
         for game_data in data.games:
             game = Game(
