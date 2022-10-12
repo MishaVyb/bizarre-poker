@@ -13,6 +13,14 @@ export default class AuthService {
     autoBind(this);
   }
 
+  get config() {
+    return {
+      headers: {
+        Authorization: `Token ${this.token}`,
+      },
+    };
+  }
+
   async login(username, password) {
     try {
       const response = await axios.post(urls.login, { username, password });
@@ -27,29 +35,27 @@ export default class AuthService {
     }
   }
 
-  static async logout(token) {
-    const config = {
-      headers: {
-        Authorization: `Token ${token}`,
-      },
-    };
-    const response = await axios.post(urls.logout, token, config);
+  async logout() {
+    if (!this.token) {
+      console.log("warning : AuthService.me() : No token provided. ");
+      return null;
+    }
+    const response = await axios.post(urls.logout, this.token, this.config);
+    this.token = null;
     return response.data;
   }
 
   async me() {
-    console.log("get me with: ", { ...this });
+    if (!this.token) {
+      console.log("warning : AuthService.me() : No token provided. ");
+      return null;
+    }
 
-    const config = {
-      headers: {
-        Authorization: `Token ${this.token}`,
-      },
-    };
-    const response = await axios.get(urls.me, config);
+    const response = await axios.get(urls.me, this.config);
     return response.data;
   }
 
-  test_func() {
-    console.log("test func with token: " + this.token);
-  }
+  // test_func() {
+  //   console.log("test func with token: " + this.token);
+  // }
 }
