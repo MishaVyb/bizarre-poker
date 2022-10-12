@@ -12,7 +12,7 @@ from core.models import (
     get_list_default,
     related_manager_method,
 )
-from core.validators import bet_multiplicity, bet_multiplicity_list
+from core.validators import bet_multiplicity, bet_multiplicity_list, int_list_validator
 from django.db import IntegrityError, models
 from django.db.models import F, functions
 from games.models.managers import PlayerManager
@@ -59,11 +59,10 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
     bets: list[int] = models.JSONField(
         blank = True,
         default=get_list_default,
-        validators=[bet_multiplicity_list],
+        validators=[int_list_validator],
     )
     position: int = models.PositiveSmallIntegerField()
     is_host: bool = models.BooleanField()
-    #is_dealer: bool  # annotated by PlayerQuerySet
     is_active: bool = models.BooleanField('not passed player', default=True)
 
     @property

@@ -233,24 +233,31 @@ def reverse_attrgetter(*attrs: str):
 
 class Interval(Generic[_TCT]):
     """
-    Interval represents value range (both max and min inclusevly).
+    Interval represents value range (both `[min, max]` inclusevly).
+    If `step` is provided, it should be a multiplier for `min` and `max`.
 
-    >>> 12 in Interval(10, 20)
-    True
     >>> 20 in Interval(10, 20)  # inclusevly 20
     True
-    >>> 0.1 in Interval(0.11, 1)
+    >>> 15 in Interval(10, 20, step=5)
+    True
+    >>> 12 in Interval(10, 20, step=5)
     False
+    >>> Interval(10, 25, step=10)
+    Traceback (most recent call last):
+      ...
+    ValueError: Invalid interval: step is not multiplier for min or max.
+
 
     """
 
-    def __init__(self, min_: _TCT, max_: _TCT) -> None:
+    def __init__(self, min_: _TCT, max_: _TCT, *, step: _TCT | None = None) -> None:
         self.min = min_
         self.max = max_
+        self.step = step
         self._check_constraints()
 
     def __repr__(self) -> str:
-        return f'[{self.min}]->[{self.max}]'
+        return f'[{self.min}]->[{self.max}]' + f'..({self.step})' if self.step else ''
 
     def __getitem__(self, index: Literal[0, 1]) -> _TCT:
         if index not in [0, 1]:
@@ -259,7 +266,7 @@ class Interval(Generic[_TCT]):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Interval):
-            return (self.min, self.max) == (other.min, other.max)
+            return (self.min, self.max, self.step) == (other.min, other.max, other.step)
         return NotImplemented
 
     def __contains__(self, items: _TCT | Iterable[_TCT]):
@@ -267,10 +274,22 @@ class Interval(Generic[_TCT]):
         if not isinstance(items, Iterable):
             items = [items]
 
-        return all(self.min <= item <= self.max for item in items)
+        return all(
+            self.min <= item <= self.max and self._step_is_multiplier(item)
+            for item in items
+        )
+
+    def _step_is_multiplier(self, value):
+        if not self.step:
+            return True
+        return value % self.step == 0
 
     def _check_constraints(self):
         if not self.min <= self.max:
-            raise ValueError('Invalid interval with min > max. ')
+            raise ValueError('Invalid interval: min > max. ')
+        elif not self._step_is_multiplier(self.min) or not self._step_is_multiplier(
+            self.max
+        ):
+            raise ValueError('Invalid interval: step is not multiplier for min or max.')
         elif self.min == self.max:
             logger.warning('Iterval with min == max. That`s how it should be?')

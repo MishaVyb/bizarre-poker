@@ -9,7 +9,6 @@ from core.models import CreatedModifiedModel, FullCleanSavingMixin
 from core.validators import bet_multiplicity
 
 
-
 if TYPE_CHECKING:
     from games.models.managers import PlayerManager
     from games.models import Player
@@ -44,10 +43,7 @@ class Profile(FullCleanSavingMixin, CreatedModifiedModel):
     user: UserProxy = models.OneToOneField(
         UserProxy, on_delete=models.CASCADE, related_name='profile'
     )
-    bank: int = models.PositiveIntegerField(
-        default=1000,
-        validators=[bet_multiplicity],
-    )
+    bank: int = models.PositiveIntegerField(default=1000)
     """Users money account in cents. Default is 10.00$."""
 
     def __str__(self) -> str:

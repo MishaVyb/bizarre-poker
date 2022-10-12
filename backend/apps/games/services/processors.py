@@ -237,7 +237,7 @@ class AutoProcessor(BaseProcessor):
 
     def run(self) -> ProcessingStatus:
         _ = 'AutoProcessor running. '
-        logger.info(StrColors.purple(_) + f'Stop factor: {self.stop_factor}')
+        logger.info(StrColors.purple(_) + f'Stop factor: {self.stop_factor}. ' + f'With actions: {self.with_actions}')
 
         status = super().run()
 
@@ -282,7 +282,7 @@ class AutoProcessor(BaseProcessor):
         # TRY `WITH ACTIONS`
         for proto in self.with_actions.copy():  # copy: because of removing items
             if proto.suitable_stage_class:
-                if proto.suitable_stage_class != type(current_stage):
+                if current_stage != proto.suitable_stage_class:
                     continue
 
             try:
@@ -294,7 +294,7 @@ class AutoProcessor(BaseProcessor):
 
                 self.add(action)
                 super()._actions_processing(current_stage)
-                self.with_actions.remove(action)
+                self.with_actions.remove(proto)
 
                 if self._stop_after_action_condition(proto) == self.FORCED_STOP:
                     return self.FORCED_STOP

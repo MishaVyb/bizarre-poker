@@ -11,7 +11,6 @@ from django.db.models import Prefetch
 from games.models import Game, Player
 from games.models.managers import PlayerManager, PlayerQuerySet
 from games.services import actions, stages
-from apps.core.management.configurations import DEFAULT
 from games.services.cards import CardList
 from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
@@ -143,10 +142,6 @@ class TestGameModel:
         # no raises for another game
         Game(players=[vybornyy, simusik], commit=True)
 
-    def test_deck_generator_default(self):
-        field_default = Game._meta.get_field('deck_generator').default
-        assert callable(field_default)
-        assert field_default() == DEFAULT.deck_container_name
 
 
 @pytest.mark.django_db

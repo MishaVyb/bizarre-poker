@@ -3,9 +3,10 @@ from operator import eq, ge, gt, is_, is_not, le, lt, ne
 from typing import Any, Callable
 
 import pytest
+from games.configurations.configurations import CONFIG_SCHEMAS
 
 from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
-from core.management.configurations import DEFAULT
+
 
 @pytest.mark.parametrize(
     ['input_data', 'expected'],
@@ -575,13 +576,14 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
 
 
 def test_full_deck_plus_jokers():
-    expected_length = 52 * DEFAULT.multy_decks_amount + DEFAULT.jokers_amount
-    generator = Decks.full_deck_plus_jokers()
+    default = CONFIG_SCHEMAS['classic']
+    expected_length = 52 * default.multy_decks_amount + default.jokers_amount
+    generator = Decks.full_deck_plus_jokers(default)
     cl = CardList(instance=generator)
     assert cl.length == expected_length
 
     # check new_generator is not exhaused
-    new_generator = Decks.full_deck_plus_jokers()
+    new_generator = Decks.full_deck_plus_jokers(default)
     assert CardList(instance=new_generator).length == expected_length
 
     # use new_generator again

@@ -4,7 +4,7 @@ import pytest
 from core.functools.utils import StrColors, init_logger
 from games.services import actions, stages
 from games.services.combos import Combo
-from core.management.configurations import DEFAULT
+
 from games.services.processors import AutoProcessor
 from users.models import User
 
@@ -55,8 +55,12 @@ class TestAuto(BaseGameProperties):
 
     def test_autoplay_game(self):
         AutoProcessor(self.game, stop_after_stage=stages.SetupStage).run()
-        assert self.game.stage == stages.DealCardsStage # stage iterated to next stage
-        assert not self.game.table          # but next stage does not executed
+
+        # stage iterated to next stage
+        assert self.game.stage == stages.DealCardsStage_1
+
+        # but next stage does not executed
+        assert not self.game.table
 
         AutoProcessor(self.game, stop_before_stage=stages.BiddingsStage_4).run()
         assert self.game.stage == stages.BiddingsStage_4
@@ -74,7 +78,7 @@ class TestAuto(BaseGameProperties):
 
         # [2] stop before action
         bet = actions.PlaceBet.prototype(
-            game, game.players[0], action_values=[DEFAULT.big_blind]
+            game, game.players[0], action_values=[self.game.config.big_blind]
         )
         AutoProcessor(game, stop_before_action=bet).run()
 
@@ -126,7 +130,7 @@ class TestAuto(BaseGameProperties):
         )
         AutoProcessor(game, with_actions=[bet, pass_]).run()
 
-        bet_total = DEFAULT.big_blind + bet_value
+        bet_total = self.game.config.big_blind + bet_value
         assert self.users_list[0].profile.bank == setup_users_banks[0] - bet_total
         assert next(self.game.players.passed) == self.players_list[1]
 

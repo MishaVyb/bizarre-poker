@@ -3,7 +3,7 @@ import pytest
 from core.functools.utils import Interval, StrColors, init_logger, is_sorted
 from games.services import actions, stages
 from games.services.combos import Combo
-from core.management.configurations import DEFAULT
+
 from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
 
@@ -27,15 +27,16 @@ class TestGameStages(BaseGameProperties):
         values = self.game.stage.get_possible_values_for(actions.PlaceBlind)
         assert values is None
 
-        test = '[2] go ahead... and test get_possible_values_for PlaceBat'
+        test = '[2] go ahead... and test get_possible_values_for PlaceBet'
         logger.info(StrColors.purple(test))
         actions.PlaceBlind.run(self.game, self.users_list[1])
         actions.PlaceBlind.run(self.game, self.users_list[2])
 
         values = self.game.stage.get_possible_values_for(actions.PlaceBet)
         assert values == Interval(
-            min_=DEFAULT.big_blind,  # biggets bet placed on the table
-            max_=min(setup_users_banks),  # smallest opponents bank)
+            min_=self.game.config.big_blind,  # biggets bet placed on the table
+            max_=min(setup_users_banks),  # smallest opponents bank
+            step=self.game.config.bet_multiplicity
         )
 
     def test_get_possible_actions(self, setup_users_banks: list[int]):
@@ -47,8 +48,8 @@ class TestGameStages(BaseGameProperties):
         AutoProcessor(self.game, stop_after_stage=stages.SetupStage).run()
 
         input_deck = self.game.deck.copy()
-        start = len(self.usernames) * DEFAULT.deal_cards_amount
-        end = start + DEFAULT.flops_amounts[0]
+        start = len(self.usernames) * self.game.config.deal_cards_amount
+        end = start + self.game.config.flops_amounts[0]
         expected_flop = list(reversed(input_deck))[start:end]
 
         AutoProcessor(self.game, stop_after_stage=stages.FlopStage_1).run()
@@ -110,9 +111,9 @@ class TestGameStages(BaseGameProperties):
         loosers = active_users - winners  # filter out winners
 
         # prepere expected loosing and winning values
-        all_bets_together = len(active_users) * DEFAULT.big_blind
-        benefit = all_bets_together // len(winners) - DEFAULT.big_blind
-        loss = DEFAULT.big_blind
+        all_bets_together = len(active_users) * self.game.config.big_blind
+        benefit = all_bets_together // len(winners) - self.game.config.big_blind
+        loss = self.game.config.big_blind
 
         # prepare pass actioins
         game = self.game
@@ -267,24 +268,7 @@ class TestGameActions(BaseGameProperties):
             == self.input_users_bank['arthur_morgan']
         )
 
-    def test_get_possible_values_for(self, setup_users_banks: list[int]):
-        actions.StartAction.run(self.game, self.users['vybornyy'])
 
-        test = '[1] test get_possible_values_for PlaceBlind is None'
-        logger.info(StrColors.purple(test))
-        values = self.game.stage.get_possible_values_for(actions.PlaceBlind)
-        assert values is None
-
-        test = '[2] go ahead... and test get_possible_values_for PlaceBat'
-        logger.info(StrColors.purple(test))
-        actions.PlaceBlind.run(self.game, self.users_list[1])
-        actions.PlaceBlind.run(self.game, self.users_list[2])
-
-        values = self.game.stage.get_possible_values_for(actions.PlaceBet)
-        assert values == Interval(
-            min_=DEFAULT.big_blind,  # biggets bet placed on the table
-            max_=min(setup_users_banks),  # smallest opponents bank)
-        )
 
     @property
     def players_bets_total(self):
@@ -312,8 +296,8 @@ class TestGameActions(BaseGameProperties):
         assert [0, 5, 10, 0] == self.players_bets_total
 
         expected = self.input_users_bank.copy()
-        expected['simusik'] -= DEFAULT.small_blind
-        expected['barticheg'] -= DEFAULT.big_blind
+        expected['simusik'] -= self.game.config.small_blind
+        expected['barticheg'] -= self.game.config.big_blind
         expected = [expected[name] for name in self.usernames]
         assert [p.user.profile.bank for p in self.game.players] == expected
 

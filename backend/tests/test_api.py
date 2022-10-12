@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
 from games.services import stages
-from core.management.configurations import DEFAULT
+
 from games.services.processors import AutoProcessor
 from tests.base import BaseGameProperties, APIGameProperties
 from games.services.combos import Combo
@@ -84,7 +84,7 @@ class TestGameAPI(APIGameProperties):
         )
 
     def test_players_endpoint(self):
-        AutoProcessor(self.game, stop_after_stage=stages.DealCardsStage).run()
+        AutoProcessor(self.game, stop_after_stage=stages.DealCardsStage_1).run()
 
         self.assert_response(
             '[1] get players',
@@ -160,7 +160,7 @@ class TestGameAPI(APIGameProperties):
         assert re.match(expected, self.response_data['action_error'])
 
         self.assert_response('', 'vybornyy', 'POST', 'bet', value=17)
-        expected = r'.*Value error: 17. It is not multiples of small blind.*'
+        expected = r'Acitng failed.* not in game stage possible action prototypes. '
         assert re.match(expected, self.response_data['action_error'])
 
         bet = 20
@@ -171,12 +171,12 @@ class TestGameAPI(APIGameProperties):
         self.assert_response('[12]', 'simusik', 'POST', 'vabank')
         self.assert_response('[13]', 'vybornyy', 'POST', 'pass')
 
-        # winner got his benefit
-        # benefit -- bet place by vybornyy and big blind placed by barticheg
-        benefit = bet + DEFAULT.big_blind
-        winner_idx = 1  # simusik
-        bank = self.users_list[winner_idx].profile.bank
-        assert bank == setup_users_banks[winner_idx] + benefit
+
+        logger.info('[14] main assertion: check that winner got his benefit')
+        # benefit: bet place by vybornyy and big blind placed by barticheg
+        benefit = bet + self.game.config.big_blind
+        winner_bank = self.users['simusik'].profile.bank
+        assert winner_bank == self.initial_users_bank['simusik'] + benefit
 
     def test_game_api(self):
 

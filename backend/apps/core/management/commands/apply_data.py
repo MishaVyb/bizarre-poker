@@ -1,4 +1,4 @@
-
+import os
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.utils import IntegrityError
@@ -12,6 +12,8 @@ from users.models import Profile, User
 from games.services.processors import AutoProcessor
 
 logger = init_logger(__name__)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_FILE_PATH = os.path.join(CURRENT_DIR, 'data.json')
 
 class GameSchema(pydantic.BaseModel):
     pk: int
@@ -24,12 +26,18 @@ class TestDataSchema(pydantic.BaseModel):
     games: list[GameSchema]
 
 
+
 class Command(BaseCommand):
     help = 'Erasing full data on db and then loading test data to it. '
     requires_migrations_checks = True
 
     def add_arguments(self, parser):
-        parser.add_argument('file_path', type=str)
+        parser.add_argument(
+            'file_path',
+            type=str,
+            nargs='?',
+            default=TEST_FILE_PATH,
+        )
 
     def handle(self, *args, **options):
         message = (
@@ -52,7 +60,10 @@ class Command(BaseCommand):
 
             # Profile objects creates inside at clean(..) method
             user.save()
-            logger.info(f'User created. Authentication credentials: login "{user.username}" password "{password}"')
+            logger.info(
+                f'User created. Authentication credentials: '
+                f'login "{user.username}" password "{password}"'
+            )
 
         for game_data in data.games:
             game = Game(
@@ -60,6 +71,8 @@ class Command(BaseCommand):
                 pk=game_data.pk,
                 commit=True,
             )
+            logger.info(f'Game created. Players: {game.players}')
+
             if game_data.run:
                 kwargs = {
                     k: getattr(stages, v, None) or getattr(actions, v)

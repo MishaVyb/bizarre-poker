@@ -358,3 +358,8 @@ venv*
 # IDE settings
 .vscode*
 
+# local storage
+*.sqlite3
+
+# tmp files
+Untitled*

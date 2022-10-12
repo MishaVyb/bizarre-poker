@@ -75,6 +75,7 @@ class APIGameProperties(BaseGameProperties):
         'games': '/api/v1/games/',
     }
     clients: dict[str, APIClient]
+    initial_users_bank: dict[str, int]  # defined at setup_users_banks fixture
 
     # data after act:
     request_username: str

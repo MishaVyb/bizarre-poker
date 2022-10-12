@@ -34,7 +34,8 @@ from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
 from core.functools.utils import eq_first, range_inclusevly, split
 from core.functools.decorators import temporally
 from core.functools.utils import init_logger
-from core.management.configurations import DEFAULT
+from games.configurations import ConfigSchema
+
 
 logger = init_logger(__name__)
 
@@ -759,7 +760,7 @@ Stacks = list[CardList]
 
 class Decks:
     @staticmethod
-    def full_deck_plus_jokers():
+    def full_deck_plus_jokers(config: ConfigSchema):
         """yield all 52 cards from highes to smallest and then red/black jokers"""
         _2 = Card.Text.get_rank_value('2')
         ace = Card.Text.get_rank_value('Ace')
@@ -767,12 +768,12 @@ class Decks:
         spades = Card.Text.get_suit_value('Spades')
 
 
-        for _ in range(DEFAULT.multy_decks_amount):
+        for _ in range(config.multy_decks_amount):
             for rank in reversed(range_inclusevly(_2, ace)):
                 for suit in reversed(range_inclusevly(clubs, spades)):
                     yield Card(rank, suit)
 
-            for i in range(DEFAULT.jokers_amount):
+            for i in range(config.jokers_amount):
                 yield JokerCard('red') if i % 2 else JokerCard('black')
 
 

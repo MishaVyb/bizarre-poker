@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Type, TypeAlias, T
 from core.functools.utils import Interval, init_logger
 from core.validators import bet_multiplicity
 from django.core.exceptions import ValidationError
-from core.management.configurations import DEFAULT
+
 from games.services.constraints import check_objects_continuity
 from users.models import User
 
@@ -213,11 +213,6 @@ class PlaceBet(BaseAction):
         return self.message.format(player=self.player.user, value=self.value / 100)
 
     def __init__(self, game: Game, player: Player, value: int):
-        try:
-            bet_multiplicity(value)
-        except ValidationError as e:
-            raise ActionError(e)
-
         self.value = value
         super().__init__(game, player)
 
@@ -240,7 +235,7 @@ class PlaceBlind(PlaceBet):
     def get_message_format(self):
         return self.message.format(
             player=self.player.user,
-            blind='small' if self.value == DEFAULT.small_blind else 'big',
+            blind='small' if self.value == self.game.config.small_blind else 'big',
         )
 
     def __init__(self, game: Game, player: Player):
@@ -251,7 +246,7 @@ class PlaceBlind(PlaceBet):
             raise ActionError(self, 'none_values')
 
         if len(values) != 1:
-            raise ValueError('Values provides not sigle value. ')
+            raise ValueError('Game stage provides not sigle value. ')
 
         self.value = values[0]
 

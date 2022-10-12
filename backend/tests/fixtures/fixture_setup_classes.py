@@ -7,7 +7,7 @@ from core.functools.decorators import temporally
 from core.functools.utils import StrColors, get_func_name, init_logger
 from games.models import Game
 from games.services.cards import Decks
-from core.management.configurations import DEFAULT
+
 from rest_framework.test import APIClient
 from tests.base import BaseGameProperties
 from tests.test_api import TestGameAPI
@@ -81,8 +81,8 @@ def setup_deck_get_expected_combos(
     deck = Decks.factory_from(table=data['table'], hands=data['hands'])
 
     # check test arrange
-    flops = sum(DEFAULT.flops_amounts)
-    neccessary_amount = len(self.usernames) * DEFAULT.deal_cards_amount + flops
+    flops = sum(self.game.config.flops_amounts)
+    neccessary_amount = len(self.usernames) * self.game.config.deal_cards_amount + flops
     if deck.length != neccessary_amount:
         pytest.skip(
             'Current test deck intended for another players amount. '
@@ -91,10 +91,12 @@ def setup_deck_get_expected_combos(
 
     # set our test deck to the game
     setattr(Decks, 'TEST_DECK', deck)
-    with temporally(DEFAULT, deck_shuffling=False):
-        self.game.update(deck_generator='TEST_DECK')
+    with temporally(
+        self.game.config,
+        deck_shuffling=False,
+        deck_container_name='TEST_DECK',
+    ):
         yield data['expected_combos'], data['rate_groups']
-        self.game.update(deck_generator=DEFAULT.deck_container_name)
     delattr(Decks, 'TEST_DECK')
 
 
@@ -121,5 +123,5 @@ def setup_users_banks(request: pytest.FixtureRequest):
         u.profile.save()
         banks.append(u.profile.bank)
 
-    self.input_users_bank = {name: bank for name, bank in zip(self.usernames, banks)}
+    self.initial_users_bank = {name: bank for name, bank in zip(self.usernames, banks)}
     return banks

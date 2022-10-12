@@ -2,23 +2,25 @@
     "users": [
         {
             "username": "vybornyy",
-            "password": "vybornyy"
+            "is_staff": true
+
         },
         {
             "username": "simusik",
-            "password": "simusik"
+            "is_staff": true
+
         },
         {
-            "username": "barticheg",
-            "password": "barticheg"
+            "username": "barticheg"
+
         },
         {
-            "username": "arthur.morgan",
-            "password": "arthur.morgan"
+            "username": "arthur.morgan"
+
         },
         {
-            "username": "werhner.herzeg",
-            "password": "werhner.herzeg"
+            "username": "werhner.herzeg"
+
         }
     ],
     "games": [

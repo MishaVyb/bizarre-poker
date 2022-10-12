@@ -1,4 +1,0 @@
-
-
-class PostRequestRequired(Exception):
-    pass

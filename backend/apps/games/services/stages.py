@@ -6,10 +6,10 @@ from operator import attrgetter
 from typing import TYPE_CHECKING, Callable, NamedTuple, Type, TypeAlias
 
 from core.functools.utils import Interval, StrColors, init_logger
+from games.configurations.configurations import ConfigSchema
 from games.services import actions
 from games.services.actions import ActionPrototype, BaseAction
 from games.services.cards import CardList, Decks
-from core.management.configurations import DEFAULT
 
 
 if TYPE_CHECKING:
@@ -60,13 +60,24 @@ class BaseStage:
         self.game = game
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__} at {self.game}'
+        return self.__class__.__name__
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type):
             # make a shortcut for that cases: if game.stage == BiddingStage: ...
             # check for strick types equality, not isinstance(..)
             return type(self) == other
+
+            # old version:
+            # Make a shortcut for that cases: if game.stage == BiddingStage: ...
+            # Note:
+            # [1] check for strick types equality, not isinstance(..)
+            # because BiddingStage_1 not equals to BiddingStage_2 and etc.
+            # [2] check by names, not by real types, because of stage_factory(..)
+            # the same stages with the same names will be actualy diferent types
+            # bacuse they may be created by factory method
+            return self.__class__.__name__ == other.__name__
+            
         return super().__eq__(other)
 
     def get_possible_actions(self) -> list[ActionPrototype]:
@@ -158,24 +169,28 @@ class SetupStage(BaseStage):
         self.fill_and_shuffle_deck()
 
     def fill_and_shuffle_deck(self):
-        deck = getattr(Decks, self.game.deck_generator)
+        deck = getattr(Decks, self.game.config.deck_container_name)
 
         if callable(deck):
-            self.game.deck = CardList(instance=deck())
+            self.game.deck = CardList(instance=deck(self.game.config))
         elif isinstance(deck, CardList):
             self.game.deck = CardList(instance=deck)
         else:
             raise TypeError
 
-        if DEFAULT.deck_shuffling:
+        if self.game.config.deck_shuffling:
             self.game.deck.shuffle()
 
 
 class DealCardsStage(BaseStage):
     """Pre-flop: draw cards to all players."""
 
-    amount: int = DEFAULT.deal_cards_amount
+    amount: int
     message: str = 'deal {amount} cards to players'
+
+    def __init__(self, game: Game) -> None:
+        super().__init__(game)
+        self.amount = self.game.config.deal_cards_amount
 
     def get_message_format(self):
         return self.message.format(amount=self.amount)
@@ -212,12 +227,10 @@ class BiddingsStage(BaseStage):
         if super().get_possible_values_for(action) is None:
             return None
 
-        assert self.performer # for mypy
-
         # max bet -minus- player's bet
-        min_value = self.game.players.aggregate_max_bet() - self.performer.bet_total
+        min_value = self.game.players.aggregate_max_bet() - self.performer.bet_total  # type: ignore
         max_value = self.game.players.aggregate_possible_max_bet()
-        return Interval(min_value, max_value)
+        return Interval(min_value, max_value, step=self.game.config.bet_multiplicity)
 
     def execute(self):
         self.accept_bets()
@@ -244,8 +257,8 @@ class PlacingBlindsStage(BiddingsStage):
         iterator = self.game.players.after_dealer_all
         first, second = (next(iterator), next(iterator))
         return (
-            first.bet_total == DEFAULT.small_blind
-            and second.bet_total == DEFAULT.big_blind
+            first.bet_total == self.game.config.small_blind
+            and second.bet_total == self.game.config.big_blind
         )
 
     requirements = (players_have_placed_blinds,)  # type: ignore
@@ -254,9 +267,9 @@ class PlacingBlindsStage(BiddingsStage):
         """Next 2 player after dealer."""
         iterator = self.game.players.after_dealer_all
         first, second = (next(iterator), next(iterator))
-        if first.is_active and first.bet_total != DEFAULT.small_blind:
+        if first.is_active and first.bet_total != self.game.config.small_blind:
             return first
-        if second.is_active and second.bet_total != DEFAULT.big_blind:
+        if second.is_active and second.bet_total != self.game.config.big_blind:
             return second
 
         raise RuntimeError
@@ -266,8 +279,8 @@ class PlacingBlindsStage(BiddingsStage):
             return None
 
         if self.performer == next(self.game.players.after_dealer_all):
-            return [DEFAULT.small_blind]
-        return [DEFAULT.big_blind]
+            return [self.game.config.small_blind]
+        return [self.game.config.big_blind]
 
     def execute(self):
         # we need to ovveride super().execute() because it will call accept_bets, but we
@@ -279,7 +292,12 @@ class FlopStage(BaseStage):
     """Place cards on the table."""
 
     message: str = 'flop {amount} cards on game table. '
-    amount: int  # defined at factory
+    amount: int
+
+    def __init__(self, game: Game) -> None:
+        super().__init__(game)
+        index = int(self.__class__.__name__[-1]) - 1
+        self.amount = self.game.config.flops_amounts[index]
 
     def get_message_format(self):
         return self.message.format(amount=self.amount)
@@ -356,43 +374,26 @@ class TearDownStage(BaseStage):
             player.position = i
         self.game.select_players(reordered)
 
-        return
-        n = len(self.game.players)
-        self.game.players[0].is_dealer = False
-        self.game.players[0].position = n - 1  # becomes last
-        self.game.players[0].presave()
-
-        self.game.players[1].is_dealer = True
-        self.game.players[1].position = 0
-        self.game.players[1].presave()
-
-        for player, position in zip(self.game.players[2:], range(1, n)):
-            player.position = position
-            player.presave()
-
-        # re-order PlayerSelector
-        self.game.players.reorder_source()
-        positions = [p.position for p in self.game.players]
-        logger.info(f'Moving dealer button. New players postions: {positions}')
-
 
 ########################################################################################
 #       Default Stages
 ########################################################################################
+
+
+DealCardsStage_1 = DealCardsStage.factory('DealCardsStage_1')
 
 BiddingsStage_1 = BiddingsStage.factory('BiddingsStage_1')
 BiddingsStage_2 = BiddingsStage.factory('BiddingsStage_2')
 BiddingsStage_3 = BiddingsStage.factory('BiddingsStage_3')
 BiddingsStage_4 = BiddingsStage.factory('BiddingsStage_4')
 
-FlopStage_1 = FlopStage.factory('FlopStage_1', amount=DEFAULT.flops_amounts[0])
-FlopStage_2 = FlopStage.factory('FlopStage_2', amount=DEFAULT.flops_amounts[1])
-FlopStage_3 = FlopStage.factory('FlopStage_3', amount=DEFAULT.flops_amounts[2])
-
+FlopStage_1 = FlopStage.factory('FlopStage_1')
+FlopStage_2 = FlopStage.factory('FlopStage_2')
+FlopStage_3 = FlopStage.factory('FlopStage_3')
 
 DEFAULT_STAGES = (
     SetupStage,
-    DealCardsStage,
+    DealCardsStage_1,
     PlacingBlindsStage,
     BiddingsStage_1,
     FlopStage_1,

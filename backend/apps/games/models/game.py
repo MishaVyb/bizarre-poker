@@ -1,6 +1,9 @@
 from __future__ import annotations
+from functools import cached_property
 
 from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
+
+from django.forms import CharField
 
 from core.functools.utils import StrColors, init_logger
 from core.models import (
@@ -14,11 +17,13 @@ from django.urls import reverse
 from games.models.fields import CardListField
 from games.models.managers import GameManager
 from games.selectors import PlayerSelector
-from core.management.configurations import DEFAULT
+from games.configurations.configurations import (
+    CONFIG_SCHEMAS,
+    ConfigChoices,
+)
 from games.services.cards import CardList
 from games.services.processors import BaseProcessor
 from games.services.stages import DEFAULT_STAGES
-
 
 
 if TYPE_CHECKING:
@@ -31,7 +36,7 @@ logger = init_logger(__name__)
 
 
 def get_deck_default():
-    return DEFAULT.deck_container_name
+    ...
 
 
 class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
@@ -47,7 +52,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     @property
     def players(self) -> PlayerSelector:
         if self._players_selector is None:
-            #raise RuntimeError('None selector. Call for select_players(..) before.')
+            # raise RuntimeError('None selector. Call for select_players(..) before.')
             logger.warning(
                 StrColors.red(
                     'None selector. Call for select_players(..) before. '
@@ -58,8 +63,12 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
             return self.players
         return self._players_selector
 
+    config_name: str = models.CharField(
+        choices=ConfigChoices.choices,
+        max_length=30,
+        default=ConfigChoices.CLASSIC,
+    )
     deck: CardList = CardListField(blank=True)
-    deck_generator: str = models.CharField(max_length=79, default=get_deck_default)
     table: CardList = CardListField(blank=True)
     bank: int = models.PositiveIntegerField(default=0)
     status: str = models.CharField(max_length=200, blank=True)
@@ -76,17 +85,22 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     # ]
 
     begins: bool = models.BooleanField(default=False)
-    stage_index: int = models.PositiveSmallIntegerField(default=0)
     rounds_counter: int = models.PositiveIntegerField(default=1)
+
+    stage_index: int = models.PositiveSmallIntegerField(default=0)
 
     @property
     def stage(self):
-        stage_class = DEFAULT_STAGES[self.stage_index]
+        stage_class = self.stages[self.stage_index]
         return stage_class(self)
 
-    @property
+    @cached_property
     def stages(self):
         return DEFAULT_STAGES
+
+    @cached_property
+    def config(self):
+        return CONFIG_SCHEMAS[self.config_name]
 
     def get_processor(self, *, autosave: bool = True) -> BaseProcessor:
         """
@@ -133,7 +147,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     def __repr__(self) -> str:
         try:
-            return f'({self.pk}) game at [#{self.stage_index}] {self.stage.__class__.__name__}'
+            return f'({self.pk}) game at [#{self.stage_index}] {self.stage}'
         except Exception:
             return f'{self.__class__.__name__} ({self.pk})'
 
