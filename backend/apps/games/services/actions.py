@@ -80,16 +80,30 @@ class BaseAction:
         return ActionPrototype(cls, game, player, action_values, suitable_stage_class)
 
     @classmethod
-    def run(cls, game: Game, user: User | Player, autosave=True, **action_kwargs):
-        """Simple shortcut for running proccessor just after action added to it."""
+    def run(
+        cls,
+        game: Game,
+        user: User | Player | None = None,
+        autosave=True,
+        **action_kwargs,
+    ):
+        """
+        Simple shortcut for running proccessor just after action added to it.
+        If `user` is not provided, `performer` will be taken.
+        """
         if isinstance(user, User):
             # at user instance from players, profile bank is prefetched, not at request
             # user therefore we use this trick to get player with prefethed fields and
             # we need player instance strictly form players selector from game instanse
             player = game.players.get(user=user)
+        elif user is None:
+            player = game.stage.performer
         else:
-            player = user   # user is a Player instance
+            player = user  # user is a Player instance in that case
 
+        if not player:
+            raise ValueError('None player provided for running action. ')
+            
         action = cls(game, player, **action_kwargs)
         processor = game.get_processor(autosave=autosave)
         processor.add(action)

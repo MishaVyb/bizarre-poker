@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Type
 
 from core.functools.utils import StrColors, init_logger
 from games.services import stages
+from games.services import actions
 from games.services.actions import ActionError, ActionPrototype, BaseAction
 from games.services.constraints import check_objects_continuity, validate_constraints
 from games.services.stages import BaseStage, RequirementNotSatisfied
@@ -46,7 +47,6 @@ class BaseProcessor:
         return status
 
     def _actions_processing(self, current_stage: BaseStage):
-        # [1]
         # No catching rasies here: if processor contains invalid actions - it's failed.
         # The logic that we dont want give to user even an possobility to make invalid
         # action
@@ -62,25 +62,34 @@ class BaseProcessor:
                 raise ActionError(action)  # NO POSSIBLE FOUND FOR THAT ACTION...
 
     def _stage_processing(self, current_stage: BaseStage):
-        # [2]
-        # But cacthing rases here.
-        # If requirement unsatisfied, it is totally okey (we just try to be sure),
-        # stop processing and make response in that case.
+        premature_final = self._premature_final_condition(current_stage)
+
+        # But cacthing rases here. If requirement unsatisfied, it is totally okey.
+        # We just try to be sure. Stop processing and make response in that case.
         try:
             current_stage.check_requirements()
         except RequirementNotSatisfied as e:
-            logger.info(e)
-            status = current_stage.message_requirement_unsatisfied
-            self.game.status = status.format(player=current_stage.performer)
-            self.game.presave()
-            return self.STOP
+            # if premature finale we proceed farter to Opposing Stage
+            if not premature_final:
+                logger.info(e)
+                status = current_stage.message_requirement_unsatisfied
+                self.game.status = status.format(player=current_stage.performer)
+                self.game.presave()
+                return self.STOP
 
-        logger.info(' '.join([StrColors.cyan('exicuting'), str(current_stage)]))
+        logger.info(f'{StrColors.cyan("exicuting")} {str(current_stage)}')
         current_stage.execute()
+        logger.info(
+            f'Game stage complited: {current_stage.get_message_format()}. '
+            f'{StrColors.green("Continue")}. '
+        )
 
         # stage compited successfully!
-        self._stage_complited(current_stage)
-        logger.info(f'Game stage complited. {StrColors.green("Continue")}.')
+        self._make_history(current_stage)
+        if premature_final:
+            self._continue_to_final()
+        else:
+            self._continue_to_next_stage()
 
         return self.CONTINUE
 
@@ -146,22 +155,31 @@ class BaseProcessor:
         # CONTINUE RECURSIVELY
         return self._subrunner()
 
-    def _stage_complited(self, current_stage: BaseStage):
-        self._make_history(current_stage)
-        if self._premature_final_condition():  # go ahead:
-            self._continue_to_next_stage()
-        else:
-            self._continue_to_final()
+    def _premature_final_condition(self, current_stage: BaseStage):
+        """Any condition to proceed to the final stage skiping others."""
+        # check, maybe game already at final stage or was
+        opposing_index = self.game.stages.index(stages.OpposingStage)
+        if self.game.stage_index >= opposing_index:
+            return False
 
-    def _premature_final_condition(self):
         conditions = {}
-
-        # [1] all other players passed -> go to final
-        conditions[0] = len(list(self.game.players.active)) > 1
-
+        # [1] all players exept one passed -> go to final
+        conditions['all_passed'] = len(list(self.game.players.active)) == 1
         # [2] VaBank was placed
+        performer = self.game.stage.performer
+        if performer:
+            check = actions.PlaceBetCheck.prototype(self.game, performer)
+            conditions['only_check'] = current_stage.get_possible_actions() == [check]
 
-        return any(conditions.values())
+        if any(conditions.values()):
+            codes = [code for code in conditions if conditions[code]]
+            logger.info(
+                f'Premature final condition {codes} satisfied. '
+                'Opposing Stage will be exicuted after. '
+            )
+            return True
+
+        return False
 
     def _continue_to_next_stage(self):
         if self.game.stage_index + 1 < len(self.game.stages):
@@ -171,13 +189,10 @@ class BaseProcessor:
         self.game.presave()
 
     def _continue_to_final(self):
+        """Proceed to `OpposingStage`."""
         opposing_index = self.game.stages.index(stages.OpposingStage)
-        if self.game.stage_index == opposing_index:
-            # game already complited final stage, so go to next
-            self._continue_to_next_stage()
-        else:
-            self.game.stage_index = opposing_index
-            self.game.presave()
+        self.game.stage_index = opposing_index
+        self.game.presave()
 
 
 class AutoProcessor(BaseProcessor):

@@ -4,7 +4,13 @@ from copy import copy
 
 import itertools
 from operator import attrgetter
-from typing import TYPE_CHECKING, Callable, Iterable, NamedTuple, Type, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Type,
+    TypeAlias,
+)
 
 from core.functools.utils import Interval, StrColors, init_logger
 from games.configurations.configurations import ConfigSchema
@@ -49,7 +55,7 @@ class BaseStage:
     """Requirements for stage execution. """
 
     possible_actions_classes: tuple[type[BaseAction], ...] = ()
-    """All possible. """
+    """Any possible actions at that stage (main action at 0 index). """
 
     message: str = ''
     message_requirement_unsatisfied: str = '{player}'
@@ -73,20 +79,20 @@ class BaseStage:
 
     def get_possible_actions(
         self,
-        from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None,
+        from_origin_actions: Iterable[Type[actions.BaseAction]] = [],
     ) -> list[ActionPrototype]:
         """
         Return a set of all various prototypes for actions that could be acted. Note:
         Actions could be mutually exclusive and could not be able acted all together.
         """
-        from_origin_actions = from_origin_actions or self.possible_actions_classes
+        origin = from_origin_actions or self.possible_actions_classes
 
         if not self.performer:
             logger.warning('Asking for possible actions when there are no performer. ')
             return []
 
         possible = []
-        for action_class in from_origin_actions:
+        for action_class in origin:
             action_values = self.get_possible_values_for(action_class)
             possible.append(
                 action_class.prototype(self.game, self.performer, action_values)
@@ -211,9 +217,13 @@ class BiddingsStage(BaseStage):
     def get_performer(self) -> Player:
         return self.game.players.next_betmaker
 
-    def get_possible_actions(self):
-        origin = list(self.possible_actions_classes)
-        values: Interval = self.get_possible_values_for(actions.PlaceBet)
+    def get_possible_actions(
+        self,
+        from_origin_actions: Iterable[Type[actions.BaseAction]] = [],
+    ) -> list[ActionPrototype]:
+        origin = list(from_origin_actions) or list(self.possible_actions_classes)
+        # we take origin[0] because it contains basic (main) action
+        values: Interval = self.get_possible_values_for(origin[0])
 
         if not values:
             return super().get_possible_actions(origin)
@@ -226,8 +236,8 @@ class BiddingsStage(BaseStage):
             origin.remove(actions.PlaceBetCheck)  # chalenging bet on the table
 
         if values.min == values.max:
-            origin.remove(actions.PlaceBet)     # other actions provided
-            origin.remove(actions.PlaceBetVaBank)   # other actions provided
+            origin.remove(actions.PlaceBet)  # other actions provided
+            origin.remove(actions.PlaceBetVaBank)  # other actions provided
 
         return super().get_possible_actions(origin)
 
@@ -342,11 +352,12 @@ class OpposingStage(BaseStage):
             player.user.profile.presave()
         self.game.presave()
 
-        self.message_format_kwargs['winners'] = ' '.join(
-            [p.user.username for p in winners]
-        )
-        self.message_format_kwargs['combo'] = winners[0].combo.kind.name
-        self.message_format_kwargs['benefit'] = round(benefit / 100, 2)
+        self.message_format_kwargs = {
+            'winners': ' '.join([p.user.username for p in winners]),
+            'combo': winners[0].combo.kind.name,
+            'benefit': benefit
+        }
+
 
 
 class TearDownStage(BaseStage):

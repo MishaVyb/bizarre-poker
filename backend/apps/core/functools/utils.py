@@ -275,11 +275,10 @@ class Interval(Generic[_TCT]):
             items = [items]
 
         return all(
-            self.min <= item <= self.max and self._step_is_multiplier(item)
-            for item in items
+            self.min <= item <= self.max and self._is_multiplier(item) for item in items
         )
 
-    def _step_is_multiplier(self, value):
+    def _is_multiplier(self, value):
         if not self.step:
             return True
         return value % self.step == 0
@@ -287,9 +286,5 @@ class Interval(Generic[_TCT]):
     def _check_constraints(self):
         if not self.min <= self.max:
             raise ValueError('Invalid interval: min > max. ')
-        elif not self._step_is_multiplier(self.min) or not self._step_is_multiplier(
-            self.max
-        ):
+        elif not self._is_multiplier(self.min) or not self._is_multiplier(self.max):
             raise ValueError('Invalid interval: step is not multiplier for min or max.')
-        elif self.min == self.max:
-            logger.warning('Iterval with min == max. That`s how it should be?')

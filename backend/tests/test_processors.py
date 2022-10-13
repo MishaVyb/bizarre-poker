@@ -16,42 +16,42 @@ logger = init_logger(__name__)
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures('setup_game')
-class TestGameProcessors(BaseGameProperties):
+class TestBaseProcessor(BaseGameProperties):
     usernames = ('vybornyy', 'simusik', 'barticheg', 'arthur_morgan')
-    input_users_bank: dict[str, int]
+    initial_users_bank: dict[str, int]
 
-    def test_base_processor(self):
-        # self.game.processor.run()
-
-        # actions.StartAction.run(self.game, self.users_list[0])
-        # actions.PlaceBlind.run(self.game, self.users_list[1])
-        # actions.PlaceBlind.run(self.game, self.users_list[2])
-
-        # actions.PlaceBetReply.run(self.game, self.users_list[3])
-
-        # AutoProcessor(self.game, stop_after_rounds_amount=1).run()
-        # AutoProcessor(self.game, stop_after_actions_amount=3).run()
+    def test_premature_final_conditions_all_except_one_passed(self):
         game = self.game
-        mega_bet = actions.PlaceBet.prototype(
-            game, game.players[3], [125], stages.BiddingsStage_3
-        )
-        bet = actions.PlaceBet.prototype(game, game.players[0], [10])
-        AutoProcessor(
-            game,
-            with_actions=[mega_bet, bet],
-            # stop_after_action=mega_bet,
-            stop_after_stage=stages.OpposingStage,
-        ).run()
+        actions.StartAction.run(game)
+        actions.PlaceBlind.run(game)
+        actions.PlaceBlind.run(game)
+        actions.PassAction.run(game)
+        actions.PassAction.run(game)
+        actions.PassAction.run(game)
 
-        # AutoProcessor(self.game, stop_after_stage=stages.OpposingStage).run()
+        assert self.game.stage == stages.TearDownStage
 
-        # logger.info(pformat(self.game.actions_history))
+
+    def test_premature_final_conditions_vabank(self):
+        # [2] VaBank was placed
+        game = self.game
+        actions.StartAction.run(game)
+        actions.PlaceBlind.run(game)
+        actions.PlaceBlind.run(game)
+        actions.PlaceBetVaBank.run(game)
+        actions.PlaceBetReply.run(game)
+        actions.PlaceBetReply.run(game)
+        actions.PassAction.run(game)
+
+        assert self.game.stage == stages.TearDownStage
+
+
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures('setup_game')
-class TestAuto(BaseGameProperties):
-    input_users_bank: dict[str, int]
+class TestAutoProcessor(BaseGameProperties):
+    initial_users_bank: dict[str, int]
 
     def test_autoplay_game(self):
         AutoProcessor(self.game, stop_after_stage=stages.SetupStage).run()
