@@ -34,25 +34,16 @@ class BaseProcessor:
         self.actions_stack = []
         self.autosave = autosave
 
-    def _make_history(self, latest: BaseStage | BaseAction):
-        if isinstance(latest, BaseAction):
-            self.game.actions_history.append(
-                {
-                    'performer': str(latest.player),
-                    'class': str(type(latest)),
-                    'message': latest.get_message_format(),
-                }
-            )
-        else:
-            message = latest.get_message_format()
-            if message:
-                self.game.actions_history.append(
-                    {
-                        'performer': None,  # None for stage maded by game processing
-                        'class': str(latest),
-                        'message': message,
-                    }
-                )
+    def add(self, action: BaseAction):
+        check_objects_continuity(self.game, action.game)
+        self.actions_stack.append(action)
+        return self
+
+    def run(self) -> ProcessingStatus:
+        status = self._subrunner()
+        if self.autosave:
+            self._save_game_objects(status)
+        return status
 
     def _actions_processing(self, current_stage: BaseStage):
         # [1]
@@ -104,16 +95,25 @@ class BaseProcessor:
             player.save(only_if_presave=True)
             player.user.profile.save(only_if_presave=True)
 
-    def add(self, action: BaseAction):
-        check_objects_continuity(self.game, action.game)
-        self.actions_stack.append(action)
-        return self
-
-    def run(self) -> ProcessingStatus:
-        status = self._subrunner()
-        if self.autosave:
-            self._save_game_objects(status)
-        return status
+    def _make_history(self, latest: BaseStage | BaseAction):
+        if isinstance(latest, BaseAction):
+            self.game.actions_history.append(
+                {
+                    'performer': str(latest.player),
+                    'class': str(type(latest)),
+                    'message': latest.get_message_format(),
+                }
+            )
+        else:
+            message = latest.get_message_format()
+            if message:
+                self.game.actions_history.append(
+                    {
+                        'performer': None,  # None for stage maded by game processing
+                        'class': str(latest),
+                        'message': message,
+                    }
+                )
 
     def _round_counter(self):
         if self.game.stage == stages.SetupStage:
@@ -154,11 +154,14 @@ class BaseProcessor:
             self._continue_to_final()
 
     def _premature_final_condition(self):
-        # 1- all other players passed -> go to final
-        conditions = [
-            len(list(self.game.players.active)) > 1,
-        ]
-        return any(conditions)
+        conditions = {}
+
+        # [1] all other players passed -> go to final
+        conditions[0] = len(list(self.game.players.active)) > 1
+
+        # [2] VaBank was placed
+
+        return any(conditions.values())
 
     def _continue_to_next_stage(self):
         if self.game.stage_index + 1 < len(self.game.stages):
@@ -232,7 +235,11 @@ class AutoProcessor(BaseProcessor):
 
     def run(self) -> ProcessingStatus:
         _ = 'AutoProcessor running. '
-        logger.info(StrColors.purple(_) + f'Stop factor: {self.stop_factor}. ' + f'With actions: {self.with_actions}')
+        logger.info(
+            StrColors.purple(_)
+            + f'Stop factor: {self.stop_factor}. '
+            + f'With actions: {self.with_actions}'
+        )
 
         status = super().run()
 
@@ -274,53 +281,43 @@ class AutoProcessor(BaseProcessor):
         return self.CONTINUE
 
     def _actions_processing(self, current_stage: BaseStage):
-        # TRY `WITH ACTIONS`
+        # [1] try all with_actions:
         for proto in self.with_actions.copy():  # copy: because of removing items
             if proto.suitable_stage_class:
                 if current_stage != proto.suitable_stage_class:
                     continue
 
             try:
-                value = proto.action_values[0] if proto.action_values else None
-                action = proto.get_action(value)
-
-                if self.actions_stack:
-                    raise NotImplementedError
-
-                self.add(action)
+                self.add(proto.get_action())
                 super()._actions_processing(current_stage)
-                self.with_actions.remove(proto)
-
-                if self._stop_after_action_condition(proto) == self.FORCED_STOP:
-                    return self.FORCED_STOP
-
             except ActionError:
-                pass  # okey, try later
+                continue  # okey, try later
             finally:
                 self.actions_stack.clear()
 
-        # APPEND NEW AUTO GENERATED ACTION
+            self.with_actions.remove(proto)
+            if self._stop_after_action_condition(proto) == self.FORCED_STOP:
+                return self.FORCED_STOP
+
+        # [2] append new auto generated action
+        # [2.1] take first possible action prototype
         protos = current_stage.get_possible_actions()
         if not protos:
             return self.CONTINUE
-
-        # take first action prototype with first (min) value
         proto = protos[0]
-        value = proto.action_values[0] if proto.action_values else None
-        action = proto.get_action(value)
-        self.add(action)
 
-        # CHECK STOP FACTOR AND ACTION PROCESSING
         if self.stop_factor.get('stop_before_action') == proto:
             return self.FORCED_STOP
 
+        # [2.2] add action with first possible value
+        self.add(proto.get_action())
         super()._actions_processing(current_stage)
 
         if self._stop_after_action_condition(proto) == self.FORCED_STOP:
             return self.FORCED_STOP
 
+        # [2.3] making auto actions untill stage requirement will be satisfied
         if not current_stage.check_requirements(raises=False):
-            # force making auto actions untill stage requirement will be satisfied
             return self._actions_processing(current_stage)
 
         return self.CONTINUE

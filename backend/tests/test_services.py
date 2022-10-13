@@ -17,7 +17,7 @@ logger = init_logger(__name__)
 @pytest.mark.usefixtures('setup_game')
 class TestGameStages(BaseGameProperties):
     usernames = ('vybornyy', 'simusik', 'barticheg', 'arthur_morgan')
-    input_users_bank: dict[str, int]
+    initial_users_bank: dict[str, int]
 
     def test_get_possible_values_for(self, setup_users_banks: list[int]):
         actions.StartAction.run(self.game, self.users['vybornyy'])
@@ -72,7 +72,7 @@ class TestGameStages(BaseGameProperties):
             proto.action_class for proto in game.stage.get_possible_actions()
         ]
         assert expected_actions_classes == result_action_classes
-        
+
 
         test = '[3] test possible actions at BiddingsStage_3 after VaBank'
         logger.info(StrColors.purple(test))
@@ -107,7 +107,7 @@ class TestGameStages(BaseGameProperties):
         assert self.game.table == expected_flop
         assert self.game.deck == input_deck[: len(input_deck) - end]
 
-    def test_none_perfomer_when_required_is_satisfied(self):
+    def test_none_performer_when_requirement_is_satisfied(self):
         game = self.game
         bets = [
             # game.players[1] small blind (5)
@@ -186,17 +186,17 @@ class TestGameStages(BaseGameProperties):
 
         # Assert winners banks
         for winner in winners:
-            bank = self.input_users_bank[winner.username]
+            bank = self.initial_users_bank[winner.username]
             assert winner.profile.bank == bank + benefit
 
         # Assert lissers banks
         for looser in loosers:
-            bank = self.input_users_bank[looser.username]
+            bank = self.initial_users_bank[looser.username]
             assert looser.profile.bank == bank - loss
 
         # Assert passed banks (it won`t change)
         for passed in passed_users:
-            bank = self.input_users_bank[passed.username]
+            bank = self.initial_users_bank[passed.username]
             assert passed.profile.bank == bank
 
     def test_move_dealer_button(self):
@@ -233,7 +233,7 @@ class TestGameStages(BaseGameProperties):
 @pytest.mark.usefixtures('setup_game')
 class TestGameActions(BaseGameProperties):
     usernames = ('vybornyy', 'simusik', 'barticheg', 'arthur_morgan')
-    input_users_bank: dict[str, int]
+    initial_users_bank: dict[str, int]
 
     def test_start_action(self):
         # [1] test game stage before beginings
@@ -314,7 +314,7 @@ class TestGameActions(BaseGameProperties):
         # assert that players bank has not been changed
         assert (
             self.users['arthur_morgan'].profile.bank
-            == self.input_users_bank['arthur_morgan']
+            == self.initial_users_bank['arthur_morgan']
         )
 
     @property
@@ -342,7 +342,7 @@ class TestGameActions(BaseGameProperties):
         assert self.game.stage == stages.BiddingsStage_1
         assert [0, 5, 10, 0] == self.players_bets_total
 
-        expected = self.input_users_bank.copy()
+        expected = self.initial_users_bank.copy()
         expected['simusik'] -= self.game.config.small_blind
         expected['barticheg'] -= self.game.config.big_blind
         expected = [expected[name] for name in self.usernames]
@@ -380,7 +380,7 @@ class TestGameActions(BaseGameProperties):
         test = '[10-11] barticheg say "VaBank"'
         logger.info(StrColors.purple(test))
         actions.PlaceBetVaBank.run(self.game, self.users['barticheg'])
-        expected = self.input_users_bank['vybornyy'] - 25
+        expected = self.initial_users_bank['vybornyy'] - 25
         assert self.players['barticheg'].bet_total == expected
 
         # [12]

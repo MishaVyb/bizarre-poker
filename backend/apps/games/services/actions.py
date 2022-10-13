@@ -115,10 +115,16 @@ class ActionPrototype(Generic[_ACTION]):
     def __post_init__(self):
         check_objects_continuity(self.player, self.game.players)
 
-    def get_action(self, with_value: int | None = None):
-        if with_value is not None:
-            return self.action_class(self.game, self.player, value=with_value)
-        return self.action_class(self.game, self.player)
+    def get_action(self):
+        """
+        Create and get Action from self prepared data.
+        Taking first possible value form `action_values`.
+        """
+        action_kwargs: dict[str, int] = {}
+        if self.action_values:
+            action_kwargs['value'] = self.action_values[0]
+
+        return self.action_class(self.game, self.player, **action_kwargs)
 
     def __hash__(self) -> int:
         return hash(self.action_class)
