@@ -14,6 +14,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from api.serializers import BetValueSerializer, GameSerializer, PlayerSerializer
+from users.models import User
 
 logger = init_logger(__name__, logging.INFO)
 
@@ -36,9 +37,6 @@ class GamesViewSet(viewsets.ModelViewSet):
         host = Player.objects.create(user=self.request.user, game=game)
         game.select_players(source=[host])
 
-    @action(methods=['post'], detail=False)
-    def test_action(self, request):
-        return Response({'dsaf': 'sadgf'})
 
 
 class ActionsViewSet(viewsets.ViewSet):
@@ -64,8 +62,13 @@ class ActionsViewSet(viewsets.ViewSet):
     def get_object(self):
         return Game.objects.prefetch_players().get(**self.kwargs).select_players()
 
-    def list(self, request, pk: int):
+    def list(self, request: Request, pk: int):
+        user: User = request.user
         game: Game = self.get_object()
+
+        if game.stage.performer != user.player_at(game):
+            return Response([])
+
         possibles = game.stage.get_possible_actions()
 
         # make representation
@@ -94,38 +97,38 @@ class ActionsViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     @action(methods=['post'], detail=False)
-    def start(self, request, pk: int):
+    def start(self, request: Request, pk: int):
         return self.exicute(actions.StartAction)
 
     @action(methods=['post'], detail=False)
-    def end(self, request, pk: int):
+    def end(self, request: Request, pk: int):
         return self.exicute(actions.EndAction)
 
     @action(methods=['post'], detail=False, url_path='pass', url_name='pass')
-    def pass_action(self, request, pk: int):
+    def pass_action(self, request: Request, pk: int):
         return self.exicute(actions.PassAction)
 
     @action(methods=['post'], detail=False)
-    def bet(self, request, pk: int):
+    def bet(self, request: Request, pk: int):
         serializer = BetValueSerializer(data=request.data)
         if serializer.is_valid():
             return self.exicute(actions.PlaceBet, **serializer.data)
         return Response(serializer.errors)
 
     @action(methods=['post'], detail=False)
-    def blind(self, request, pk: int):
+    def blind(self, request: Request, pk: int):
         return self.exicute(actions.PlaceBlind)
 
     @action(methods=['post'], detail=False)
-    def check(self, request, pk: int):
+    def check(self, request: Request, pk: int):
         return self.exicute(actions.PlaceBetCheck)
 
     @action(methods=['post'], detail=False)
-    def reply(self, request, pk: int):
+    def reply(self, request: Request, pk: int):
         return self.exicute(actions.PlaceBetReply)
 
     @action(methods=['post'], detail=False)
-    def vabank(self, request, pk: int):
+    def vabank(self, request: Request, pk: int):
         return self.exicute(actions.PlaceBetVaBank)
 
 

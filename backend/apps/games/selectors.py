@@ -46,7 +46,9 @@ class PlayerSelector:
     def get(self, *, user: User) -> Player:
         return next(filter(lambda p: p.user == user, self._source))
 
-    def exclude(self, *, player: Player | None = None, user: User | None = None) -> list[Player]:
+    def exclude(
+        self, *, player: Player | None = None, user: User | None = None
+    ) -> list[Player]:
         if player and user:
             raise ValueError('Too many exclude parameters. ')
 
@@ -58,12 +60,6 @@ class PlayerSelector:
 
         raise ValueError('No exclude parameters was provided. ')
 
-
-    # ############################################ players updating:
-
-    def reorder_source(self):
-        self._source = sorted(self._source, key=attrgetter('position'))
-
     # ############################################ player's bet:
 
     def aggregate_min_bet(self) -> int:
@@ -71,7 +67,6 @@ class PlayerSelector:
 
     def aggregate_max_bet(self) -> int:
         return max(self.active, key=attrgetter('bet_total')).bet_total
-        return self._manager.aggregate(max=models.Max('bet_total'))['max']
 
     def aggregate_sum_all_bets(self) -> int:
         """for active and passed(!) players"""
@@ -81,34 +76,21 @@ class PlayerSelector:
         """for active players"""
         return min(p.user.profile.bank for p in self.active)
 
-    def aggregate_possible_max_bet(self) -> int:
-        """for active players.
-
-        To find out pissoble max bet for player we are loking for minimal bank of all
-        players with sum of his bet already playced.
+    def aggregate_possible_max_bet_for_player(self, betmaker: Player) -> int:
         """
-        return min(p.user.profile.bank + p.bet_total for p in self.active)
+        For active players.
+        To find out possible max bet we are loking for minimal bank of all players with
+        sum of his bet already placed.
+        """
+        possible = min(
+            p.user.profile.bank + p.bet_total for p in self.active if p != betmaker
+        )
+        betmaker_bank = betmaker.user.profile.bank
+        return possible if possible < betmaker_bank else betmaker_bank
 
     def check_bet_equality(self) -> bool:
         """True if all beds equal (for active players)."""
-        a = self.aggregate_max_bet()
-        b = self.aggregate_min_bet()
         return self.aggregate_max_bet() - self.aggregate_min_bet() == 0
-
-    # @property
-    # def order_by_bet(self):
-    #     # RECODE THIS WITH circle_after -- нам по сути не нужна здесь сортировка...
-
-    #     """Yield ordered active players with None bet first then 0 then ascending.
-    #     Starting after dealer.
-    #     """
-    #     # we need that special annotation to differentiate two types of player bet:
-    #     # [1] player who say check (bets sum = 0)
-    #     # [2] player who has not placed bet yet (bets sum = None)
-    #     # at default annotation when bet_total is None it value replaced by default=0
-    #     key = lambda p: (p.bets.exists(), p.bet_total)
-    #     for player in sorted(self.after_dealer, key=key):
-    #         yield player
 
     @property
     def next_betmaker(self):

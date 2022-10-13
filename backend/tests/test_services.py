@@ -36,12 +36,61 @@ class TestGameStages(BaseGameProperties):
         assert values == Interval(
             min_=self.game.config.big_blind,  # biggets bet placed on the table
             max_=min(setup_users_banks),  # smallest opponents bank
-            step=self.game.config.bet_multiplicity
+            step=self.game.config.bet_multiplicity,
         )
 
-    def test_get_possible_actions(self, setup_users_banks: list[int]):
-        # self.game.stage.get_possible_actions()
-        ...
+    def test_get_possible_actions_at_biddings_stages(self):
+        game = self.game
+
+        test = '[1] test possible actions after placing blinds (at BiddingsStage_1)'
+        logger.info(StrColors.purple(test))
+        AutoProcessor(game, stop_before_stage=stages.BiddingsStage_1).run()
+        expected_actions_classes = [
+            actions.PlaceBet,
+            # actions.PlaceBetCheck,    # not possbile: chalenging bet on the table
+            actions.PlaceBetReply,
+            actions.PlaceBetVaBank,
+            actions.PassAction,
+        ]
+        result_action_classes = [
+            proto.action_class for proto in game.stage.get_possible_actions()
+        ]
+        assert expected_actions_classes == result_action_classes
+
+
+        test = '[2] test possible actions at BiddingsStage_2'
+        logger.info(StrColors.purple(test))
+        AutoProcessor(game, stop_before_stage=stages.BiddingsStage_2).run()
+        expected_actions_classes = [
+            actions.PlaceBet,
+            actions.PlaceBetCheck,
+            # actions.PlaceBetReply,    # not possbile: nothing to reply
+            actions.PlaceBetVaBank,
+            # actions.PassAction,       # not possbile: there are not bet chalenging
+        ]
+        result_action_classes = [
+            proto.action_class for proto in game.stage.get_possible_actions()
+        ]
+        assert expected_actions_classes == result_action_classes
+        
+
+        test = '[3] test possible actions at BiddingsStage_3 after VaBank'
+        logger.info(StrColors.purple(test))
+        AutoProcessor(game, stop_before_stage=stages.BiddingsStage_1).run()
+        bet = actions.PlaceBetVaBank.prototype(game, game.players[1])
+        AutoProcessor(game, with_actions=[bet]).run()
+        expected_actions_classes = [
+            # actions.PlaceBet,         # not uniq: only one value for bet is possible
+            # actions.PlaceBetCheck,    # not possbile: chalenging bet on the table
+            actions.PlaceBetReply,
+            # actions.PlaceBetVaBank,   # not possbile: the same to reply
+            actions.PassAction,
+        ]
+        result_action_classes = [
+            proto.action_class for proto in self.game.stage.get_possible_actions()
+        ]
+        assert expected_actions_classes == result_action_classes
+
 
     def test_flop_stage(self):
         # arrange
@@ -267,8 +316,6 @@ class TestGameActions(BaseGameProperties):
             self.users['arthur_morgan'].profile.bank
             == self.input_users_bank['arthur_morgan']
         )
-
-
 
     @property
     def players_bets_total(self):

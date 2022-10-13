@@ -1,9 +1,10 @@
 from __future__ import annotations
+from copy import copy
 
 
 import itertools
 from operator import attrgetter
-from typing import TYPE_CHECKING, Callable, NamedTuple, Type, TypeAlias
+from typing import TYPE_CHECKING, Callable, Iterable, NamedTuple, Type, TypeAlias
 
 from core.functools.utils import Interval, StrColors, init_logger
 from games.configurations.configurations import ConfigSchema
@@ -66,44 +67,30 @@ class BaseStage:
         if isinstance(other, type):
             # make a shortcut for that cases: if game.stage == BiddingStage: ...
             # check for strick types equality, not isinstance(..)
-            return type(self) == other
-
-            # old version:
-            # Make a shortcut for that cases: if game.stage == BiddingStage: ...
-            # Note:
-            # [1] check for strick types equality, not isinstance(..)
             # because BiddingStage_1 not equals to BiddingStage_2 and etc.
-            # [2] check by names, not by real types, because of stage_factory(..)
-            # the same stages with the same names will be actualy diferent types
-            # bacuse they may be created by factory method
-            return self.__class__.__name__ == other.__name__
-            
+            return type(self) == other
         return super().__eq__(other)
 
-    def get_possible_actions(self) -> list[ActionPrototype]:
+    def get_possible_actions(
+        self,
+        from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None,
+    ) -> list[ActionPrototype]:
         """
         Return a set of all various prototypes for actions that could be acted. Note:
         Actions could be mutually exclusive and could not be able acted all together.
         """
+        from_origin_actions = from_origin_actions or self.possible_actions_classes
+
         if not self.performer:
             logger.warning('Asking for possible actions when there are no performer. ')
             return []
 
         possible = []
-        for action_class in self.possible_actions_classes:
+        for action_class in from_origin_actions:
             action_values = self.get_possible_values_for(action_class)
             possible.append(
                 action_class.prototype(self.game, self.performer, action_values)
             )
-
-        # cut out exess actions
-        ...
-        # actions.PlaceBet,
-        # actions.PlaceBetCheck,
-        # actions.PlaceBetReply,
-        # actions.PlaceBetVaBank,
-        # actions.PassAction,
-
         return possible
 
     def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> _AVP:
@@ -119,10 +106,11 @@ class BaseStage:
             return None
 
         if not action_type.values_expected:
-            # only if not action_instance, otherwise [] returned
-            # (for action instaces we alwayse preparing a values
-            # because they aks them at self init methods)
             if not action_instance:
+                # for action type return None
+                # for action instances return [] and prepere values in sub classes
+                # (for action instaces we alwayse preparing a values because they ask
+                # them at self init methods)
                 return None
 
         return []
@@ -223,13 +211,34 @@ class BiddingsStage(BaseStage):
     def get_performer(self) -> Player:
         return self.game.players.next_betmaker
 
+    def get_possible_actions(self):
+        origin = list(self.possible_actions_classes)
+        values: Interval = self.get_possible_values_for(actions.PlaceBet)
+
+        if not values:
+            return super().get_possible_actions(origin)
+
+        # cut out exccess actions:
+        if values.min == 0:
+            origin.remove(actions.PlaceBetReply)  # nothing to reply
+            origin.remove(actions.PassAction)  # there are not bet chalenging
+        else:
+            origin.remove(actions.PlaceBetCheck)  # chalenging bet on the table
+
+        if values.min == values.max:
+            origin.remove(actions.PlaceBet)     # other actions provided
+            origin.remove(actions.PlaceBetVaBank)   # other actions provided
+
+        return super().get_possible_actions(origin)
+
     def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> _AVP:
         if super().get_possible_values_for(action) is None:
             return None
 
         # max bet -minus- player's bet
         min_value = self.game.players.aggregate_max_bet() - self.performer.bet_total  # type: ignore
-        max_value = self.game.players.aggregate_possible_max_bet()
+        # ..
+        max_value = self.game.players.aggregate_possible_max_bet_for_player(self.performer)  # type: ignore
         return Interval(min_value, max_value, step=self.game.config.bet_multiplicity)
 
     def execute(self):

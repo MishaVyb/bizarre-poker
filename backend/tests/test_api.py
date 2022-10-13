@@ -140,12 +140,19 @@ class TestGameAPI(APIGameProperties):
             '[2] vybornyy make avaliable action', 'vybornyy', 'POST', 'start'
         )
         self.assert_response(
-            '[3] get all actions by small blind maker | ensure that `pass` is not avaliable',
+            '[3.1] get all actions by small blind maker | ensure that `pass` is not avaliable',
             'simusik',
             'GET',
             'actions',
         )
         assert self.possible_actions_names == ['blind']
+        self.assert_response(
+            '[3.2] get all actions by not performer | ensure that no actions provided',
+            'vybornyy',
+            'GET',
+            'actions',
+        )
+        assert self.possible_actions_names == []
 
         self.assert_response('[4] act invalid action', 'simusik', 'POST', 'start')
         expected = r'Acitng failed.* not in game stage possible action prototypes. '
@@ -172,7 +179,8 @@ class TestGameAPI(APIGameProperties):
         self.assert_response('[13]', 'vybornyy', 'POST', 'pass')
 
 
-        logger.info('[14] main assertion: check that winner got his benefit')
+        test = '[14] main assertion: check that winner got his benefit'
+        logger.info(StrColors.purple(test))
         # benefit: bet place by vybornyy and big blind placed by barticheg
         benefit = bet + self.game.config.big_blind
         winner_bank = self.users['simusik'].profile.bank

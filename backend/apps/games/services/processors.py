@@ -57,13 +57,8 @@ class BaseProcessor:
     def _actions_processing(self, current_stage: BaseStage):
         # [1]
         # No catching rasies here: if processor contains invalid actions - it's failed.
-        # The logic that we dont want give even an possobility to user make an invalid
+        # The logic that we dont want give to user even an possobility to make invalid
         # action
-
-        # перебираем весь стэк с экшинами и сравниваем со всеми возможными дейсвтиями
-        # из возможных действий
-        # ессли экшен в стеке -- его обязательно нужно выполнить, иначе рейзим ощибку
-
         while self.actions_stack:
             action = self.actions_stack.pop()
 

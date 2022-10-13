@@ -55,7 +55,6 @@ class BaseAction:
 
     def __init__(self, game: Game, player: Player, **kwargs) -> None:
         check_objects_continuity(player, game.players)
-
         self.game = game
         self.player = player
 
@@ -81,12 +80,16 @@ class BaseAction:
         return ActionPrototype(cls, game, player, action_values, suitable_stage_class)
 
     @classmethod
-    def run(cls, game: Game, user: User, autosave=True, **action_kwargs):
+    def run(cls, game: Game, user: User | Player, autosave=True, **action_kwargs):
         """Simple shortcut for running proccessor just after action added to it."""
-        # at user instance from players, profile bank is prefetched, not at request user
-        # therefore we use this trick to get player with prefethed fields
-        # and we need player instance strictly form players selector from game instanse
-        player = game.players.get(user=user)
+        if isinstance(user, User):
+            # at user instance from players, profile bank is prefetched, not at request
+            # user therefore we use this trick to get player with prefethed fields and
+            # we need player instance strictly form players selector from game instanse
+            player = game.players.get(user=user)
+        else:
+            player = user   # user is a Player instance
+
         action = cls(game, player, **action_kwargs)
         processor = game.get_processor(autosave=autosave)
         processor.add(action)
