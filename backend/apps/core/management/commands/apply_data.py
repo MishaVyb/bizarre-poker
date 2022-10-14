@@ -1,7 +1,8 @@
 import os
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db.utils import IntegrityError
+from django.db import models
+
 import pydantic
 from core.functools.utils import init_logger
 from core.functools.utils import StrColors
@@ -9,11 +10,12 @@ from core.functools.utils import StrColors
 from games.models import Game, Player
 from games.services import actions, stages
 from users.models import Profile, User
-from games.services.processors import AutoProcessor
+from games.services.processors import AutoProcessor, BaseProcessor
 
 logger = init_logger(__name__)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_FILE_PATH = os.path.join(CURRENT_DIR, 'data.json')
+
 
 class GameSchema(pydantic.BaseModel):
     pk: int
@@ -24,7 +26,6 @@ class GameSchema(pydantic.BaseModel):
 class TestDataSchema(pydantic.BaseModel):
     users: list[dict[str, str]]
     games: list[GameSchema]
-
 
 
 class Command(BaseCommand):
@@ -66,11 +67,17 @@ class Command(BaseCommand):
             )
 
         for game_data in data.games:
-            game = Game(
-                players=User.objects.filter(username__in=game_data.players),
-                pk=game_data.pk,
-                commit=True,
+            players_order_cases = [
+                models.When(username=player, then=models.Value(idx))
+                for idx, player in enumerate(game_data.players)
+            ]
+            users = (
+                User.objects.filter(username__in=game_data.players)
+                .annotate(ordering=models.Case(*players_order_cases))
+                .order_by('ordering')
             )
+
+            game = Game(players=users, pk=game_data.pk, commit=True)
             logger.info(f'Game created. Players: {game.players}')
 
             if game_data.run:
@@ -78,6 +85,7 @@ class Command(BaseCommand):
                     k: getattr(stages, v, None) or getattr(actions, v)
                     for k, v in game_data.run.items()
                 }
-                AutoProcessor(game, **kwargs).run()
+                AutoProcessor(game, **kwargs, autosave=False).run()
+                BaseProcessor(game).run()
 
         self.stdout.write(StrColors.bold('\nSuccess! ') + 'All test data applyed. ')
