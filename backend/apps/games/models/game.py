@@ -71,18 +71,18 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     deck: CardList = CardListField(blank=True)
     table: CardList = CardListField(blank=True)
     bank: int = models.PositiveIntegerField(default=0)
-    status: str = models.CharField(max_length=200, blank=True)
+    # status: str = models.CharField(max_length=200, blank=True)
+    # """requirement unsatisfied message"""
     actions_history: list[dict[str, Any]] = models.JSONField(
         default=get_list_default,
         blank=True,
     )
-    # [
-    #     {
-    #         'performer':
-    #         'class':
-    #         'message':
-    #     }
-    # ]
+    """
+    List with actions and stages that have been proceed:
+    >>> [{'performer': str, 'class': str, 'message': str}, ...]
+    For stages performer is None.
+    """
+
 
     begins: bool = models.BooleanField(default=False)
     rounds_counter: int = models.PositiveIntegerField(default=1)
@@ -228,3 +228,5 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     def clean(self) -> None:
         pass
+
+

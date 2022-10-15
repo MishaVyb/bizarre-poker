@@ -150,23 +150,25 @@ class Card:
         """
 
         @classmethod
-        def get_repr(cls, c: Card) -> str:
-            assert cls.repr_method in [
+        def get_repr(cls, c: Card, method_name: str | None = None) -> str:
+            method_name = method_name or cls.repr_method
+            assert method_name in [
                 'default',
                 'emoji',
                 'eng_short_suit',
                 'classic',
                 'emoji_shirt',
                 'eng_shirt',
-            ], f'invalind {cls.repr_method=}'
+            ], f'invalind {method_name=}'
             try:
-                return getattr(cls, cls.repr_method)(c)
+                return getattr(cls, method_name)(c)
             except IndexError:
                 return cls.default(c)
 
         @classmethod
-        def get_str(cls, c: Card) -> str:
-            assert cls.str_method in [
+        def get_str(cls, c: Card, method_name: str | None = None) -> str:
+            method_name = method_name or cls.str_method
+            assert method_name in [
                 'default',
                 'emoji',
                 'eng_short_suit',
@@ -174,12 +176,11 @@ class Card:
                 'emoji_shirt',
                 'eng_shirt',
                 None,
-            ], f'invalind {cls.str_method=}'
+            ], f'invalid {method_name=}'
             try:
-                return getattr(cls, cls.str_method or cls.repr_method)(c)
+                return getattr(cls, method_name or cls.repr_method)(c)
             except IndexError:
                 return cls.default(c)
-            # except
 
         @staticmethod
         def get_rank_value(rank_english: str) -> int:
@@ -301,17 +302,15 @@ class Card:
         """
         return self.__dict__[key]
 
+    def get_str(self, method_name: str = 'classic'):
+        """Simple shortcut for CardSerializer. """
+        return self.Text.get_str(self, method_name)
+
     def __str__(self) -> str:
         return self.Text.get_str(self)
 
     def __repr__(self) -> str:
         return self.Text.get_repr(self)
-
-    # def __str__(self) -> str:
-    #     return Card.STR_METHOD(self) if Card.STR_METHOD else Card.__repr__(self)
-
-    # def __repr__(self) -> str:
-    #     return Card.REPR_METHOD(self)
 
     def __lt__(self, other: object) -> bool:  # self < other
         if not isinstance(other, Card):

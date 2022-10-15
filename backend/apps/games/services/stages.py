@@ -25,9 +25,6 @@ if TYPE_CHECKING:
 
 logger = init_logger(__name__)
 
-_AVP: TypeAlias = list[int] | Interval[int] | None
-'Action values types at action prototype'
-
 
 class RequirementNotSatisfied(Exception):
     def __init__(self, stage: BaseStage, requirement_name: str) -> None:
@@ -57,11 +54,17 @@ class BaseStage:
     possible_actions_classes: tuple[type[BaseAction], ...] = ()
     """Any possible actions at that stage (main action at 0 index). """
 
-    message: str = ''
-    message_requirement_unsatisfied: str = '{player}'
+    message: str = 'stage has been proceed'
+    """Message form for game `actions_history`. Formated at get_message_format. """
+    message_requirement_unsatisfied: str = 'waiting for {player}'
+    """Message form for stage `status`. Formated at get_status_format. """
 
     def get_message_format(self):
         return self.message
+
+    def get_status_format(self):
+        status = self.message_requirement_unsatisfied
+        return status.format(player=self.performer)
 
     def __init__(self, game: Game) -> None:
         self.game = game
@@ -99,7 +102,9 @@ class BaseStage:
             )
         return possible
 
-    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> _AVP:
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ) -> int | Interval[int] | None:
         action_type = action if isinstance(action, type) else type(action)
         action_instance = action if isinstance(action, BaseAction) else None
 
@@ -241,7 +246,9 @@ class BiddingsStage(BaseStage):
 
         return super().get_possible_actions(origin)
 
-    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> _AVP:
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ) -> int | Interval[int] | None:
         if super().get_possible_values_for(action) is None:
             return None
 
@@ -274,7 +281,11 @@ class PlacingBlindsStage(BiddingsStage):
 
     def players_have_placed_blinds(self):
         iterator = self.game.players.after_dealer_all
-        first, second = (next(iterator), next(iterator))
+        try:
+            first, second = (next(iterator), next(iterator))
+        except StopIteration:
+            # only one player in game
+            return True
         return (
             first.bet_total == self.game.config.small_blind
             and second.bet_total == self.game.config.big_blind
@@ -293,13 +304,15 @@ class PlacingBlindsStage(BiddingsStage):
 
         raise RuntimeError
 
-    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> _AVP:
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ):
         if super(BiddingsStage, self).get_possible_values_for(action) is None:
             return None
 
         if self.performer == next(self.game.players.after_dealer_all):
-            return [self.game.config.small_blind]
-        return [self.game.config.big_blind]
+            return self.game.config.small_blind
+        return self.game.config.big_blind
 
     def execute(self):
         # we need to ovveride super().execute() because it will call accept_bets, but we
@@ -310,7 +323,7 @@ class PlacingBlindsStage(BiddingsStage):
 class FlopStage(BaseStage):
     """Place cards on the table."""
 
-    message: str = 'flop {amount} cards on game table. '
+    message: str = 'flop {amount} cards on game table'
     amount: int
 
     def __init__(self, game: Game) -> None:
@@ -355,9 +368,8 @@ class OpposingStage(BaseStage):
         self.message_format_kwargs = {
             'winners': ' '.join([p.user.username for p in winners]),
             'combo': winners[0].combo.kind.name,
-            'benefit': benefit
+            'benefit': benefit,
         }
-
 
 
 class TearDownStage(BaseStage):

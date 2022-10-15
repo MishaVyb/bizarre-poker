@@ -74,6 +74,10 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
         return self.position == 0
 
     @property
+    def is_performer(self):
+        return self == self.game.stage.performer
+
+    @property
     def other_players(self):
         return self.game.players.exclude(player=self)
 
@@ -120,5 +124,38 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
             last = self.game.players_manager.last()
             self.position = last.position + 1 if last else 0
 
+    def delete(self, *args, **kwargs):
+        # change other player positions
+        for i, player in enumerate(self.other_players):
+            player.position = i
+        Player.objects.bulk_update(self.other_players, ['position'])
+        super().delete(*args, **kwargs)
+
     def clean(self) -> None:
         pass
+
+
+class PlayerPreform(models.Model):
+    """
+    Contains users who join the game and wait for the host to approve their joining.
+    """
+    user: User = models.ForeignKey(
+        to=User,
+        on_delete=models.CASCADE,
+        related_name='players_preforms',
+    )
+    game: Game = models.ForeignKey(
+        to=Game,
+        on_delete=models.CASCADE,
+        related_name='players_preforms',
+    )
+
+    class Meta:
+        verbose_name = 'user waiting to participate'
+        verbose_name_plural = 'users waiting to participate'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'game'],
+                name='unique: User could not make many request to join a sigle game. ',
+            ),
+        ]

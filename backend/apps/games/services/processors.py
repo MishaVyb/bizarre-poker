@@ -22,6 +22,34 @@ class ProcessingStatus:
     status_code: int
 
 
+class PrematureFinalCondition:
+    code = ''
+    message = ''
+
+    def __call__(self, game: Game) -> bool:
+        return False
+
+
+class AllOtherPassedCondition(PrematureFinalCondition):
+    code = 'all_passed'
+    message = 'all other player passed'
+
+    def __call__(self, game: Game):
+        return len(list(game.players.active)) == 1
+
+
+class NoneBiddingsCondition(PrematureFinalCondition):
+    code = 'none_biddings'
+    message = 'bidding for nothing, only place bet check is allowed'
+
+    def __call__(self, game: Game):
+        performer = game.stage.performer
+        if performer:
+            check_action = actions.PlaceBetCheck.prototype(game, performer)
+            return game.stage.get_possible_actions() == [check_action]
+        return False
+
+
 class BaseProcessor:
     actions_stack: list[BaseAction]
 
@@ -45,6 +73,29 @@ class BaseProcessor:
         if self.autosave:
             self._save_game_objects(status)
         return status
+
+    def _subrunner(self) -> ProcessingStatus:
+        if self._round_counter() == self.FORCED_STOP:
+            return self.FORCED_STOP
+
+        headline = StrColors.bold('Processing')
+        logger.info(f'{headline} {self.game}. ')
+
+        # we are getting current stage from Game only once to cache their properties
+        # when stage complited run(..) will be called again and we ask we new stage
+        current_stage = self.game.stage
+
+        # [01] actions
+        if self._actions_processing(current_stage) == self.FORCED_STOP:
+            return self.FORCED_STOP
+
+        # [02] stages
+        status = self._stage_processing(current_stage)
+        if status in [self.STOP, self.FORCED_STOP]:
+            return status
+
+        # CONTINUE RECURSIVELY
+        return self._subrunner()
 
     def _actions_processing(self, current_stage: BaseStage):
         # No catching rasies here: if processor contains invalid actions - it's failed.
@@ -72,8 +123,6 @@ class BaseProcessor:
             # if premature finale we proceed farter to Opposing Stage
             if not premature_final:
                 logger.info(e)
-                status = current_stage.message_requirement_unsatisfied
-                self.game.status = status.format(player=current_stage.performer)
                 self.game.presave()
                 return self.STOP
 
@@ -105,24 +154,16 @@ class BaseProcessor:
             player.user.profile.save(only_if_presave=True)
 
     def _make_history(self, latest: BaseStage | BaseAction):
-        if isinstance(latest, BaseAction):
-            self.game.actions_history.append(
-                {
-                    'performer': str(latest.player),
-                    'class': str(type(latest)),
-                    'message': latest.get_message_format(),
-                }
-            )
-        else:
-            message = latest.get_message_format()
-            if message:
-                self.game.actions_history.append(
-                    {
-                        'performer': None,  # None for stage maded by game processing
-                        'class': str(latest),
-                        'message': message,
-                    }
-                )
+        performer = getattr(latest, 'player', None)
+        value = getattr(latest, 'value', None)
+        self.game.actions_history.append(
+            {
+                'class': latest.__class__.__name__,
+                'performer': str(performer),
+                'message': latest.get_message_format(),
+                'value': value,
+            }
+        )
 
     def _round_counter(self):
         if self.game.stage == stages.SetupStage:
@@ -132,29 +173,6 @@ class BaseProcessor:
             return self.NEW_ROUND
         return self.CONTINUE
 
-    def _subrunner(self) -> ProcessingStatus:
-        if self._round_counter() == self.FORCED_STOP:
-            return self.FORCED_STOP
-
-        headline = StrColors.bold('Processing')
-        logger.info(f'{headline} {self.game}. ')
-
-        # we are getting current stage from Game only once to cache their properties
-        # when stage complited run(..) will be called again and we ask we new stage
-        current_stage = self.game.stage
-
-        # [01] actions
-        if self._actions_processing(current_stage) == self.FORCED_STOP:
-            return self.FORCED_STOP
-
-        # [02] stages
-        status = self._stage_processing(current_stage)
-        if status in [self.STOP, self.FORCED_STOP]:
-            return status
-
-        # CONTINUE RECURSIVELY
-        return self._subrunner()
-
     def _premature_final_condition(self, current_stage: BaseStage):
         """Any condition to proceed to the final stage skiping others."""
         # check, maybe game already at final stage or was
@@ -162,22 +180,34 @@ class BaseProcessor:
         if self.game.stage_index >= opposing_index:
             return False
 
-        conditions = {}
-        # [1] all players exept one passed -> go to final
-        conditions['all_passed'] = len(list(self.game.players.active)) == 1
-        # [2] VaBank was placed
-        performer = self.game.stage.performer
-        if performer:
-            check = actions.PlaceBetCheck.prototype(self.game, performer)
-            conditions['only_check'] = current_stage.get_possible_actions() == [check]
+        # conditions = {}
+        # # [1] all players exept one passed -> go to final
+        # conditions['all_passed'] = len(list(self.game.players.active)) == 1
 
-        if any(conditions.values()):
-            codes = [code for code in conditions if conditions[code]]
-            logger.info(
-                f'Premature final condition {codes} satisfied. '
-                'Opposing Stage will be exicuted after. '
-            )
-            return True
+        # # [2] VaBank was placed
+        # performer = self.game.stage.performer
+        # if performer:
+        #     check = actions.PlaceBetCheck.prototype(self.game, performer)
+        #     conditions['only_check'] = current_stage.get_possible_actions() == [check]
+
+        # if any(conditions.values()):
+        #     codes = [code for code in conditions if conditions[code]]
+        #     logger.info(
+        #         f'Premature final condition {codes} satisfied. '
+        #         'Opposing Stage will be exicuted after. '
+        #     )
+        #     return True
+        conditions: list[PrematureFinalCondition] = [
+            AllOtherPassedCondition(),
+            NoneBiddingsCondition(),
+        ]
+        for condition in conditions:
+            if condition(self.game):
+                logger.info(
+                    f'Premature final condition {condition.code} satisfied: '
+                    f'{condition.message}. Opposing Stage will be exicuted after. '
+                )
+                return True
 
         return False
 
@@ -325,7 +355,7 @@ class AutoProcessor(BaseProcessor):
             return self.FORCED_STOP
 
         # [2.2] add action with first possible value
-        self.add(proto.get_action())
+        self.add(proto.get_action(use_value='min'))
         super()._actions_processing(current_stage)
 
         if self._stop_after_action_condition(proto) == self.FORCED_STOP:
