@@ -110,7 +110,7 @@ class Card:
                 '9',
                 '10',
                 'Jack',
-                'Quin',
+                'Queen',
                 'King',
                 'Ace',
             ],

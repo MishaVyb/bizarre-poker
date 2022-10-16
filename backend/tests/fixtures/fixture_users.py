@@ -18,6 +18,7 @@ def vybornyy():
     user: User = User.objects.create(username=username, password=username)
     user.set_password(user.username)    # othrwise password won't be supplyed
     user.save()
+    return User.objects.get(username=user.username)
 
 @pytest.fixture
 def simusik():
@@ -25,6 +26,7 @@ def simusik():
     user: User = User.objects.create(username=username, password=username)
     user.set_password(user.username)
     user.save()
+    return User.objects.get(username=user.username)
 
 @pytest.fixture
 def someuser():
@@ -32,6 +34,7 @@ def someuser():
     user: User = User.objects.create(username=username, password=username)
     user.set_password(user.username)
     user.save()
+    return User.objects.get(username=user.username)
 
 
 @pytest.fixture(
@@ -42,7 +45,7 @@ def someuser():
         pytest.param(7, id='seven users'),
     ]
 )
-def bunch_of_users(request):  
+def bunch_of_users(request):
     users = User.objects.bulk_create(
         [User(username=f'test user #{i}') for i in range(request.param)]
     )

@@ -33,11 +33,16 @@ logger = init_logger(__name__)
 @pytest.mark.usefixtures('setup_users')
 class BaseGameProperties:
     usernames = ('vybornyy', 'simusik', 'barticheg')
-    """Predefined list of usernames who will be in the game. """
+    'List of usernames who will be in the game. '
+    staff_users = (
+        'vybornyy',
+        'simusik',
+    )
+    'Defined at setup_users'
     game_pk: int
-    """Current game id"""
+    'Current game id'
     initial_users_bank: dict[str, int]
-    """Defined at setup_users_bank fixture. """
+    'Defined at setup_users_bank fixture. '
 
     @property
     def users(self) -> dict[str, User]:
@@ -80,9 +85,12 @@ class APIGameProperties(BaseGameProperties):
 
     urls = {
         # fmt: off
-        # get, create, delete game
+        # create, delete, retrive, list, delete
         'games': '/api/v1/games/',
         'game_detail': '/api/v1/games/{game_pk}/',
+
+        # create, retrive, list
+        'playersPreform': '/api/v1/games/{game_pk}/playersPreform/',
 
         # get players, player detail
         # create: join game
@@ -103,11 +111,17 @@ class APIGameProperties(BaseGameProperties):
         'check': '/api/v1/games/{game_pk}/actions/check/',
         'reply': '/api/v1/games/{game_pk}/actions/reply/',
         'vabank': '/api/v1/games/{game_pk}/actions/vabank/',
+        'forceContinue': '/api/v1/games/{game_pk}/actions/forceContinue/',
         # fmt: on
     }
     clients: dict[str, APIClient]
-    participant: User
-    """User at `PlayerPreform` model wating fot joining to game. """
+
+    @property
+    def participant(self):
+        """
+        User at `PlayerPreform` model who is wating fot joining to game.
+        """
+        return User.objects.get(username='participant')
 
     # data after act:
     request_username: str
@@ -125,18 +139,20 @@ class APIGameProperties(BaseGameProperties):
         by_user: str | User,
         method: Literal['GET'] | Literal['POST'],
         url_name: str,
-        expected_status: int = status.HTTP_200_OK,
+        expected_status: int | None = status.HTTP_200_OK,
         assertion_message: str = '',
         **post_data,
     ):
         # logging:
-        if status.is_success(expected_status):
-            expected = StrColors.green(expected_status)
-        elif status.is_client_error(expected_status):
-            expected = StrColors.red(expected_status)
-        else:
-            expected = StrColors.bold(expected_status)
-        request_detail = f'{by_user} -> {method} -> {self.urls[url_name]} -> {expected} expected'  # fmt: skip
+        expected = '??'
+        if expected_status:
+            if status.is_success(expected_status):
+                expected = StrColors.green(expected_status)
+            elif status.is_client_error(expected_status):
+                expected = StrColors.red(expected_status)
+            else:
+                expected = StrColors.bold(expected_status)
+        request_detail = f'{by_user} -> {method} -> {self.urls[url_name]} -> {expected} expected'
         logger.info(f'{StrColors.purple("TESTING")}: {test_name} | {request_detail}')
 
         # act
@@ -144,21 +160,20 @@ class APIGameProperties(BaseGameProperties):
         call = getattr(self.clients[name], method.lower())
         response: Response = call(self.urls[url_name], post_data)
 
-        if isinstance(response, HttpResponsePermanentRedirect):
+        if status.is_redirect(response.status_code):
             logger.warning(
-                f'Recieved Permanent Redirect Response: '
-                f'from {self.urls[url_name]} to {response.url}. '
+                f'Status code is redirect: from {self.urls[url_name]} to {response.url}. '
                 f'Hint: check requested url, it shoul be ended with / (slash)'
             )
 
         # assert response status code
-        assertion_message = pformat(
-            assertion_message
-            or f'Get unexpected response code: {response.status_code} {response}. '
-            f'Response data: {getattr(response, "data", None)}. '
-            f'Request detail: {request_detail}. '
-        )
-        assert response.status_code == expected_status, assertion_message
+        if expected_status:
+            assertion_message = assertion_message or pformat(
+                f'Get unexpected response code: {response.status_code} {response}. '
+                f'Response data: {getattr(response, "data", None)}. '
+                f'Request detail: {request_detail}. '
+            )
+            assert response.status_code == expected_status, assertion_message
 
         self.request_username = name
         self.response_data = response.json() if response.data else {}

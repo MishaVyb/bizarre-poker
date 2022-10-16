@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
+from games.configurations.configurations import CONFIG_SCHEMAS
 from games.models.player import Player, PlayerPreform
 from games.services import stages
 from games.services.cards import Card
@@ -25,30 +26,39 @@ logger = init_logger(__name__)
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures('someuser', 'setup_clients', 'setup_game', 'setup_participant', 'setup_urls')
+@pytest.mark.usefixtures('someuser', 'setup_game', 'setup_participant', 'setup_urls', 'setup_clients',)
 class TestGameAPI(APIGameProperties):
 
-    ########################################################################################
+    ####################################################################################
     # Test Game Endponts
-    ########################################################################################
+    ####################################################################################
 
     def test_games_endpoint_create_game(self):
+        # those fields expected to be ignored:
+        read_only_fields = {'bank': 123, 'begins': True, 'rounds_counter': 999}
+        data = {'config_name': 'bizarre'}
+        data.update(read_only_fields)
         self.assert_response(
-            '[1] create game',
-            'vybornyy',
-            'POST',
-            'games',
-            expected_status=status.HTTP_201_CREATED,
+            '[1] create game', 'vybornyy', 'POST', 'games', expected_status=status.HTTP_201_CREATED, **data
         )
+        assert self.response_data['config'] == CONFIG_SCHEMAS['bizarre']
+        assert self.response_data['bank'] == 0
+        assert self.response_data['begins'] == False
+        assert self.response_data['rounds_counter'] == 1
+
         # assert that user join that game (as a host)
         assert self.response_data['players'][0] == 'vybornyy'
 
+    @pytest.mark.skip('not implemented yet')
+    def test_games_endpoint_delete_game(self):
+        ...
+
     def test_games_endpoint_list_and_retrieve(self):
         AutoProcessor(self.game, stop_after_stage=stages.FlopStage_1).run()
-        self.assert_response('[1] list of games', 'vybornyy', 'GET', 'game_detail')
+        self.assert_response('[1] list of games', 'vybornyy', 'GET', 'games')
         self.assert_response('[2] game detail after flop ', 'vybornyy', 'GET', 'game_detail')
 
-        test = '[1] assert game table string using `classic` method of representation. '
+        test = '[3] assert game table string using `classic` method of representation. '
         logger.info(StrColors.purple(test))
         table_string = ' '.join([card['string'] for card in self.response_data['table']])
         with TemporaryContext(Card.Text, str_method='classic'):
@@ -61,9 +71,9 @@ class TestGameAPI(APIGameProperties):
         assert self.response_data['stage']['performer']
         assert self.response_data['stage']['status']
 
-    ########################################################################################
+    ####################################################################################
     # Test Game Players Endpont
-    ########################################################################################
+    ####################################################################################
 
     def test_players_endpoint_list_retrive_me_other(self):
         AutoProcessor(self.game, stop_after_stage=stages.DealCardsStage_1).run()
@@ -139,15 +149,30 @@ class TestGameAPI(APIGameProperties):
         assert self.game.players_manager.count() == initial_players_amount
 
     def test_players_endpoint_delete(self):
-        actions.StartAction.run(self.game)
-
-        self.assert_response('delete other player', 'simusik', 'DELETE', 'players/vybornyy', status.HTTP_403_FORBIDDEN)
+        self.assert_response(
+            'success: host delete barticheg at beginings',
+            'vybornyy',
+            'DELETE',
+            'players/barticheg',
+            status.HTTP_204_NO_CONTENT,
+        )
         self.assert_response('host delete himself', 'vybornyy', 'DELETE', 'players/vybornyy', status.HTTP_403_FORBIDDEN)
 
-        test = 'came out by all players except host | assert game will update its stage'
+        actions.StartAction.run(self.game)
+
+        self.assert_response(
+            'host delete other player not at SetupStage',
+            'vybornyy',
+            'DELETE',
+            'players/simusik',
+            status.HTTP_409_CONFLICT,
+        )
+        self.assert_response(
+            'success: delete himself', 'simusik', 'DELETE', 'players/simusik', status.HTTP_204_NO_CONTENT
+        )
+
+        test = 'all players except host came out | assert game proceed to final stage'
         logger.info(StrColors.purple(test))
-        self.assert_response('', 'simusik', 'DELETE', 'players/simusik', status.HTTP_204_NO_CONTENT)
-        self.assert_response('', 'barticheg', 'DELETE', 'players/barticheg', status.HTTP_204_NO_CONTENT)
         assert self.game.stage == stages.TearDownStage
 
     def test_players_endpoint_delete_after_bet_placed(self):
@@ -194,9 +219,9 @@ class TestGameAPI(APIGameProperties):
         assert [bool(p['bets']) for p in self.response_data] == [False, True, True]
         assert [p['bets'] for p in self.response_data] == [[], [5], [10]]
 
-    ########################################################################################
+    ####################################################################################
     # Test Game Actions Endponts
-    ########################################################################################
+    ####################################################################################
 
     @property
     def possible_actions(self):
@@ -246,27 +271,20 @@ class TestGameAPI(APIGameProperties):
 
     def test_actions_endpoint_error_response(self):
         AutoProcessor(self.game, stop_after_stage=stages.FlopStage_1).run()
-        for invalid_bet in [17, -20]:
+        for invalid_bet in [17, -20, 10000]:
             self.assert_response(
-                'post invalid bet value -> validation error',
-                'vybornyy',
+                'place invalid bet value -> validation error',
+                'simusik',
                 'POST',
                 'bet',
                 status.HTTP_400_BAD_REQUEST,
                 value=invalid_bet,
             )
-        invalid_bet = 10000
-        self.assert_response(
-            'post value that not in possible values interval -> conflict state error',
-            'vybornyy',
-            'POST',
-            'bet',
-            status.HTTP_409_CONFLICT,
-            value=invalid_bet,
-        )
+            self.make_log()
+
         valid_bet = 10
         self.assert_response(
-            'post action that not allowed for current game state -> conflict state error',
+            'place bet action is not allowed for current game state -> conflict state error',
             'vybornyy',
             'POST',
             'bet',
@@ -275,21 +293,22 @@ class TestGameAPI(APIGameProperties):
         )
         self.make_log()
 
-    def test_actions_endpoint(self, setup_users_banks: list[int]):
+
+    def test_actions_endpoint_blind_bet_reply_check_vabank_pass(self, setup_users_banks: list[int]):
         self.assert_response('[1] vybornyy make avaliable action', 'vybornyy', 'POST', 'start')
 
-        self.assert_response('', 'simusik', 'POST', 'blind')
-        self.assert_response('', 'barticheg', 'POST', 'blind')
+        self.assert_response('', 'simusik', 'POST', 'blind')    # 5$
+        self.assert_response('', 'barticheg', 'POST', 'blind')  # 10$
 
         # first biddings stage:
         bet = 20
-        self.assert_response('act valid value', 'vybornyy', 'POST', 'bet', value=bet)
-        self.assert_response('', 'simusik', 'POST', 'reply')
+        self.assert_response('act valid value', 'vybornyy', 'POST', 'bet', value=bet) # 20$
+        self.assert_response('', 'simusik', 'POST', 'reply')    # 15$
         self.assert_response('', 'barticheg', 'POST', 'pass')
 
         # next biddings stage:
         self.assert_response('', 'simusik', 'POST', 'check')
-        self.assert_response('', 'vybornyy', 'POST', 'vabank')
+        self.assert_response('', 'vybornyy', 'POST', 'vabank') # 990$
         self.assert_response('', 'simusik', 'POST', 'pass')
 
         test = '[2] check that winner got his benefit because all passed'
@@ -300,18 +319,31 @@ class TestGameAPI(APIGameProperties):
         winner_bank = self.users['vybornyy'].profile.bank
         assert winner_bank == self.initial_users_bank['vybornyy'] + benefit
 
-    def test_game_api(self):
+    def test_actions_endpoint_force_continue(self):
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # start
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # blind
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # blind
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # reply
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # reply
 
-        # test: if host leave the game
+        assert self.game.stage == stages.BiddingsStage_2
+
+
+    ####################################################################################
+    # Test playerPreform Endpont
+    ####################################################################################
+
+    def test_player_preform_endpoint(self):
+        # list
+        self.assert_response('', 'anonymous', 'GET', 'playersPreform', status.HTTP_401_UNAUTHORIZED)
+        self.assert_response('', 'someuser', 'GET', 'playersPreform')
+        self.assert_response('', 'participant', 'GET', 'playersPreform')
+        self.assert_response('', 'vybornyy', 'GET', 'playersPreform')
+
+        # retrieve
         ...
 
-        # test: if host join game again
-        ...
-
-        # test: if no player want look at game deteail
-        ...
-
-        # test: start with no other players
-        ...
-
-        # test other players join game
+        # create
+        self.assert_response('', 'someuser', 'POST', 'playersPreform', status.HTTP_201_CREATED)
+        self.assert_response('', 'participant', 'POST', 'playersPreform', status.HTTP_400_BAD_REQUEST)
+        self.assert_response('', 'vybornyy', 'POST', 'playersPreform', status.HTTP_403_FORBIDDEN)

@@ -1,6 +1,7 @@
 import logging
 from functools import cached_property
-from typing import Type
+from operator import attrgetter
+from typing import TYPE_CHECKING, Type, TypeAlias
 from api import permitions
 from api.exceptions import ConflictState
 
@@ -11,7 +12,11 @@ from games.models.player import PlayerPreform
 from games.selectors import PlayerSelector
 from games.services import actions, stages
 from rest_framework import views, viewsets, mixins, exceptions
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+    IsAdminUser,
+)
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
@@ -22,6 +27,7 @@ from api.serializers import (
     BetValueSerializer,
     GameSerializer,
     HiddenPlayerSerializer,
+    PlayerPreformSerializer,
     PlayerSerializer,
     ActionSerializer,
 )
@@ -29,6 +35,11 @@ from users.models import User, DjangoUserModel
 from games.services.processors import BaseProcessor
 
 logger = init_logger(__name__)
+
+if TYPE_CHECKING:
+    _BASE_VIEW: TypeAlias = viewsets.ViewSet
+else:
+    _BASE_VIEW = object
 
 
 class GamesViewSet(viewsets.ModelViewSet):
@@ -50,11 +61,29 @@ class GamesViewSet(viewsets.ModelViewSet):
         game.select_players(source=[host])
 
 
-class ActionsViewSet(viewsets.ViewSet):
-    action_url = '/api/v1/games/{game_pk}/actions/{name}/'
-
+class GameInterfaceMixin(_BASE_VIEW):
     def get_game(self):
-        return Game.objects.prefetch_players().get(**self.kwargs).select_players()
+        return (
+            Game.objects.prefetch_players().get(pk=self.kwargs['pk']).select_players()
+        )
+
+    def get_player(self, game: Game | None = None):
+        """
+        Get player asociated with game and user from request.
+        Return None if no such player.
+        """
+        game = game or self.get_game()
+        user: User = self.request.user
+        return user.player_at(game, None)
+
+    def get_game_and_player(self):
+        game = self.get_game()
+        player = self.get_player(game)
+        return (game, player)
+
+
+class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
+    action_url = '/api/v1/games/{game_pk}/actions/{name}/'
 
     def list(self, request: Request, pk: int):
         user: User = request.user
@@ -70,18 +99,21 @@ class ActionsViewSet(viewsets.ViewSet):
     def exicute(
         self,
         action_type: Type[actions.BaseAction],
+        *,
         game: Game | None = None,
-        **action_kwargs
+        by_user: User | None = None,
+        **action_kwargs,
     ):
         game = game or self.get_game()
 
         try:
-            action_type.run(game, self.request.user, **action_kwargs)
+            action_type.run(game, by_user or self.request.user, **action_kwargs)
         except actions.ActionError as e:
             raise ConflictState(e.action)
 
         serializer = GameSerializer(instance=game)
         return Response(serializer.data)
+        return Response({'latest': game.actions_history[-1]})
 
     @action(methods=['post'], detail=False)
     def start(self, request: Request, pk: int):
@@ -101,7 +133,7 @@ class ActionsViewSet(viewsets.ViewSet):
         context = {'game': game}
         serializer = BetValueSerializer(data=request.data, context=context)
         if serializer.is_valid(raise_exception=True):
-            return self.exicute(actions.PlaceBet, game, **serializer.data)
+            return self.exicute(actions.PlaceBet, game=game, **serializer.data)
         return Response(serializer.errors)
 
     @action(methods=['post'], detail=False)
@@ -120,8 +152,36 @@ class ActionsViewSet(viewsets.ViewSet):
     def vabank(self, request: Request, pk: int):
         return self.exicute(actions.PlaceBetVaBank)
 
+    @action(
+        methods=['post'],
+        detail=False,
+        # permission_classes=[IsAdminUser],
+        url_path='forceContinue',
+        url_name='forceContinue',
+    )
+    def force_continue(self, request: Request, pk: int):
+        """
+        Force make action for another user to proceed game farther. Taking fist possible
+        action for exicution. Mostly for test porpeses.
+        """
+        assert not request.data, 'applying data to force continue not implemented yet'
+
+        game, player = self.get_game_and_player()
+        if game.stage.performer == player:
+            logger.warning('Making force action when user can do it by himself. ')
+
+        protos = game.stage.get_possible_actions()
+        porotos_without_values = filter(lambda p: not p.action_values, protos)
+        try:
+            action = next(porotos_without_values).action_class
+        except StopIteration:
+            raise ConflictState('forceContinue', game)
+
+        return self.exicute(action, game=game, by_user=game.stage.performer.user)
+
 
 class PlayersViewSet(
+    GameInterfaceMixin,
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
     mixins.RetrieveModelMixin,
@@ -130,11 +190,11 @@ class PlayersViewSet(
 ):
     """
     View represents Players inctances and provides:
+    - list and retrieve methods
     - create method (when Host approved User joining)
     - destroy method (when User leaves game)
     """
 
-    filter_args: list = []
     lookup_field = 'user__username'
     permission_classes = (
         permitions.ReadOnly
@@ -180,6 +240,14 @@ class PlayersViewSet(
     def perform_create(self, serializer: PlayerSerializer):
         user: User = serializer.validated_data['user']
         game: Game = serializer.validated_data['game']
+
+        if not game.stage == stages.SetupStage:
+            raise ConflictState(
+                f'Admission of participants to the game is not allowed at this stage. ',
+                game,
+                'invalid_stage',
+            )
+
         try:
             player_preform = PlayerPreform.objects.get(user=user, game=game)
         except PlayerPreform.DoesNotExist:
@@ -190,8 +258,14 @@ class PlayersViewSet(
 
     def perform_destroy(self, instance: Player):
         game = instance.game
-        super().perform_destroy(instance)  # instance.delete()
+        if self.get_player(game).is_host and not game.stage == stages.SetupStage:
+            raise ConflictState(
+                f'Kicking player out of the game is not allowed at this stage. ',
+                game,
+                'invalid_stage',
+            )
 
+        super().perform_destroy(instance)  # instance.delete()
         # after player came out we has to run processing to change game state
         # and only after that save() for other players and game inctance will be called
         BaseProcessor(game).run()
@@ -204,37 +278,42 @@ class PlayersViewSet(
         if isinstance(request.user, DjangoUserModel):
             request.user.__class__ = User
 
-    def get_game(self):
-        return (
-            Game.objects.prefetch_players()
-            .get(pk=self.kwargs['game_pk'])
-            .select_players()
-        )
-
-    def get_player(self, game: Game | None = None):
-        """
-        Get player asociated with game and user from request.
-        Return None if no such player.
-        """
-        game = game or self.get_game()
-        user: User = self.request.user
-        return user.player_at(game, None)
-
-    def get_game_and_player(self):
-        game = self.get_game()
-        player = self.get_player(game)
-        return (game, player)
+    def get_object(self) -> Player:
+        return super().get_object()
 
     def get_queryset(self):
         return self.get_game().players_manager.all()
 
     @action(detail=False, methods=['get'], permission_classes=[permitions.UserInGame])
-    def me(self, request: Request, game_pk: int):
+    def me(self, request: Request, pk: int):
         self.kwargs[self.lookup_field] = request.user.username
         return self.retrieve(request)
 
     @action(detail=False, methods=['get'], permission_classes=[permitions.UserInGame])
-    def other(self, request: Request, game_pk: int):
+    def other(self, request: Request, pk: int):
         other = self.get_game().players.exclude(user=request.user)
         serializer = self.get_serializer(instance=other, many=True)
         return Response(serializer.data)
+
+
+class PlayersPreformViewSet(
+    GameInterfaceMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    View represents futute participants inctances and provides:
+    - list and retrieve methods
+    - create method (when User trying join Game)
+    """
+
+    lookup_field = 'user__username'
+    serializer_class = PlayerPreformSerializer
+    permission_classes = [
+        permitions.UserNotInGame | permitions.ReadOnly & IsAuthenticated
+    ]
+
+    def get_queryset(self):
+        return PlayerPreform.objects.filter(pk=self.kwargs['pk'])

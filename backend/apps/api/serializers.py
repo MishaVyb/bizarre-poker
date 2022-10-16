@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Literal
 from api import validators
 from games.models import Game, Player
-
+from django.db import models
 from rest_framework import serializers, fields
 from rest_framework.validators import UniqueTogetherValidator
+from games.models.player import PlayerPreform
 from games.services import stages
 from games.services.actions import ActionPrototype
 
@@ -64,6 +65,26 @@ class ComboSerializer(serializers.Serializer):
     case = CardSerializer(many=True, source='stacks.cases_chain')
 
 
+def init_extra_kwargs(
+    model: models.Model,
+    *,
+    read_only: Literal['__all__'] | Iterable[str],
+    **extra_kwargs
+):
+    kwargs: dict = {}
+    if read_only == '__all__':
+        read_only = model.meta.fiels
+    for field in read_only:
+        pass
+
+
+def get_all():
+    g = Game
+    result = [field.attname for field in Game._meta.fields]
+
+    return ('__all__',)
+
+
 class GameSerializer(serializers.ModelSerializer):
     players = serializers.StringRelatedField(
         many=True,
@@ -72,11 +93,21 @@ class GameSerializer(serializers.ModelSerializer):
     )
     table = CardSerializer(many=True, read_only=True)
     stage = StageSerializer(read_only=True)
+    config = serializers.JSONField(
+        read_only=True,
+        source='config.dict',
+    )
+    config_name = serializers.CharField(default='classic', write_only=True)
 
     class Meta:
         model = Game
-        exclude = ('stage_index', 'deck')
-        read_only_fields = ('__all__',)
+        exclude = (
+            'deck',
+            'stage_index',
+        )
+        read_only_fields = [
+            field.attname for field in Game._meta.fields if field.name != 'config_name'
+        ]
 
 
 class CurrentGameDefault:
@@ -101,7 +132,6 @@ class PlayerSerializer(serializers.ModelSerializer):
     bet_total = serializers.IntegerField(read_only=True)
     is_dealer = serializers.BooleanField(read_only=True)
     profile_bank = serializers.IntegerField(source='user.profile.bank', read_only=True)
-    config = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Player
@@ -133,14 +163,33 @@ class HiddenPlayerSerializer(PlayerSerializer):
 
 class BetValueSerializer(serializers.Serializer):
     value = serializers.IntegerField(
-        validators=[validators.MultipleOfSmallBlind(), validators.PositiveInteger()]
+        validators=[
+            validators.MultipleOfSmallBlind(),
+            validators.PositiveInteger(),
+            validators.InPossibleInterval(),
+        ]
     )
-    # game = serializers.HiddenField(default=CurrentGameDefault())
 
-    # def validate_value(self, value):
-    #     game = self.validated_data['game']
-    #     return value
-    # class Meta:
-    #     validators = [MultipleOfSmallBlind()]
-    # def validate(self, attrs):
-    #     return super().validate(attrs)
+
+class PlayerPreformSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault(),
+    )
+    game = serializers.PrimaryKeyRelatedField(
+        write_only=True,
+        queryset=Game.objects.all(),
+        default=CurrentGameDefault(),
+    )
+
+    class Meta:
+        model = PlayerPreform
+        exclude = ('id',)
+        validators = [
+            UniqueTogetherValidator(
+                queryset=PlayerPreform.objects.all(),
+                fields=['user', 'game'],
+                message='User could not make many request to join a sigle game. ',
+            )
+        ]

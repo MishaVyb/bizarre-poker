@@ -109,7 +109,7 @@ def test_card_ordering(
         [CardList(Card('Ace/D'), ('King-H')), 2],
         [CardList('(12,3)', 'King|H'), 2],
         [CardList('red', 'king|h'), 2],
-        [CardList('red', 'black', '(12,H)', 'Quin|C'), 4],
+        [CardList('red', 'black', '(12,H)', 'Queen|C'), 4],
     ],
 )
 def test_cardlist_init_len(input_data: CardList, expected_len: int):
@@ -259,7 +259,7 @@ def test_cardlist_init_by_str_instances_raises(instance: str, expected: Exceptio
 @pytest.mark.parametrize(
     'input_data',
     [
-        CardList('Ace|H', 'King|H', 'Quin|C'),
+        CardList('Ace|H', 'King|H', 'Queen|C'),
     ],
 )
 def test_cardlist_item_insances_behavior(input_data: CardList):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Type, TypeVar
-
+from rest_framework import status
 import pytest
 from tests.base import APIGameProperties
 from core.functools.decorators import temporally
@@ -19,16 +19,16 @@ logger = init_logger(__name__)
 _T = TypeVar('_T')
 
 
-########################################################################################
-# Arrange base test data
-########################################################################################
-
 def assert_base_class(instance: BaseGameProperties, _type: Type[_T] = BaseGameProperties) -> _T:
     message = 'This fixture is only for BaseGameProperties methods. '
     assert isinstance(instance, _type), message
     logger.info(StrColors.purple(f'{get_func_name(back=True)} for {instance}'))
     return instance
 
+
+########################################################################################
+# Arrange base test data
+########################################################################################
 
 @pytest.fixture
 def setup_users(request: pytest.FixtureRequest):
@@ -38,9 +38,24 @@ def setup_users(request: pytest.FixtureRequest):
     self: BaseGameProperties = assert_base_class(request.instance)
 
     for username in self.usernames:
-        user: User = User.objects.create(username=username, password=username)
+        user: User = User.objects.create(
+            username=username,
+            password=username,
+            is_staff=username in self.staff_users,
+        )
         user.set_password(user.username)  # othrwise password won't be supplyed
         user.save()
+
+@pytest.fixture
+def setup_participant(
+    request: pytest.FixtureRequest,
+):
+    self = assert_base_class(request.instance, APIGameProperties)
+
+    user = User.objects.create(username='participant', password='participant')
+    user.set_password(user.username)
+    user.save()
+    PlayerPreform.objects.create(user=user, game=self.game)
 
 
 @pytest.fixture
@@ -118,21 +133,14 @@ def setup_clients(request: pytest.FixtureRequest):
         client = APIClient()
         client.login(username=user.username, password=user.username)
         self.clients[user.username] = client
+        # continue
 
         # chek user auth
-        self.assert_response(
-            'chek user auth',
-            user.username,
-            'GET',
-            'games',
-            assertion_message=('Authetication failed. Check auth backends: SessionAuthetication should be aplyed. '),
+        message = (
+            'Authetication failed. Check is set_password(..) was called '
+            'and check auth backends: SessionAuthetication should be aplyed.'
         )
+        self.assert_response('chek user auth', user.username, 'POST', 'games', status.HTTP_201_CREATED, message)
 
-
-@pytest.fixture
-def setup_participant(
-    request: pytest.FixtureRequest,
-):
-    self = assert_base_class(request.instance, APIGameProperties)
-    self.participant = User.objects.create(username='participant', password='participant')
-    PlayerPreform.objects.create(user=self.participant, game=self.game)
+    # this fixture is final so new line for more readable logging
+    print('\n')

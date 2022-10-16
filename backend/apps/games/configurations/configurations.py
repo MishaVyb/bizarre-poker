@@ -1,9 +1,11 @@
-import sys, os
+import os
 
 import pydantic
 from django.db import models
 
 class ConfigSchema(pydantic.BaseModel):
+    name: str = ''
+
     small_blind: int
     big_blind: int
     bet_multiplicity: int
@@ -31,3 +33,6 @@ CONFIG_FILES = {
 CONFIG_SCHEMAS = {
     name: ConfigSchema.parse_file(file) for name, file in CONFIG_FILES.items()
 }
+
+for name, schema in CONFIG_SCHEMAS.items():
+    schema.name = name

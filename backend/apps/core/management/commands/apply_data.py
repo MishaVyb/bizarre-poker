@@ -61,8 +61,9 @@ class Command(BaseCommand):
 
             # Profile objects creates inside at clean(..) method
             user.save()
+            admin = 'admin' if user.is_staff else ''
             logger.info(
-                f'User created. Authentication credentials: '
+                f'User {admin} created. Authentication credentials: '
                 f'login "{user.username}" password "{password}"'
             )
 
