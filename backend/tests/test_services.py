@@ -216,17 +216,13 @@ class TestGameStages(BaseGameProperties):
             assert player.position == expected_position
         assert is_sorted(self.game.players, key='position')
 
-    def test_game_status(self):
-        AutoProcessor(self.game, stop_after_actions_amount=1).run()
-        logger.info(self.game.status)
 
     def test_game_actions_history(self):
-        AutoProcessor(self.game, stop_after_stage=stages.TearDownStage).run()
-        assert self.game.actions_history
-
-        # tmp logging
-        tmp = [a['message'] for a in self.game.actions_history]
-        logger.info(pformat(tmp).replace('message', StrColors.red('message')))
+        actions.StartAction.run(self.game)
+        # 1- start action by user
+        # 2- SetupStage
+        # 3- DealCardsStage
+        assert len(self.game.actions_history) == 3
 
 
 @pytest.mark.django_db

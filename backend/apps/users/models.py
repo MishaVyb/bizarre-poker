@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type, TypeVar, overload
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User as DjangoUserModel
+from django.contrib.auth.models import User as _DjangoUserModel
 from django.db import models
 from core.models import CreatedModifiedModel, FullCleanSavingMixin
+from core.types import NOT_PROVIDED
 from core.validators import bet_multiplicity
 
 
@@ -15,16 +16,29 @@ if TYPE_CHECKING:
     from ..games.models.game import Game
 
 
-class UserProxy(FullCleanSavingMixin, DjangoUserModel):
-    players: PlayerManager[Player]  # OneToMany related field defined by Django
-    # def profile(self):
-    #     if hasattr(self, '_profile'):
-    #         return self._profile
-    #     Profile(user=self).save()
-    #     return self.profile()
+_T = TypeVar('_T')
 
+
+class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
+    players: PlayerManager[Player]  # OneToMany related field defined by Django
+
+    @overload
     def player_at(self, game: Game) -> Player:
-        return game.players.get(user=self)
+        ...
+
+    @overload
+    def player_at(self, game: Game, default: _T | Type[NOT_PROVIDED]) -> Player | _T:
+        ...
+
+    def player_at(
+        self, game: Game, default: _T | Type[NOT_PROVIDED] = NOT_PROVIDED
+    ) -> Player | _T:
+        if default is NOT_PROVIDED:
+            return game.players.get(user=self)
+        try:
+            return game.players.get(user=self)
+        except StopIteration:
+            return default
 
     def clean(self):
         if not hasattr(self, 'profile'):
@@ -55,17 +69,10 @@ class Profile(FullCleanSavingMixin, CreatedModifiedModel):
 
 User = UserProxy
 """
-Alias to custom proxy model which extends UserModel behaviour.
+Alias to custom `proxy` model which extends DjangoUserModel behaviour.
 """
 
-# Note: this poblems goes down after updating to a latest version of Django.
-#
-# UserProxy is valid model for related relashinships, but you should change migration
-# after migrations applyed, otherwise pytest-django falls down:
-# `ValueError: Related model 'users.UserProxy' cannot be resolved.`
-#
-# >>> # to='users.UserProxy'
-# >>> to=settings.AUTH_USER_MODEL
-
-UserModel = get_user_model()
-"""alias to `real` (not proxy) user model for any reason."""
+DjangoUserModel = _DjangoUserModel
+"""
+Alias to `real` (not proxy) user model for any reason.
+"""

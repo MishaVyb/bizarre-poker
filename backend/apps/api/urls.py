@@ -1,4 +1,4 @@
-from api.views import GamesViewSet, PlayersViewSet, ActionsViewSet, TestView
+from api.views import GamesViewSet, PlayersViewSet, ActionsViewSet
 from django.urls import include, path, re_path, reverse_lazy
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
@@ -63,5 +63,4 @@ router.register(r'games/(?P<game_pk>\d+)/players', PlayersViewSet, basename='pla
 urlpatterns += [
     path('', RedirectView.as_view(url=reverse_lazy('api:schema-swagger-ui'))),
     path('v1/', include(router.urls)),
-    path('v1/test/', TestView.as_view()),
 ]

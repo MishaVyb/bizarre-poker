@@ -9,8 +9,6 @@ from rest_framework.test import APIClient
 
 from tests.base import APIGameProperties, BaseGameProperties
 
-
-
 @pytest.mark.django_db
 class TestApiMidlware(APIGameProperties):
     usernames = ('user',)
@@ -23,7 +21,4 @@ class TestApiMidlware(APIGameProperties):
 
         user = response.data.serializer.context['request'].user
         assert isinstance(user, User), 'User should be UserProxy instance'
-
-        self.response_data = self.clients['user'].get('/api/v1/test/').data
-        self.make_log()
 

@@ -40,11 +40,10 @@ from games.configurations import ConfigSchema
 logger = init_logger(__name__)
 
 SET_JOKERS_AFTER_EQUAL_CARD = True
-"""To operate a curtain way of sorting, when mirrored jokers placed after card with
-other things being equal."""
-
-CARD_SHIRT = None
-"""Python value for card`s shirt used at hiden() method. """
+"""
+Flagg that define a specyfic way of sorting, when mirrored jokers placed after card with
+other things being equal.
+"""
 
 
 class EmptyValueError(Exception):
@@ -137,28 +136,23 @@ class Card:
                 'A',
             ],
             'suit': ['[not def]', '♣️', '♦️', '♥️', '♠️'],
-            'shirt': ['🎴'],
+            'shirt': None,
         }
 
         str_method: ClassVar[str | None] = None
-        """string name of method:
-        `default` `emoji` `eng_short_suit` `classic` `emoji_shirt` `eng_shirt`
-        """
         repr_method: ClassVar[str] = 'emoji'
-        """string name of method:
-        `default` `emoji` `eng_short_suit` `classic` `emoji_shirt` `eng_shirt`
-        """
 
         @classmethod
         def get_repr(cls, c: Card, method_name: str | None = None) -> str:
             method_name = method_name or cls.repr_method
             assert method_name in [
                 'default',
-                'emoji',
                 'eng_short_suit',
-                'classic',
-                'emoji_shirt',
                 'eng_shirt',
+                'emoji',
+                'emoji_shirt',
+                'classic',
+                'classic_shirt',
             ], f'invalind {method_name=}'
             try:
                 return getattr(cls, method_name)(c)
@@ -170,11 +164,12 @@ class Card:
             method_name = method_name or cls.str_method
             assert method_name in [
                 'default',
-                'emoji',
                 'eng_short_suit',
-                'classic',
-                'emoji_shirt',
                 'eng_shirt',
+                'emoji',
+                'emoji_shirt',
+                'classic',
+                'classic_shirt',
                 None,
             ], f'invalid {method_name=}'
             try:
@@ -206,7 +201,7 @@ class Card:
 
         @staticmethod
         def eng_short_suit(c: Card) -> str:
-            # [0] becouse short suit (only first letter)
+            # [0] because only first letter is used (short suit)
             return (
                 Card.Text.ENG['rank'][c.rank] + '|' + Card.Text.ENG['suit'][c.suit][0]
             )
@@ -217,11 +212,15 @@ class Card:
 
         @staticmethod
         def emoji_shirt(c: Card) -> str:
-            return Card.Text.EMOJI['shirt'][0]
+            return Card.Text.EMOJI['shirt']
 
         @staticmethod
         def eng_shirt(c: Card) -> str:
-            return Card.Text.ENG['shirt'][0]
+            return Card.Text.ENG['shirt']
+
+        @staticmethod
+        def classic_shirt(c: Card) -> str:
+            return Card.Text.CLASSIC['shirt']
 
     def __init__(
         self, rank: int | str | Card | None = None, suit: int | str | None = None
@@ -303,7 +302,15 @@ class Card:
         return self.__dict__[key]
 
     def get_str(self, method_name: str = 'classic'):
-        """Simple shortcut for CardSerializer. """
+        """
+        Simple shortcut to get card representatin in classic way.
+        """
+        return self.Text.get_str(self, method_name)
+
+    def get_hiden(self, method_name: str = 'classic_shirt'):
+        """
+        Simple shortcut to get card in hidden way (card face down).
+        """
         return self.Text.get_str(self, method_name)
 
     def __str__(self) -> str:
@@ -629,11 +636,7 @@ class CardList(list[Card]):
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
 
-    def hiden(self):
-        """Return list contained card`s shirts. """
-        return [CARD_SHIRT] * self.length
 
-    # пришлось переопределить, чтобы сохраить тип возвращаемого значения CardList
     @overload
     def __getitem__(self, __i: SupportsIndex, /) -> Card:
         ...

@@ -74,10 +74,14 @@ class BaseAction:
     def prototype(
         cls: Type[_ACTION],
         game: Game,
-        player: Player,
+        user: User | Player,
         action_values: int | Interval[int] | None = None,
         suitable_stage_class: Type[BaseStage] | None = None,
     ) -> ActionPrototype[_ACTION]:
+        if isinstance(user, User):
+            player = game.players.get(user=user)
+        else:
+            player = user  # user is a Player instance in that case
         return ActionPrototype(cls, game, player, action_values, suitable_stage_class)
 
     @classmethod

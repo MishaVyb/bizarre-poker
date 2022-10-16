@@ -1,4 +1,6 @@
 from __future__ import annotations
+from itertools import chain
+import itertools
 
 import pytest
 from core.functools.utils import init_logger
@@ -31,39 +33,43 @@ logger = init_logger(__name__)
 @pytest.mark.usefixtures('setup_users')
 class BaseGameProperties:
     usernames = ('vybornyy', 'simusik', 'barticheg')
+    """Predefined list of usernames who will be in the game. """
     game_pk: int
+    """Current game id"""
+    initial_users_bank: dict[str, int]
+    """Defined at setup_users_bank fixture. """
 
     @property
     def users(self) -> dict[str, User]:
+        """Users in the game. `Fresh` data from db."""
         return {name: User.objects.get(username=name) for name in self.usernames}
 
     @property
     def users_list(self) -> list[User]:
+        """Users in the game. `Fresh` data from db."""
         return [User.objects.get(username=name) for name in self.usernames]
 
     # we use not cahced property to force test assertion compare real db value with
     # expected result (the same for other)
     @property
     def game(self) -> Game:
-        """Game with prefetched players at manager and with players selector.
+        """
+        Game with prefetched players at manager and with players selector.
+        `Fresh` data from db.
 
         Note:
         it makes new query evry time(!) so it will be another game instanse every time.
         """
-        return (
-            Game.objects.prefetch_players()
-            .get(pk=self.game_pk)
-            .select_players(force_cashing=True)
-        )
+        return Game.objects.prefetch_players().get(pk=self.game_pk).select_players(force_cashing=True)
 
     @property
     def players(self) -> dict[str, Player]:
-        return {
-            user.username: user.players.get(game=self.game) for user in self.users_list
-        }
+        """Players in the game. `Fresh` data from db."""
+        return {user.username: user.players.get(game=self.game) for user in self.users_list}
 
     @property
     def players_list(self) -> list[Player]:
+        """Players in the game. `Fresh` data from db."""
         return [user.players.get(game=self.game) for user in self.users_list]
 
     def __str__(self) -> str:
@@ -71,54 +77,91 @@ class BaseGameProperties:
 
 
 class APIGameProperties(BaseGameProperties):
+
     urls = {
+        # fmt: off
+        # get, create, delete game
         'games': '/api/v1/games/',
+        'game_detail': '/api/v1/games/{game_pk}/',
+
+        # get players, player detail
+        # create: join game
+        # delete: leave game
+        'players': '/api/v1/games/{game_pk}/players/',
+        'players/{username}': '/api/v1/games/{game_pk}/players/{username}/',
+        'players/me': '/api/v1/games/{game_pk}/players/me/',
+        'players/other': '/api/v1/games/{game_pk}/players/other/',
+
+        # get: all possible game actions:
+        'actions': '/api/v1/games/{game_pk}/actions/',
+
+        # make action:
+        'start': '/api/v1/games/{game_pk}/actions/start/',
+        'pass': '/api/v1/games/{game_pk}/actions/pass/',
+        'blind': '/api/v1/games/{game_pk}/actions/blind/',
+        'bet': '/api/v1/games/{game_pk}/actions/bet/',
+        'check': '/api/v1/games/{game_pk}/actions/check/',
+        'reply': '/api/v1/games/{game_pk}/actions/reply/',
+        'vabank': '/api/v1/games/{game_pk}/actions/vabank/',
+        # fmt: on
     }
     clients: dict[str, APIClient]
-    initial_users_bank: dict[str, int]  # defined at setup_users_banks fixture
+    participant: User
+    """User at `PlayerPreform` model wating fot joining to game. """
 
     # data after act:
     request_username: str
     response_data: JSON
 
+    @property
+    def response_joined(self) -> str:
+        chain = itertools.chain(self.response_data.values())
+        listed: list = list(*chain)
+        return ' '.join(listed)
+
     def assert_response(
         self,
         test_name: str,
-        by_users: str | Iterable[str],
+        by_user: str | User,
         method: Literal['GET'] | Literal['POST'],
         url_name: str,
         expected_status: int = status.HTTP_200_OK,
         assertion_message: str = '',
         **post_data,
     ):
-        if isinstance(by_users, str):
-            by_users = (by_users,)
+        # logging:
+        if status.is_success(expected_status):
+            expected = StrColors.green(expected_status)
+        elif status.is_client_error(expected_status):
+            expected = StrColors.red(expected_status)
+        else:
+            expected = StrColors.bold(expected_status)
+        request_detail = f'{by_user} -> {method} -> {self.urls[url_name]} -> {expected} expected'  # fmt: skip
+        logger.info(f'{StrColors.purple("TESTING")}: {test_name} | {request_detail}')
 
-        request_detail = f'{by_users} -> {method} -> {self.urls[url_name]}'
-        logger.info(StrColors.purple(f'TESTING: {test_name} | {request_detail}'))
+        # act
+        name = by_user if isinstance(by_user, str) else by_user.username
+        call = getattr(self.clients[name], method.lower())
+        response: Response = call(self.urls[url_name], post_data)
 
-        for user in by_users:
-            # act
-            call = getattr(self.clients[user], method.lower())
-            response: Response = call(self.urls[url_name], post_data)
-
-            if isinstance(response, HttpResponsePermanentRedirect):
-                logger.warning(
-                    f'Recieved Permanent Redirect Response: '
-                    f'from {self.urls[url_name]} to {response.url}. '
-                    f'Hint: check requested url, it shoul be ended with / (slash)'
-                )
-
-            # assert response status code
-            assertion_message = (
-                assertion_message
-                or f'Get unexpected response code: {response.status_code} {response}. '
-                f'Response data: {getattr(response, "data", None)}. '
-                f'Request detail: {request_detail}. '
+        if isinstance(response, HttpResponsePermanentRedirect):
+            logger.warning(
+                f'Recieved Permanent Redirect Response: '
+                f'from {self.urls[url_name]} to {response.url}. '
+                f'Hint: check requested url, it shoul be ended with / (slash)'
             )
-            assert response.status_code == expected_status, assertion_message
-        self.request_username = user
-        self.response_data = response.data
+
+        # assert response status code
+        assertion_message = pformat(
+            assertion_message
+            or f'Get unexpected response code: {response.status_code} {response}. '
+            f'Response data: {getattr(response, "data", None)}. '
+            f'Request detail: {request_detail}. '
+        )
+        assert response.status_code == expected_status, assertion_message
+
+        self.request_username = name
+        self.response_data = response.json() if response.data else {}
 
     def make_log(self, user: str = '', width=150):
         """Formating response data in certain way and log it."""

@@ -1,4 +1,4 @@
-from typing import Any, OrderedDict, Union
+from typing import Any, OrderedDict, Type, TypeAlias, Union
 
 _JSON_SUPPORTED = str | int | bool | float | None | list | dict | OrderedDict
 
@@ -10,3 +10,10 @@ JSON = dict[str, Any] | list[_JSON_SUPPORTED]
 
 NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 """Class for represent absence of value at defaults. Wnen None can't be used. """
+
+
+class _NotProvidedClass:
+    """Class for represent absence of value at defaults. Wnen None can't be used. """
+    pass
+
+NOT_PROVIDED = _NotProvidedClass

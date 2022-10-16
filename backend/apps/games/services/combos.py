@@ -67,10 +67,10 @@ class ComboKind:
         }
 
     def __repr__(self) -> str:
-        return f'`{self.name}`'
+        return f'ComboKind("{self.name}")'
 
     def __str__(self) -> str:
-        return self.__repr__()
+        return self.name
 
     def __eq__(self, __o: object) -> bool:
         if not isinstance(__o, ComboKind):

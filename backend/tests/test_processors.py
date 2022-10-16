@@ -31,7 +31,6 @@ class TestBaseProcessor(BaseGameProperties):
 
         assert self.game.stage == stages.TearDownStage
 
-
     def test_premature_final_conditions_vabank(self):
         # [2] VaBank was placed
         game = self.game
@@ -44,8 +43,6 @@ class TestBaseProcessor(BaseGameProperties):
         actions.PassAction.run(game)
 
         assert self.game.stage == stages.TearDownStage
-
-
 
 
 @pytest.mark.django_db
@@ -77,9 +74,7 @@ class TestAutoProcessor(BaseGameProperties):
         assert self.game.stage.performer is None
 
         # [2] stop before action
-        bet = actions.PlaceBet.prototype(
-            game, game.players[0], action_values=[self.game.config.big_blind]
-        )
+        bet = actions.PlaceBet.prototype(game, game.players[0], action_values=self.game.config.big_blind)
         AutoProcessor(game, stop_before_action=bet).run()
 
         # game still at this stage
@@ -90,7 +85,7 @@ class TestAutoProcessor(BaseGameProperties):
         assert self.players_list[0].bet_total == 0
 
         # [3] stop before action
-        bet = actions.PlaceBet.prototype(game, game.players[1], action_values=[0])
+        bet = actions.PlaceBet.prototype(game, game.players[1], action_values=0)
         AutoProcessor(game, stop_before_action=bet).run()
 
         # game at this stage
@@ -110,24 +105,15 @@ class TestAutoProcessor(BaseGameProperties):
 
     def test_autoplay_game_after_action_raises(self):
         game = self.game
-        bet = actions.PlaceBet.prototype(game, game.players[0], action_values=[12345])
+        bet = actions.PlaceBet.prototype(game, game.players[0], action_values=12345)
         with pytest.raises(RuntimeError, match=r'Too many game round iterations'):
             AutoProcessor(self.game, stop_before_action=bet).run()
 
     def test_autoplay_game_stop_with_actions(self, setup_users_banks):
         bet_value = 100
         game = self.game
-        bet = actions.PlaceBet.prototype(
-            game,
-            game.players[0],
-            [bet_value],
-            stages.BiddingsStage_2,
-        )
-        pass_ = actions.PassAction.prototype(
-            game,
-            game.players[1],
-            suitable_stage_class=stages.BiddingsStage_2,
-        )
+        bet = actions.PlaceBet.prototype(game, game.players[0], bet_value, stages.BiddingsStage_2)
+        pass_ = actions.PassAction.prototype(game, game.players[1], suitable_stage_class=stages.BiddingsStage_2)
         AutoProcessor(game, with_actions=[bet, pass_]).run()
 
         bet_total = self.game.config.big_blind + bet_value
