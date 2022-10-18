@@ -1,12 +1,9 @@
 import axios from 'axios'
 import autoBind from 'auto-bind'
+import delay from '../utils/functools'
 
 const ENDPOINTS = {
   games: '/api/v1/games/',
-  played: '/api/v1/games/played/',
-  hosted: '/api/v1/games/hosted/',
-  other: '/api/v1/games/other/',
-  join: '/api/v1/games/{gameId}/join/', // add user to game.wating_room
   gameDetail: '/api/v1/games/:gameId/',
 
   players: '/api/v1/games/:gameId/players/',
@@ -15,7 +12,7 @@ const ENDPOINTS = {
   playersOther: '/api/v1/games/:gameId/players/other',
 
   actions: '/api/v1/games/:gameId/actions/',
-  forceContinue: '/api/v1/games/:gameId/actions/forceContinue/', // mostly for test porpuses
+  forceContinue: '/api/v1/games/:gameId/actions/forceContinue/',  // mostly for test porpuses
 }
 
 export default class GameService {
@@ -33,12 +30,12 @@ export default class GameService {
   }
 
   async post(url, data = {}) {
+    // for acting actions with POST request
     if (!this.token) {
       console.log('warning : No token provided. ')
       return null
     }
-    // for acting actions
-    const response = await axios.post(url, data)
+    const response = await axios.post(url, data, this.config)
     return response.data
   }
 
@@ -65,6 +62,22 @@ export default class GameService {
 
   async join() {}
 
+
+  // tmp solution
+  // this action should be provided by server with among other game actions with changing its stage
+  async forceContinue(gameId, data = {}) {
+    if (!this.token) {
+      console.log('warning : No token provided. ')
+      return null
+    }
+    const response = await axios.post(
+      ENDPOINTS.forceContinue.replace(':gameId', gameId),
+      data,
+      this.config
+    )
+    return response.data
+  }
+
   async gamesPageLoader() {
     // seperated full loader includes a few requsts
     if (!this.auth) {
@@ -83,6 +96,7 @@ export default class GameService {
       return null
     }
 
+    console.log('info : gameDetailLoader')
     let response = await axios.get(
       ENDPOINTS.gameDetail.replace(':gameId', params.gameId),
       this.config

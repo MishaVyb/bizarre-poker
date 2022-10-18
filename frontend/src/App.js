@@ -37,17 +37,9 @@ function App() {
     } else {
       setAuth(null)
     }
-  }, []) // no dependencis, only at first compinen mount
+  }, []) // no dependencis, only at first component mount
 
-  // const setAuthChangeRoutes = (auth) => {
-  //   setAuth(auth);
-  // };
-
-  console.log(
-    'APP RUNNING WITH: ',
-    { ...auth },
-    { ...services },
-  )
+  console.log('info : App : app runnging with : ', auth, services)
   return (
     <div className="App">
       <AuthContext.Provider

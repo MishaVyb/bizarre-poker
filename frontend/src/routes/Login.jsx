@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react'
 import { Alert, Button, Card, Form } from 'react-bootstrap'
-import { redirect, Redirect, useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context'
 import useLoadingWrapper from '../hooks/useLoadingWrapper'
 import AuthService from '../services/AuthService'

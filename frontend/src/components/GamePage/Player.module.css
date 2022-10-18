@@ -1,0 +1,10 @@
+
+
+
+.performerCard {
+    background: rgba(123, 155, 166, 0.492);
+  }
+
+.notPerformerCard {
+    border: 2px dashed rgb(119, 119, 119);
+  }

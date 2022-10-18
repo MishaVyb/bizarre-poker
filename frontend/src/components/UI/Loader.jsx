@@ -1,9 +1,8 @@
 import React from 'react'
 
 const Loader = () => {
-  return (
-    <h4>loading...</h4>
-  )
+  console.log('info : Loader component')
+  return <h4>loading...</h4>
 }
 
 export default Loader

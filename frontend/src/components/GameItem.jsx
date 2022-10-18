@@ -1,10 +1,9 @@
-import React, { useContext } from 'react'
+import React from 'react'
 import { Badge, Button, Card, Col, Row } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
-import { AuthContext } from '../context'
+
 
 const GameItem = ({ game }) => {
-  //const {gameService} = useContext(AuthContext)
 
   const playerItems = game.players.map((player) => (
     <Badge bg="light" text="dark" key={player}>

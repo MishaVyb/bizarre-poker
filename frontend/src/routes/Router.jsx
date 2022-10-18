@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, useNavigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import React from 'react'
 
 import Root from './Root'
@@ -11,6 +11,7 @@ import { useContext } from 'react'
 import { AuthContext } from '../context'
 import Logout from './Logout'
 import MePage from './MePage'
+import delay from '../utils/functools'
 
 const AuthRequired = ({ children }) => {
   const { auth } = useContext(AuthContext)
@@ -32,18 +33,6 @@ const AnonymousOnly = ({ children }) => {
   return children
 }
 
-// export const getRouter_fake = (authService, gameService) => {
-//   return createBrowserRouter([
-//     {
-//       path: "/",
-//       element: <Root />,
-//       errorElement: <ErrorPage />,
-//       children: [
-
-//       ],
-//     },
-//   ]);
-// };
 
 export const getRouter = (authService, gameService) => {
   // make sure that all methods for services are bounded (!)
@@ -65,7 +54,17 @@ export const getRouter = (authService, gameService) => {
               <GamePage />
             </AuthRequired>
           ),
-          loader: gameService.gameDetailLoader,
+          action: async ({ params, request }) => {
+            console.log('ACTION', params, request)
+            // submiting a form (on <ControlPanel>) -> router `action` -> delay  -> reload `loader`
+            // + post reqest to server API - need to make it before - so here is delay(..)
+            await delay(100)
+            // [todo]
+            // await POST requst here !!
+            // and only after that response loader will reload data from server
+          },
+          loader: gameService.gameDetailLoader, // one loader -> many requests
+
         },
         {
           path: 'login',
