@@ -1,12 +1,14 @@
 from __future__ import annotations
+from io import StringIO
 from itertools import chain
+import logging
 import re
 
 import pytest
 from core.functools.decorators import TemporaryContext
-from core.functools.utils import StrColors, init_logger
+from core.functools.utils import StrColors, change_loggers_level, init_logger
 from rest_framework import status
-
+from django.core.management import call_command
 from rest_framework.test import APIClient
 from core.types import JSON
 from django.http import HttpResponsePermanentRedirect
@@ -329,6 +331,7 @@ class TestGameAPI(APIGameProperties):
         assert self.game.stage == stages.BiddingsStage_2
 
 
+
     ####################################################################################
     # Test playerPreform Endpont
     ####################################################################################
@@ -347,3 +350,15 @@ class TestGameAPI(APIGameProperties):
         self.assert_response('', 'someuser', 'POST', 'playersPreform', status.HTTP_201_CREATED)
         self.assert_response('', 'participant', 'POST', 'playersPreform', status.HTTP_400_BAD_REQUEST)
         self.assert_response('', 'vybornyy', 'POST', 'playersPreform', status.HTTP_403_FORBIDDEN)
+
+
+
+@pytest.mark.django_db
+#@pytest.mark.usefixtures()
+class TestForceContinueAction(APIGameProperties):
+    def test_actions_endpoint_force_continue_with_another_data(self, apply_default_data, apply_game, setup_urls, setup_clients):
+        change_loggers_level(logging.ERROR)
+        for i in range(200):
+            self.assert_response('', 'simusik', 'POST', 'forceContinue')
+
+

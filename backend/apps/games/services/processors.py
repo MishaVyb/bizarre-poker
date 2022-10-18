@@ -159,7 +159,7 @@ class BaseProcessor:
         self.game.actions_history.append(
             {
                 'class': latest.__class__.__name__,
-                'performer': str(performer),
+                'performer': str(performer) if performer else None,
                 'message': latest.get_message_format(),
                 'value': value,
             }

@@ -1,0 +1,188 @@
+[
+    {
+        "user": "arthur.morgan",
+        "hand": [
+            {
+                "rank": 7,
+                "suit": 3,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "7♥️"
+            },
+            {
+                "rank": 9,
+                "suit": 2,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "9♦️"
+            }
+        ],
+        "combo": {
+            "kind": "one pair",
+            "chain": [
+                {
+                    "rank": 7,
+                    "suit": 3,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "7♥️"
+                },
+                {
+                    "rank": 7,
+                    "suit": 2,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "7♦️"
+                }
+            ]
+        },
+        "bets": [],
+        "bet_total": 0,
+        "is_dealer": true,
+        "is_performer": false,
+        "profile_bank": 1920,
+        "position": 0,
+        "is_host": false,
+        "is_active": true
+    },
+    {
+        "user": "vybornyy",
+        "hand": [
+            {
+                "rank": 2,
+                "suit": 1,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "2♣️"
+            },
+            {
+                "rank": 2,
+                "suit": 3,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "2♥️"
+            }
+        ],
+        "combo": {
+            "kind": "one pair",
+            "chain": [
+                {
+                    "rank": 2,
+                    "suit": 3,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "2♥️"
+                },
+                {
+                    "rank": 2,
+                    "suit": 1,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "2♣️"
+                }
+            ]
+        },
+        "bets": [],
+        "bet_total": 0,
+        "is_dealer": false,
+        "is_performer": true,
+        "profile_bank": 1255,
+        "position": 1,
+        "is_host": true,
+        "is_active": true
+    },
+    {
+        "user": "simusik",
+        "hand": [
+            {
+                "rank": null,
+                "suit": null,
+                "is_joker": true,
+                "kind": 0,
+                "is_mirror": false,
+                "string": "🤡"
+            },
+            {
+                "rank": 11,
+                "suit": 1,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "J♣️"
+            }
+        ],
+        "combo": {
+            "kind": "one pair",
+            "chain": [
+                {
+                    "rank": 13,
+                    "suit": 4,
+                    "is_joker": true,
+                    "kind": 0,
+                    "is_mirror": true,
+                    "string": "🤡(as K♠️)"
+                },
+                {
+                    "rank": 13,
+                    "suit": 1,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "K♣️"
+                }
+            ]
+        },
+        "bets": [],
+        "bet_total": 0,
+        "is_dealer": false,
+        "is_performer": false,
+        "profile_bank": 425,
+        "position": 2,
+        "is_host": false,
+        "is_active": true
+    },
+    {
+        "user": "barticheg",
+        "hand": [
+            {
+                "rank": 2,
+                "suit": 2,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "2♦️"
+            },
+            {
+                "rank": 3,
+                "suit": 3,
+                "is_joker": false,
+                "is_mirror": null,
+                "string": "3♥️"
+            }
+        ],
+        "combo": {
+            "kind": "one pair",
+            "chain": [
+                {
+                    "rank": 3,
+                    "suit": 4,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "3♠️"
+                },
+                {
+                    "rank": 3,
+                    "suit": 3,
+                    "is_joker": false,
+                    "is_mirror": null,
+                    "string": "3♥️"
+                }
+            ]
+        },
+        "bets": [],
+        "bet_total": 0,
+        "is_dealer": false,
+        "is_performer": false,
+        "profile_bank": 370,
+        "position": 3,
+        "is_host": false,
+        "is_active": true
+    }
+]

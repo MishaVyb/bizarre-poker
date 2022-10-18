@@ -374,7 +374,7 @@ class OpposingStage(BaseStage):
 
 class TearDownStage(BaseStage):
     possible_actions_classes = (actions.EndAction,)
-    message: str = ''
+    message: str = 'game round is over'
     message_requirement_unsatisfied: str = (
         'wait while {player} confirm ending this game'
     )
@@ -393,6 +393,7 @@ class TearDownStage(BaseStage):
         self.game.begins = False
         self.game.deck.clear()
         self.game.table.clear()
+        self.game.actions_history.clear()
         self.game.presave()
 
         for player in self.game.players:

@@ -24,7 +24,8 @@ class IntervalSerializer(serializers.Serializer):
 
 
 class ActionSerializer(serializers.Serializer):
-    name = serializers.CharField(source='action_class.name')
+    # name = serializers.CharField(source='action_class.name')
+    available = serializers.BooleanField(default=True)
     url = serializers.SerializerMethodField()
     values = IntervalSerializer(source='action_values', allow_null=True)
 
@@ -62,7 +63,7 @@ class CardSerializer(serializers.Serializer):
 #             }
 class ComboSerializer(serializers.Serializer):
     kind = serializers.CharField()
-    case = CardSerializer(many=True, source='stacks.cases_chain')
+    chain = CardSerializer(many=True, source='stacks.cases_chain')
 
 
 def init_extra_kwargs(
@@ -131,6 +132,7 @@ class PlayerSerializer(serializers.ModelSerializer):
     bets = serializers.JSONField(read_only=True, allow_null=True)
     bet_total = serializers.IntegerField(read_only=True)
     is_dealer = serializers.BooleanField(read_only=True)
+    is_performer = serializers.BooleanField(read_only=True)
     profile_bank = serializers.IntegerField(source='user.profile.bank', read_only=True)
 
     class Meta:

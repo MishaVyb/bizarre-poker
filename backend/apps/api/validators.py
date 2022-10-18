@@ -6,7 +6,7 @@ from games.services import actions
 
 
 class PositiveInteger:
-    message = 'Bet must be positive. '
+    message = 'Value must be positive'
 
     def __call__(self, value):
         if value < 0:
@@ -14,7 +14,7 @@ class PositiveInteger:
 
 class MultipleOfSmallBlind:
     requires_context = True
-    message = 'Bet must be a multiple of {blind}'
+    message = 'Value must be a multiple of {blind}'
 
     def __call__(self, value, serializer: serializers.Serializer | serializers.Field):
         game: Game = serializer.context['game']
@@ -24,11 +24,10 @@ class MultipleOfSmallBlind:
 
 class InPossibleInterval:
     requires_context = True
-    message = 'Bet must be in possible values interval {interval}'
+    message = 'Value out of range. Must be in {interval}'
 
     def __call__(self, value, serializer: serializers.Serializer | serializers.Field):
         game: Game = serializer.context['game']
-        #action: Game = serializer.context['game']
         possible: Interval = game.stage.get_possible_values_for(actions.PlaceBet)
         if value not in possible:
             raise serializers.ValidationError(self.message.format(interval=possible))

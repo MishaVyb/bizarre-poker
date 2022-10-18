@@ -65,6 +65,16 @@ def setup_game(
     self: BaseGameProperties = assert_base_class(request.instance)
     self.game_pk = Game(players=self.users.values(), commit=True).pk
 
+@pytest.fixture
+def apply_game(
+    request: pytest.FixtureRequest,
+):
+    """
+    Unlike `setup_game` do not create new game, but takes game from db.
+    """
+    self: BaseGameProperties = assert_base_class(request.instance)
+    self.game_pk = Game.objects.first().pk
+
 
 @pytest.fixture
 def setup_deck_get_expected_combos(request: pytest.FixtureRequest, table_and_hands_and_expected_combos: dict):

@@ -40,6 +40,14 @@ def init_logger(name, level=logging.DEBUG) -> logging.Logger:
 logger = init_logger(__name__)
 
 
+def change_loggers_level(level, match_name: str = r'games', exclude_match: str = ''):
+    for name in logging.root.manager.loggerDict:
+        if re.match(match_name, name):
+            if exclude_match and re.match(exclude_match, name):
+                continue
+            logging.getLogger(name).setLevel(level)
+
+
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
     """True if minor string is equivalent to major string from begining
 
@@ -204,14 +212,6 @@ def isinstance_items(container: Iterable, container_type: type, item_type: type)
     )
 
 
-def change_loggers_level(level, match_name: str = r'games', exclude_match: str = ''):
-    for name in logging.root.manager.loggerDict:
-        if re.match(match_name, name):
-            if exclude_match and re.match(exclude_match, name):
-                continue
-            logging.getLogger(name).setLevel(level)
-
-
 def get_func_name(back=False) -> str:
     frame = inspect.currentframe()
 
@@ -285,6 +285,9 @@ class Interval(Generic[_TCT]):
 
     def _check_constraints(self):
         if not self.min <= self.max:
-            raise ValueError('Invalid interval: min > max. ')
+            logger.error(f'Invalid interval: min > max ({self.min} > {self.max}). ')
+            #raise ValueError(f'Invalid interval: min > max ({self.min} > {self.max}). ')
         elif not self._is_multiplier(self.min) or not self._is_multiplier(self.max):
-            raise ValueError('Invalid interval: step is not multiplier for min or max.')
+            raise ValueError(
+                f'Invalid interval: step is not multiplier for min or max.'
+            )

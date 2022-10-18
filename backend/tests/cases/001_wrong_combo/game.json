@@ -1,0 +1,272 @@
+{
+    "id": 2,
+    "players": [
+        "arthur.morgan",
+        "vybornyy",
+        "simusik",
+        "barticheg"
+    ],
+    "table": [
+        {
+            "rank": 12,
+            "suit": 2,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "Q♦️"
+        },
+        {
+            "rank": 8,
+            "suit": 4,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "8♠️"
+        },
+        {
+            "rank": 3,
+            "suit": 4,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "3♠️"
+        },
+        {
+            "rank": 7,
+            "suit": 2,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "7♦️"
+        },
+        {
+            "rank": 13,
+            "suit": 1,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "K♣️"
+        }
+    ],
+    "stage": {
+        "name": "TearDownStage",
+        "performer": "vybornyy",
+        "status": "wait while vybornyy confirm ending this game"
+    },
+    "config": {
+        "name": "classic",
+        "small_blind": 5,
+        "big_blind": 10,
+        "bet_multiplicity": 5,
+        "deck_shuffling": true,
+        "deck_container_name": "full_deck_plus_jokers",
+        "deal_cards_amount": 2,
+        "flops_amounts": [
+            3,
+            1,
+            1
+        ],
+        "jokers_amount": 2,
+        "multy_decks_amount": 1
+    },
+    "created": "2022-10-18T05:17:23.476037Z",
+    "modified": "2022-10-18T07:46:02.619763Z",
+    "bank": 0,
+    "actions_history": [
+        {
+            "class": "TearDownStage",
+            "performer": null,
+            "message": "game round is over",
+            "value": null
+        },
+        {
+            "class": "StartAction",
+            "performer": "vybornyy",
+            "message": "vybornyy make this game beggins",
+            "value": null
+        },
+        {
+            "class": "SetupStage",
+            "performer": null,
+            "message": "game begins",
+            "value": null
+        },
+        {
+            "class": "DealCardsStage_1",
+            "performer": null,
+            "message": "deal 2 cards to players",
+            "value": null
+        },
+        {
+            "class": "PlaceBlind",
+            "performer": "vybornyy",
+            "message": "vybornyy place small blind",
+            "value": 5
+        },
+        {
+            "class": "PlaceBlind",
+            "performer": "simusik",
+            "message": "simusik place big blind",
+            "value": 10
+        },
+        {
+            "class": "PlacingBlindsStage",
+            "performer": null,
+            "message": "blinds are accepted",
+            "value": null
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "barticheg",
+            "message": "barticheg reply to bet",
+            "value": 10
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "arthur.morgan",
+            "message": "arthur.morgan reply to bet",
+            "value": 10
+        },
+        {
+            "class": "PlaceBet",
+            "performer": "vybornyy",
+            "message": "vybornyy place bet 3.90",
+            "value": 390
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "simusik",
+            "message": "simusik reply to bet",
+            "value": 385
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "barticheg",
+            "message": "barticheg reply to bet",
+            "value": 385
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "arthur.morgan",
+            "message": "arthur.morgan reply to bet",
+            "value": 385
+        },
+        {
+            "class": "BiddingsStage_1",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": null
+        },
+        {
+            "class": "FlopStage_1",
+            "performer": null,
+            "message": "flop 3 cards on game table",
+            "value": null
+        },
+        {
+            "class": "PlaceBet",
+            "performer": "vybornyy",
+            "message": "vybornyy place bet 0.00",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "simusik",
+            "message": "simusik says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "barticheg",
+            "message": "barticheg says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "arthur.morgan",
+            "message": "arthur.morgan says check",
+            "value": 0
+        },
+        {
+            "class": "BiddingsStage_2",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": null
+        },
+        {
+            "class": "FlopStage_2",
+            "performer": null,
+            "message": "flop 1 cards on game table",
+            "value": null
+        },
+        {
+            "class": "PlaceBet",
+            "performer": "vybornyy",
+            "message": "vybornyy place bet 0.00",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "simusik",
+            "message": "simusik says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "barticheg",
+            "message": "barticheg says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "arthur.morgan",
+            "message": "arthur.morgan says check",
+            "value": 0
+        },
+        {
+            "class": "BiddingsStage_3",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": null
+        },
+        {
+            "class": "FlopStage_3",
+            "performer": null,
+            "message": "flop 1 cards on game table",
+            "value": null
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "vybornyy",
+            "message": "vybornyy says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "simusik",
+            "message": "simusik says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "barticheg",
+            "message": "barticheg says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "arthur.morgan",
+            "message": "arthur.morgan says check",
+            "value": 0
+        },
+        {
+            "class": "BiddingsStage_4",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": null
+        },
+        {
+            "class": "OpposingStage",
+            "performer": null,
+            "message": "arthur.morgan has one pair and wins 1580",
+            "value": null
+        }
+    ],
+    "begins": true,
+    "rounds_counter": 8
+}

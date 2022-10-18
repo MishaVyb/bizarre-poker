@@ -234,6 +234,12 @@ class StartAction(BaseAction):
         self.game.begins = True
         self.game.presave()
 
+class ForceContinueAction(BaseAction):
+    name = 'forceContinue'
+    message: str = '{player} forcing game continue'
+    ...
+    ...
+
 
 class EndAction(BaseAction):
     name = 'end'

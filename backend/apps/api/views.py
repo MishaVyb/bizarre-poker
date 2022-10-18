@@ -62,6 +62,15 @@ class GamesViewSet(viewsets.ModelViewSet):
 
 
 class GameInterfaceMixin(_BASE_VIEW):
+
+    def perform_authentication(self, request):
+        """
+        Changing default django user class to custom proxy user class for authenticated
+        user at request field.
+        """
+        if isinstance(request.user, DjangoUserModel):
+            request.user.__class__ = User
+
     def get_game(self):
         return (
             Game.objects.prefetch_players().get(pk=self.kwargs['pk']).select_players()
@@ -87,14 +96,23 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
 
     def list(self, request: Request, pk: int):
         user: User = request.user
-        game: Game = self.get_game()
-        if game.stage.performer != user.player_at(game):
-            return Response([])
+        game = self.get_game()
+        player = user.player_at(game)
+
 
         possibles = game.stage.get_possible_actions()
         context = {'action_url': self.action_url, 'game_pk': game.pk}
-        serializer = ActionSerializer(instance=possibles, many=True, context=context)
-        return Response(serializer.data)
+
+        response_data: dict = {}
+        all_actions = ['bet', 'check', 'reply', 'vabank', 'pass', 'end', 'start']
+        for name in all_actions:
+            response_data[name] = {'available': False}
+        for proto in possibles:
+            if proto.player == player:
+                serializer = ActionSerializer(instance=proto, context=context)
+                response_data[proto.action_class.name] = serializer.data
+
+        return Response(response_data)
 
     def exicute(
         self,
@@ -270,13 +288,6 @@ class PlayersViewSet(
         # and only after that save() for other players and game inctance will be called
         BaseProcessor(game).run()
 
-    def perform_authentication(self, request):
-        """
-        Changing default django user class to custom proxy user class for authenticated
-        user for request.
-        """
-        if isinstance(request.user, DjangoUserModel):
-            request.user.__class__ = User
 
     def get_object(self) -> Player:
         return super().get_object()
