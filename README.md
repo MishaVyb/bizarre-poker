@@ -58,14 +58,14 @@
 
 #
 # About The Project
-Did you mess sometimes with broken feelings? This game is perfectly suits you. In classic poker game we probably getting nothing higher than `tree of kind` or `flash`. But in this game everybody has real chance to get `straight flush` or even `poker`. A lot of jokers, huge decks, interesting combinations. It's funny, it's cheeky, it's bizarre!
+Did you mess sometimes with broken feelings? This game perfectly suits you. In classic poker game we probably get nothing higher than `tree of kind` or `flush`. But everybody has real chance to get `straight flush` or even `poker` in this game. A lot of jokers, huge decks, interesting combinations. It's funny, it's cheeky, it's bizarre!
 
 ## Features
 - Single page application for WEB and Rest API for other clients.
-- Storing every game state on server side that user no worry about loosing connection or close his laptop. He may contionue from point it was ended.
+- Storing every game state on server side that user has no worries about losing connection or close his laptop. User can continue from point it was ended.
 - Almost *realtime* updating game state in WEB without any splecial actions.
-- A lot of thing that easy to customize. Bizarre Poker has 5 pre-difined configurations (`classic``foolish``crazy` and `bizarre`) and may add onother one.
-- `force` action which allows user to play not only with friends but also alone.
+- A lot of thing easy to customize. Bizarre Poker has 4 pre-difined configurations (`classic``foolish``crazy` and `bizarre`) and may add onother one.
+- `force` action which allows user to play not only with friends, but also alone.
 
 ## Built With
 ### server side
@@ -92,10 +92,10 @@ Did you mess sometimes with broken feelings? This game is perfectly suits you. I
 #
 # Getting Started
 
-This is a simple guide how to build up an application localy. Just follow this steps.
+This is a simple guide how to build up an application locally. Just follow this steps.
 
 ## Prerequisites
-*Make sure that you've had installed this on your machine.*
+*Make sure that you installed this app on your machine.*
 * npm
 * python 3.10.4
 * pip
@@ -107,7 +107,7 @@ This is a simple guide how to build up an application localy. Just follow this s
    ```sh
    $ git clone git@github.com:MishaVyb/bizarre-poker.git
    ```
-2. Prepare **server side** requirements in vertual envirenment.
+2. Prepare **server side** requirements in virtual environment.
    ```sh
    $ cd bizarre-poker/backend
    ```
@@ -120,25 +120,25 @@ This is a simple guide how to build up an application localy. Just follow this s
    ```sh
    (venv) $ pip install -r requirements.txt
    ```
-3. Apply **default data** with user and games prepared especially for saving your time. You may pass this step and create users and games by your own later. But don`t forget **make migrations** anyway.
+3. Apply **default data** with user and games prepared especially for saving your time. You may pass this step and create users and games by your own later. But don`t forget to **make migrations** anyway.
    ```sh
    (venv) $ python manage.py migrate
    ```
    ```sh
    (venv) $ python manage.py apply_data
    ```
-4. Run Django server wich provides **Rest API** for client side.
+4. Run Django server which provides **Rest API** for client side.
    ```sh
    (venv) $ python manage.py runserver
    ```
 5. **Great.** Now server is running. <br>
-To be sure that everything right open new shell window and make a request to api root.
+To make sure that everything is right, open new shell window and make a request to api root.
    ```sh
    $ curl -X GET http://127.0.0.1:8000/api/v1/
 
    {"games":"http://127.0.0.1:8000/api/v1/games/"}
    ```
-6. Almost done. Now we have to make deal with **client** side.
+6. Almost done. Now we have to make a deal with **client** side.
     ```sh
    (venv) $ deactivate
    ```
@@ -152,7 +152,7 @@ To be sure that everything right open new shell window and make a request to api
    ```sh
    $ npm start
    ```
-8. **Thats all.** Browser will open [localhost](http://localhost:3000) automaticly and you supposed to see home page:
+8. **Thats all.** Browser will open [localhost](http://localhost:3000) automatically and you're supposed to see home page:
 
 <img width="913" alt="Screenshot 2022-10-18 at 15 40 26" src="https://user-images.githubusercontent.com/103563736/196431942-be0ed814-20c6-44c0-a0b5-80af2ccba1e3.png">
 
@@ -163,14 +163,14 @@ To be sure that everything right open new shell window and make a request to api
 # Usage
 
 ## Data
-See default [data][default-data-url] prepared for informational purposes. You can change this file or make your own `json` to provide another initial data. It could be applyed by django comand:
+Look at default [data][default-data-url] prepared for informational purposes. You can change this file or make your own `json` to provide another initial data. It could be applied by django command:
 
 ```sh
 $ python manage.py apply_data <path_to_json_data_file>
 ```
 
 ## Configurations
-Have a look at [configurations][configurations-module-url] module. You can describe new config `json` file or change provided. For exaple, we want simple game where players getting their cards and only compare combinations - that's all. No `Biddings` stages. No `flop`.
+Go to [configurations][configurations-module-url] module. You can describe new config `json` file or change provided. For exaple, we want simple game where players get their cards and only compare combinations - that's all. No `Biddings` stages. No `flop`.
 
 - Create new config file.
 ```sh
@@ -196,7 +196,7 @@ class ConfigChoices(models.TextChoices):
 
 
 ## Scripts
-You can play game by writing small python scripts right in django `shell`. Or describe them as django `command`. Package [services][services-module-url] provides all neccassery tools to make actions. Here is an examples:
+You can play game by writing small python scripts right in django `shell`. Or describe them as django `command`. Package [services][services-module-url] provides all necessary tools to make actions. Here's an example:
 
 ### 1.1. Before We Start
 #### Make script as `Command`
@@ -207,7 +207,7 @@ $ cd backend/apps/games/management/commands/
 $ touch my_game_script.py
 ```
 
-- Make all neccessary imports.
+- Make all necessary imports.
 ```python
 from django.core.management.base import BaseCommand
 from games.models import Game
@@ -226,14 +226,14 @@ class Command(BaseCommand):
 ```
 
 #### Or write script right in `shell`.
-- Run `django` shell and make all necceasery imports.
+- Run `django` shell and make all necessary imports.
 ```sh
 $ python manage.py shell
 ```
 
 ### 2. Arrange users.
 - Let's take three players: `misha`, `sima` and `bart`. You can create them or get by usal Django ORM methods. <br>
-*Make sure you importing User from users app (not django's default).*
+*Make sure you're importing User from users app (not django's default).*
 ```python
 misha = User.objects.get('misha')
 ...
@@ -252,14 +252,14 @@ actions.PlaceBlind.run(game)
 ...
 ```
 
-- You can specyfy who exactly makes action.
+- You can specify who exactly makes action.
 ```python
 actions.PlaceBlind.run(game, bart)
 actions.PlaceBet.run(game, misha, value=20)
 ...
 ```
 
-- But be carefull making not available action.
+- But be carefull with making not available action.
 ```python
 try:
     actions.PlaceBetReply.run(game, bart)
@@ -274,16 +274,16 @@ actions.PassAction.run(game)
 actions.PassAction.run(game)
 ```
 ### 4. Run auto.
-Also you can run auto processing with some pre-definitions of how it should goes.
+Also you can run auto processing with some pre-definitions of how it should go.
 - Prepare action that would be performed later. <br>
-*Make notice for last argument: we can provide exactly on wich stage this action will be performed.*
+*Make notice for last argument: we can provide exactly on which stage this action will be performed.*
 ```python
 huge_bet = actions.PlaceBet.prototype(
     game, misha, 500, stages.BiddingsStage_3
 )
 ```
 
-- Create processor which will stop at final stage.
+- Create processor that will stop at final stage.
 ```python
 script = processors.AutoProcessor(
     game,
@@ -292,7 +292,7 @@ script = processors.AutoProcessor(
 )
 ```
 
-- Exicute our game script.
+- Execute our game script.
 ```python
 script.run()
 ```
@@ -312,8 +312,8 @@ Card.Text.repr_method = 'eng_short_suit' or 'classic'
 For more details have a look at [cards][cards-module-url] module.
 
 ## API
-See <mark>auto-generated</mark> documentation for API to get all info about awailable resurses and methods.
-*Make shure that django server is running.*
+See <mark>auto-generated</mark> documentation for API to get all info about available resources and methods.
+*Make sure that django server is running.*
 - <a href="http://127.0.0.1:8000/api/swagger/">Swagger</a>
 - <a href="http://127.0.0.1:8000/api/redoc/">ReDoc</a>
 
@@ -326,9 +326,9 @@ Depending on current state of data, you'll see something like that.
 
 ![](https://user-images.githubusercontent.com/103563736/196442314-068fa6e5-fed8-49b7-8f3b-b8320a735a96.jpg)
 
-Do not hessitate playing alone. If you are logged in as `admin` user, it is awaliable perform action for another player.
+Don't hessitate playing alone. If you are logged in as `admin` user, it is avaliable perform action for another player.
 
-> `force` is a special button to proceed game father. It makes action by current game performer. Supplyed mostly for test porpuses.
+> `force` is a special button to proceed game further. It makes action by current game performer. Supplied mostly for test purposes.
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
