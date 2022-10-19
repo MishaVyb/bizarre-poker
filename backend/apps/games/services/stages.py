@@ -4,6 +4,7 @@ from copy import copy
 
 import itertools
 from operator import attrgetter
+from pprint import pformat
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -304,9 +305,7 @@ class PlacingBlindsStage(BiddingsStage):
 
         raise RuntimeError
 
-    def get_possible_values_for(
-        self, action: Type[BaseAction] | BaseAction
-    ):
+    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction):
         if super(BiddingsStage, self).get_possible_values_for(action) is None:
             return None
 
@@ -349,10 +348,7 @@ class OpposingStage(BaseStage):
         return self.message.format(**self.message_format_kwargs)
 
     def execute(self):
-        combo, winners_iter = next(
-            itertools.groupby(self.game.players.active, attrgetter('combo'))
-        )
-        winners = list(winners_iter)
+        winners = list(self.game.players.winners)
         reminder = self.game.bank % len(winners)
         if reminder > 0:
             raise NotImplementedError
@@ -365,6 +361,10 @@ class OpposingStage(BaseStage):
             player.user.profile.presave()
         self.game.presave()
 
+        logger.info(
+            'Combinations by players: \n'
+            + pformat([(player, player.combo) for player in self.game.players])
+        )
         self.message_format_kwargs = {
             'winners': ' '.join([p.user.username for p in winners]),
             'combo': winners[0].combo.kind.name,

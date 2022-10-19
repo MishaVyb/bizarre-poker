@@ -368,3 +368,6 @@ class ComboStacks:
 class Combo:
     kind: ComboKind
     stacks: ComboStacks
+
+    def __repr__(self) -> str:
+        return f'{self.kind}: {list(self.stacks.cases_chain)}'

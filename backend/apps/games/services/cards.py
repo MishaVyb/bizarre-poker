@@ -19,8 +19,6 @@ You can change default way for string representation by choosing a relevant meth
 It also ovveride repr_method for JokerCard:
 >>> Card.Text.repr_method = 'eng_short_suit'
 
-developing:
-[ ] move text style dict to json file
 """
 
 from __future__ import annotations
