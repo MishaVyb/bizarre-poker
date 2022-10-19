@@ -21,7 +21,6 @@ class ConfigChoices(models.TextChoices):
     BIZARRE = 'bizarre'
     FOOLISH = 'foolish'
     CLASSIC = 'classic'
-    FUN = 'fun'
     CRAZY = 'crazy'
 
 
