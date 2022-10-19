@@ -64,7 +64,7 @@ Did you mess sometimes with broken feelings? This game perfectly suits you. In c
 - Single page application for WEB and Rest API for other clients.
 - Storing every game state on server side that user has no worries about losing connection or close his laptop. User can continue from point it was ended.
 - Almost *realtime* updating game state in WEB without any splecial actions.
-- A lot of thing easy to customize. Bizarre Poker has 4 pre-difined configurations (`classic``foolish``crazy` and `bizarre`) and may add onother one.
+- A lot of thing easy to customize. Bizarre Poker has 4 pre-difined configurations (`classic``foolish``crazy` and `bizarre`) and you may add onother one.
 - `force` action which allows user to play not only with friends, but also alone.
 
 ## Built With
@@ -95,11 +95,10 @@ Did you mess sometimes with broken feelings? This game perfectly suits you. In c
 This is a simple guide how to build up an application locally. Just follow this steps.
 
 ## Prerequisites
-*Make sure that you installed this app on your machine.*
-* npm
+*Make sure that you have installed this on your machine.*
 * python 3.10.4
 * pip
-
+* npm
 
 ## Installation
 
@@ -170,19 +169,19 @@ $ python manage.py apply_data <path_to_json_data_file>
 ```
 
 ## Configurations
-Go to [configurations][configurations-module-url] module. You can describe new config `json` file or change provided. For exaple, we want simple game where players get their cards and only compare combinations - that's all. No `Biddings` stages. No `flop`.
+Go to [configurations][configurations-module-url] module. You can describe new config `json` file or change provided. For exaple, we want simple game where players get their cards and compare combinations - that's all. No `Biddings` stages. No `flop`.
 
 - Create new config file.
 ```sh
 $ touch backend/apps/games/configurations/setups/my_config.json
 ```
-- . Specify stages list and any other amounts you want. <br>
+- . Specify list of stages and any other amounts you want. <br>
 ```json
 {
     "stages": ["DealCardsStage", "OpposingStage"],
     "deal_cards_amount": 5,
     "jokers_amount": 10
-    ...
+    // to find more options see pre-defined setup files
 }
 ```
 - Apply new setup in [configurations.py][configurations-url].
@@ -264,7 +263,7 @@ actions.PlaceBet.run(game, misha, value=20)
 try:
     actions.PlaceBetReply.run(game, bart)
 except actions.ActionError as e:
-    # at current moment game waiting that 'sima' reply to bet, not bart
+    # at current moment game waiting that 'sima' reply to bet, not 'bart'
     pass
 ```
 
@@ -318,7 +317,7 @@ See <mark>auto-generated</mark> documentation for API to get all info about avai
 - <a href="http://127.0.0.1:8000/api/redoc/">ReDoc</a>
 
 ## WEB
-The most native way to try all feauteres. Go to browser, make login and create new game or join others. Then open game page by clicking `continue` button. Or use this url:
+The most native way to try all feauteres. Go to browser, make login and create new game or join others. Then open game page by clicking `continue` button. Or use this url.
 
 > http://localhost:3000/games/1/
 
