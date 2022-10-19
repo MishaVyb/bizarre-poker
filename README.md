@@ -181,7 +181,6 @@ $ touch backend/apps/games/configurations/setups/my_config.json
     "stages": ["DealCardsStage", "OpposingStage"],
     "deal_cards_amount": 5,
     "jokers_amount": 10
-    // to find more options see pre-defined setup files
 }
 ```
 - Apply new setup in [configurations.py][configurations-url].
