@@ -304,7 +304,7 @@ script.run()
 $ python manage.py my_game_script
 ```
 - If you are using `shell`, you'll see log output just afrer every action runs.
-- Also you can specify the way or cards representation in logs. By default it's emoji, but you may not like it. Just add this line in beginning of your script.
+- Also you can specify the way of cards representation in logs. By default it's emoji, but you may not like it. Just add this line in beginning of your script.
 
 ```python
 Card.Text.repr_method = 'eng_short_suit' or 'classic'
@@ -312,7 +312,7 @@ Card.Text.repr_method = 'eng_short_suit' or 'classic'
 For more details have a look at [cards][cards-module-url] module.
 
 ## API
-See <mark>auto-generated</mark> documentation for API to get all info about awaiable resurses and methods.
+See <mark>auto-generated</mark> documentation for API to get all info about awailable resurses and methods.
 *Make shure that django server is running.*
 - <a href="http://127.0.0.1:8000/api/swagger/">Swagger</a>
 - <a href="http://127.0.0.1:8000/api/redoc/">ReDoc</a>
