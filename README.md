@@ -199,22 +199,25 @@ class ConfigChoices(models.TextChoices):
 You can play game by writing small python scripts right in django `shell`. Or describe them as django `command`. Package [services][services-module-url] provides all neccassery tools to make actions. Here is an examples:
 
 ### 1.1. Before We Start
-#### Script as `Command`
+#### Make script as `Command`
 
-- Make module with name of your game script.
+- Create module with name of your game script.
 ```sh
 $ cd backend/apps/games/management/commands/
 $ touch my_game_script.py
 ```
 
-- Create class inherited from `BaseCommans` and arrange script data.
-
+- Make all neccessary imports.
 ```python
 from django.core.management.base import BaseCommand
 from games.models import Game
 from games.services import actions, processors, stages
 from users.models import User
+```
 
+- Create class inherited from `BaseCommans`.
+
+```python
 class Command(BaseCommand):
     requires_migrations_checks = True
 
@@ -222,7 +225,7 @@ class Command(BaseCommand):
       ...
 ```
 
-#### Or script in `shell`.
+#### Or write script right in `shell`.
 - Run `django` shell and make all necceasery imports.
 ```sh
 $ python manage.py shell
