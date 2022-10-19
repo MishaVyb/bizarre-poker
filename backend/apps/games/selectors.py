@@ -1,11 +1,11 @@
 from __future__ import annotations
+import itertools
 
 from operator import attrgetter
 from typing import TYPE_CHECKING, Iterator, Sequence
 
 from core.functools.looptools import circle_after
 from core.functools.utils import init_logger, reverse_attrgetter
-from django.db import models
 from users.models import User
 
 logger = init_logger(__name__)
@@ -41,7 +41,9 @@ class PlayerSelector:
         """tool for debuging"""
         return list(self)
 
-    # ############################################ players searshing:
+    ####################################################################################
+    # players searshing
+    ####################################################################################
 
     def get(self, *, user: User) -> Player:
         return next(filter(lambda p: p.user == user, self._source))
@@ -60,7 +62,9 @@ class PlayerSelector:
 
         raise ValueError('No exclude parameters was provided. ')
 
-    # ############################################ player's bet:
+    ####################################################################################
+    # player's bet
+    ####################################################################################
 
     def aggregate_min_bet(self) -> int:
         return min(self.active, key=attrgetter('bet_total')).bet_total
@@ -116,7 +120,25 @@ class PlayerSelector:
     def with_max_bet(self) -> Player:
         return max(self._source, key=attrgetter('bet_total'))
 
-    # ############################################ base filtering:
+    ####################################################################################
+    # player's combo
+    ####################################################################################
+
+    @property
+    def groupby_combo(self):
+        key = attrgetter('combo')
+        sorted_by_combo = sorted(self.active, key=key, reverse=True)
+        for combo, players in itertools.groupby(sorted_by_combo, key):
+            yield players
+
+    @property
+    def winners(self):
+        return next(self.groupby_combo)
+
+
+    ####################################################################################
+    # base filtering
+    ####################################################################################
 
     @property
     def after_dealer(self) -> Iterator[Player]:
