@@ -4,7 +4,7 @@ import functools
 
 from typing import Any, Callable, TypeVar
 
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from core.models import (
     CreatedModifiedModel,
     FullCleanSavingMixin,
@@ -57,7 +57,7 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
     # Note: for PlaceBetCheck action we append 0 to bets, it makes us to know: have user
     # made an answer or not. So bets = [0] means that bet was placed, but with 0 value.
     bets: list[int] = models.JSONField(
-        blank = True,
+        blank=True,
         default=get_list_default,
         validators=[int_list_validator],
     )
@@ -87,7 +87,12 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
             return None
 
         stacks = ComboStacks()
-        kind = stacks.track_and_merge(self.hand, self.game.table)
+        kind = stacks.track_and_merge(
+            self.hand,
+            self.game.table,
+            references=self.game.config.combos,
+            possible_highest=self.game.config.deck.interval.max,
+        )
         return Combo(kind, stacks)
 
     class Meta(CreatedModifiedModel.Meta):
@@ -147,6 +152,7 @@ class PlayerPreform(models.Model):
     """
     Contains users who join the game and wait for the host to approve their joining.
     """
+
     user: User = models.ForeignKey(
         to=User,
         on_delete=models.CASCADE,

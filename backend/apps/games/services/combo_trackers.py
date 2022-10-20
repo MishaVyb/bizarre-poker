@@ -4,8 +4,8 @@ from asyncio.log import logger
 from operator import attrgetter
 from typing import TYPE_CHECKING
 
-from core.functools.looptools import looptools
-from core.functools.utils import is_sorted
+from core.utils import looptools
+from core.utils import is_sorted
 from games.services.cards import Card, CardList, JokerCard, Stacks
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ def track_highest(
     # because in simple logic highest card is alwase one.
     # For opposing stage other cards after highest will be used by self.source.
     #
-    # Note: we have to append highest card as Stacks becouse of strict logic of
+    # Note: we have to append highest card as Stacks because of strict logic of
     # types and because `trim_to` is required Stacks at cases.
     # Therefore self.source[0:1]
     if not self.source[0].is_joker:

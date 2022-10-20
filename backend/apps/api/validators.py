@@ -1,8 +1,7 @@
-from rest_framework import serializers
-from core.functools.utils import Interval
-
+from core.utils import Interval
 from games.models.game import Game
 from games.services import actions
+from rest_framework import serializers
 
 
 class PositiveInteger:
@@ -11,6 +10,7 @@ class PositiveInteger:
     def __call__(self, value):
         if value < 0:
             raise serializers.ValidationError(self.message)
+
 
 class MultipleOfSmallBlind:
     requires_context = True
@@ -21,6 +21,7 @@ class MultipleOfSmallBlind:
         blind = game.config.bet_multiplicity
         if value % blind != 0:
             raise serializers.ValidationError(self.message.format(blind=blind))
+
 
 class InPossibleInterval:
     requires_context = True

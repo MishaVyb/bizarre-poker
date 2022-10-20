@@ -7,7 +7,7 @@ import pytest
 from django.test.utils import CaptureQueriesContext
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db import connection
-from core.functools.utils import init_logger, StrColors
+from core.utils import init_logger, StrColors
 
 logger = init_logger(__name__)
 

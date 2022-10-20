@@ -1,14 +1,11 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
+from core.utils import init_logger
 from rest_framework import permissions, views
 from rest_framework.request import Request
-from api.exceptions import ConflictState
-from core.functools.utils import init_logger
 from users.models import User
-
-from games.models.player import Player
-from games.services import stages
 
 if TYPE_CHECKING:
     from api.views import PlayersViewSet

@@ -1,25 +1,12 @@
-"""
-Utilities.
-"""
-
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
-import inspect
 
+import inspect
 import itertools
 import logging
 import operator
 import re
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Literal,
-    Sequence,
-    SupportsIndex,
-    TypeVar,
-    Generic,
-)
+from typing import Any, Callable, Iterable, Sequence, SupportsIndex
+from core.utils.types import _SupportsRichComparison
 
 
 def init_logger(name, level=logging.DEBUG) -> logging.Logger:
@@ -27,12 +14,7 @@ def init_logger(name, level=logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
     handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter(
-            # '%(levelname)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
-            '%(levelname)s - %(message)s'
-        )
-    )
+    handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
     logger.addHandler(handler)
     return logger
 
@@ -49,7 +31,8 @@ def change_loggers_level(level, match_name: str = r'games', exclude_match: str =
 
 
 def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
-    """True if minor string is equivalent to major string from begining
+    """
+    True if minor string is equivalent to major string from begining.
 
     >>> eq_first('eq', 'equivalent')
     True
@@ -68,7 +51,10 @@ def eq_first(minor: str, major: str, case_sensitive=False) -> bool:
 
 
 def split(__str: str, by_symbols: str = ' \n,./|()-[]') -> list[str]:
-    """Split string by each symbol from delimiter-string and return list of strings.
+    """
+    Extension for default str.split() method.
+
+    Split string by each symbol from delimiter-string and return list of strings.
     Empty strings filtered out from result list.
     """
     delimeters_list = list(itertools.chain(*by_symbols))
@@ -88,85 +74,65 @@ class StrColors:
     _UNDERLINE = '\033[4m'
 
     @classmethod
-    def purple(cls, __str: str) -> str:
+    def purple(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._PURPLE + __str + cls._ENDC
 
     @classmethod
-    def bold(cls, __str: str) -> str:
+    def bold(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._BOLD + __str + cls._ENDC
 
     @classmethod
-    def underline(cls, __str: str) -> str:
+    def underline(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._UNDERLINE + __str + cls._ENDC
 
     @classmethod
-    def green(cls, __str: str) -> str:
+    def green(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._GREEN + __str + cls._ENDC
 
     @classmethod
-    def blue(cls, __str: str) -> str:
+    def blue(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._BLUE + __str + cls._ENDC
 
     @classmethod
-    def cyan(cls, __str: str) -> str:
+    def cyan(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._CYAN + __str + cls._ENDC
 
     @classmethod
-    def red(cls, __str: str) -> str:
+    def red(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._RED + __str + cls._ENDC
 
     @classmethod
-    def yellow(cls, __str: str) -> str:
+    def yellow(cls, __str: Any) -> str:
+        if not __str:
+            return ''
         __str = str(__str)
         return cls._ENDC + cls._YELLOW + __str + cls._ENDC
 
 
-class Comparable(metaclass=ABCMeta):
-    @abstractmethod
-    def __lt__(self, other: Any) -> bool:
-        ...
-
-
-class TotalComparable(metaclass=ABCMeta):
-    @abstractmethod
-    def __lt__(self, other: Any) -> bool:
-        ...
-
-    @abstractmethod
-    def __le__(self, other: Any) -> bool:
-        ...
-
-    @abstractmethod
-    def __eq__(self, other: Any) -> bool:
-        ...
-
-    @abstractmethod
-    def __ne__(self, other: Any) -> bool:
-        ...
-
-    @abstractmethod
-    def __ge__(self, other: Any) -> bool:
-        ...
-
-    @abstractmethod
-    def __gt__(self, other: Any) -> bool:
-        ...
-
-
-_CT = TypeVar('_CT', bound=Comparable)  # _CT -- compariable type
-_TCT = TypeVar('_TCT', bound=TotalComparable)  # _TCT -- total compariable type
-
-
 def is_sorted(
-    *sequences: Sequence[_CT],
-    key: str | Callable[[_CT], Any] | None = None,
+    *sequences: Sequence[_SupportsRichComparison],
+    key: str | Callable[[_SupportsRichComparison], Any] | None = None,
     reverse: bool = False,
 ) -> bool:
     # comparisons operator
@@ -229,65 +195,3 @@ def get_func_name(back=False) -> str:
 
 def reverse_attrgetter(*attrs: str):
     return lambda x: not bool(operator.attrgetter(*attrs)(x))
-
-
-class Interval(Generic[_TCT]):
-    """
-    Interval represents value range (both `[min, max]` inclusevly).
-    If `step` is provided, it should be a multiplier for `min` and `max`.
-
-    >>> 20 in Interval(10, 20)  # inclusevly 20
-    True
-    >>> 15 in Interval(10, 20, step=5)
-    True
-    >>> 12 in Interval(10, 20, step=5)
-    False
-    >>> Interval(10, 25, step=10)
-    Traceback (most recent call last):
-      ...
-    ValueError: Invalid interval: step is not multiplier for min or max.
-
-
-    """
-
-    def __init__(self, min_: _TCT, max_: _TCT, *, step: _TCT | None = None) -> None:
-        self.min = min_
-        self.max = max_
-        self.step = step
-        self._check_constraints()
-
-    def __repr__(self) -> str:
-        return f'[{self.min}]->[{self.max}]' + f'..({self.step})' if self.step else ''
-
-    def __getitem__(self, index: Literal[0, 1]) -> _TCT:
-        if index not in [0, 1]:
-            raise IndexError
-        return self.max if index else self.min
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Interval):
-            return (self.min, self.max, self.step) == (other.min, other.max, other.step)
-        return NotImplemented
-
-    def __contains__(self, items: _TCT | Iterable[_TCT]):
-        self._check_constraints()
-        if not isinstance(items, Iterable):
-            items = [items]
-
-        return all(
-            self.min <= item <= self.max and self._is_multiplier(item) for item in items
-        )
-
-    def _is_multiplier(self, value):
-        if not self.step:
-            return True
-        return value % self.step == 0
-
-    def _check_constraints(self):
-        if not self.min <= self.max:
-            logger.error(f'Invalid interval: min > max ({self.min} > {self.max}). ')
-            #raise ValueError(f'Invalid interval: min > max ({self.min} > {self.max}). ')
-        elif not self._is_multiplier(self.min) or not self._is_multiplier(self.max):
-            raise ValueError(
-                f'Invalid interval: step is not multiplier for min or max.'
-            )

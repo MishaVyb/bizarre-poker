@@ -1,7 +1,7 @@
 from pprint import pformat
 
 import pytest
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from games.services import actions, stages
 from games.services.combos import Combo
 

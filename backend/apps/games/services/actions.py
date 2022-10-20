@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Type, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Type, TypeVar
 
-from core.functools.utils import Interval, init_logger
-from core.validators import bet_multiplicity
-from django.core.exceptions import ValidationError
+from core.utils import Interval, init_logger
 
 from games.services.constraints import check_objects_continuity
 from users.models import User
@@ -115,9 +113,6 @@ class BaseAction:
         processor.run()
 
     def act(self):
-        self.act_subclass()
-
-    def act_subclass(self):
         raise NotImplementedError
 
 
@@ -230,9 +225,10 @@ class StartAction(BaseAction):
     name = 'start'
     message: str = '{player} make this game beggins'
 
-    def act_subclass(self):
+    def act(self):
         self.game.begins = True
         self.game.presave()
+
 
 class ForceContinueAction(BaseAction):
     name = 'forceContinue'
@@ -245,7 +241,7 @@ class EndAction(BaseAction):
     name = 'end'
     message: str = '{player} make this game ends'
 
-    def act_subclass(self):
+    def act(self):
         self.game.begins = False
         self.game.presave()
 
@@ -266,7 +262,7 @@ class PlaceBet(BaseAction):
         value = f' ${self.value}' if hasattr(self, 'value') else ''
         return super().__repr__() + value
 
-    def act_subclass(self):
+    def act(self):
         # act
         self.player.user.profile.bank -= self.value
         self.player.user.profile.presave()
@@ -350,6 +346,6 @@ class PassAction(BaseAction):
     name = 'pass'
     message: str = '{player} says pass'
 
-    def act_subclass(self):
+    def act(self):
         self.player.is_active = False
         self.player.presave()

@@ -1,24 +1,12 @@
 from __future__ import annotations
-from copy import copy
 
-
-import itertools
-from operator import attrgetter
 from pprint import pformat
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    Type,
-    TypeAlias,
-)
+from typing import TYPE_CHECKING, Callable, Iterable, Type
 
-from core.functools.utils import Interval, StrColors, init_logger
-from games.configurations.configurations import ConfigSchema
+from core.utils import Interval, StrColors, init_logger
 from games.services import actions
 from games.services.actions import ActionPrototype, BaseAction
-from games.services.cards import CardList, Decks
-
+from games.services.cards import CardList
 
 if TYPE_CHECKING:
     from ..models import Player
@@ -169,16 +157,16 @@ class SetupStage(BaseStage):
         self.fill_and_shuffle_deck()
 
     def fill_and_shuffle_deck(self):
-        deck = getattr(Decks, self.game.config.deck_container_name)
+        generator = self.game.config.deck.generator
 
-        if callable(deck):
-            self.game.deck = CardList(instance=deck(self.game.config))
-        elif isinstance(deck, CardList):
-            self.game.deck = CardList(instance=deck)
+        if callable(generator):
+            self.game.deck = CardList(instance=generator(self.game.config.deck))
+        elif isinstance(generator, CardList):
+            self.game.deck = generator.copy()
         else:
             raise TypeError
 
-        if self.game.config.deck_shuffling:
+        if self.game.config.deck.shuffling:
             self.game.deck.shuffle()
 
 
@@ -190,7 +178,8 @@ class DealCardsStage(BaseStage):
 
     def __init__(self, game: Game) -> None:
         super().__init__(game)
-        self.amount = self.game.config.deal_cards_amount
+        index = int(self.__class__.__name__[-1]) - 1
+        self.amount = self.game.config.deal_cards_amounts[index]
 
     def get_message_format(self):
         return self.message.format(amount=self.amount)
@@ -229,7 +218,7 @@ class BiddingsStage(BaseStage):
     ) -> list[ActionPrototype]:
         origin = list(from_origin_actions) or list(self.possible_actions_classes)
         # we take origin[0] because it contains basic (main) action
-        values: Interval = self.get_possible_values_for(origin[0])
+        values = self.get_possible_values_for(origin[0])
 
         if not values:
             return super().get_possible_actions(origin)
@@ -249,15 +238,16 @@ class BiddingsStage(BaseStage):
 
     def get_possible_values_for(
         self, action: Type[BaseAction] | BaseAction
-    ) -> int | Interval[int] | None:
+    ) -> Interval[int] | None:
         if super().get_possible_values_for(action) is None:
             return None
 
         # max bet -minus- player's bet
-        min_value = self.game.players.aggregate_max_bet() - self.performer.bet_total  # type: ignore
-        # ..
-        max_value = self.game.players.aggregate_possible_max_bet_for_player(self.performer)  # type: ignore
-        return Interval(min_value, max_value, step=self.game.config.bet_multiplicity)
+        return Interval(
+            min=self.game.players.aggregate_max_bet() - self.performer.bet_total,  # type: ignore
+            max=self.game.players.aggregate_possible_max_bet_for_player(self.performer),  # type: ignore
+            step=self.game.config.bet_multiplicity,
+        )
 
     def execute(self):
         self.accept_bets()
@@ -412,7 +402,6 @@ class TearDownStage(BaseStage):
 #       Default Stages
 ########################################################################################
 
-
 DealCardsStage_1 = DealCardsStage.factory('DealCardsStage_1')
 
 BiddingsStage_1 = BiddingsStage.factory('BiddingsStage_1')
@@ -423,18 +412,3 @@ BiddingsStage_4 = BiddingsStage.factory('BiddingsStage_4')
 FlopStage_1 = FlopStage.factory('FlopStage_1')
 FlopStage_2 = FlopStage.factory('FlopStage_2')
 FlopStage_3 = FlopStage.factory('FlopStage_3')
-
-DEFAULT_STAGES = (
-    SetupStage,
-    DealCardsStage_1,
-    PlacingBlindsStage,
-    BiddingsStage_1,
-    FlopStage_1,
-    BiddingsStage_2,
-    FlopStage_2,
-    BiddingsStage_3,
-    FlopStage_3,
-    BiddingsStage_4,
-    OpposingStage,
-    TearDownStage,
-)

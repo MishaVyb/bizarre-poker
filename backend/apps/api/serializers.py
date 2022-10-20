@@ -1,33 +1,18 @@
-from typing import TYPE_CHECKING, Iterable, Literal
-from api import validators
 from games.models import Game, Player
-from django.db import models
-from rest_framework import serializers, fields
-from rest_framework.validators import UniqueTogetherValidator
 from games.models.player import PlayerPreform
-from games.services import stages
 from games.services.actions import ActionPrototype
-
+from games.services.cards import Card, JokerCard
+from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from users.models import User
-from games.services.cards import Card, CardList, JokerCard
 
-from rest_framework.request import Request
-
-if TYPE_CHECKING:
-    from api.views import PlayersViewSet
-
-
-class IntervalSerializer(serializers.Serializer):
-    min = serializers.IntegerField()
-    max = serializers.IntegerField()
-    step = serializers.IntegerField()  # equals to config.small_blind
+from apps.api import validators
 
 
 class ActionSerializer(serializers.Serializer):
-    # name = serializers.CharField(source='action_class.name')
     available = serializers.BooleanField(default=True)
     url = serializers.SerializerMethodField()
-    values = IntervalSerializer(source='action_values', allow_null=True)
+    values = serializers.JSONField(source='action_values.dict', allow_null=True)
 
     def get_url(self, obj: ActionPrototype):
         url = self.context.get('action_url')
@@ -57,33 +42,9 @@ class CardSerializer(serializers.Serializer):
         return None
 
 
-# {
-#                 'name': combo.kind.name,
-#                 'stacks': str(CardList(instance=combo.stacks.cases_chain)),
-#             }
 class ComboSerializer(serializers.Serializer):
     kind = serializers.CharField()
     chain = CardSerializer(many=True, source='stacks.cases_chain')
-
-
-def init_extra_kwargs(
-    model: models.Model,
-    *,
-    read_only: Literal['__all__'] | Iterable[str],
-    **extra_kwargs
-):
-    kwargs: dict = {}
-    if read_only == '__all__':
-        read_only = model.meta.fiels
-    for field in read_only:
-        pass
-
-
-def get_all():
-    g = Game
-    result = [field.attname for field in Game._meta.fields]
-
-    return ('__all__',)
 
 
 class GameSerializer(serializers.ModelSerializer):
@@ -94,10 +55,7 @@ class GameSerializer(serializers.ModelSerializer):
     )
     table = CardSerializer(many=True, read_only=True)
     stage = StageSerializer(read_only=True)
-    config = serializers.JSONField(
-        read_only=True,
-        source='config.dict',
-    )
+    config = serializers.JSONField(source='config.dict', read_only=True)
     config_name = serializers.CharField(default='classic', write_only=True)
 
     class Meta:

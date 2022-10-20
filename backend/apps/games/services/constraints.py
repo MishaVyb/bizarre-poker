@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable
 from django.db import IntegrityError
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 
 
 from games.selectors import PlayerSelector
@@ -43,6 +43,9 @@ def check_objects_continuity(
     one: Player | Game,
     another: Game | Player | Iterable[Player],
 ):
+    """
+    Does a check is realted objects in `one` are the seme inctances of `another` items.
+    """
     another = another if isinstance(another, Iterable) else [another]
     if one not in another:
         raise RuntimeError(
@@ -53,7 +56,7 @@ def check_objects_continuity(
         raise GameContinuityError(one, another)
 
 
-def validate_constraints(game: Game, *, skip = []):
+def validate_constraints(game: Game, *, skip: list[str] = []):
     """Check constraints and clean values if could, otherwise raising IntegrityError."""
     assert not skip or skip == ['performer'], 'other options is not implemented yet'
 
@@ -72,28 +75,16 @@ def validate_constraints(game: Game, *, skip = []):
             'when running tests, we have to stop game at different stages. '
         )
 
-    # [2] validate players dependences
-    # validate all player dependences at this Game with this player instance
-    # replace game player list with self instence and operate with new list
-
-    # check host
+    # [3] validate players dependences
+    # [3.1] check host
     amount = len(list(filter(lambda p: p.is_host, game.players)))
     if not amount:
         raise IntegrityError(f'No hosts at {game}. ')
     if amount > 1:
         raise IntegrityError(f'Many hosts at {game}. ')
 
-    # chek dealer
-    # checking dealer has no sense, because it not an attribute, but jast a rule,
-    # that player at 0 position is dealer (annotated via PlayerQuerySet)
-
-    # ckeck players ordering by positions
+    # [3.2] ckeck players ordering by positions
     current = [p.position for p in game.players]
     expected = list(range(len(game.players)))
     if current != expected:
-        current.sort()
-        if current != expected:
-            raise IntegrityError(f'{game} has invalid players positions: {current}. ')
-
-        logger.warning(f'{game} has invalid players ordering: re-oredered here. ')
-        game.players.reorder_source()
+        raise IntegrityError(f'{game} has invalid players positions: {current}. ')

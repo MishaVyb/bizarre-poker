@@ -1,0 +1,40 @@
+{
+    "name": "default",
+    "small_blind": 5,
+    "big_blind": 10,
+    "bet_multiplicity": 5,
+    "deck": {
+        "generator": "full_deck_plus_jokers",
+        "interval": ["2|Clubs", "Ace|Spades"],
+        "shuffling": true,
+        "jokers_amount": 2,
+        "iterations_amount": 1
+    },
+    "stages": [
+        "DealCardsStage_1",
+        "PlacingBlindsStage",
+        "BiddingsStage_1",
+        "FlopStage_1",
+        "BiddingsStage_2",
+        "FlopStage_2",
+        "BiddingsStage_3",
+        "FlopStage_3",
+        "BiddingsStage_4",
+        "OpposingStage"
+    ],
+    "deal_cards_amounts": [2],
+    "flops_amounts": [3, 1, 1],
+
+    "combos": [
+        {"highest_card": [1], "name": "high card"},
+        {"rank":[2], "name": "one pair"},
+        {"rank":[2, 2], "name": "two pair"},
+        {"rank":[3], "name": "three of kind"},
+        {"row":[5], "name": "straight"},
+        {"suit": [5], "name": "flush"},
+        {"rank":[3, 2], "name": "full house"},
+        {"rank":[4], "name": "four of kind"},
+        {"row":[5], "suit":[5], "name": "straight flush"},
+        {"rank":[5], "name": "pocker"}
+    ]
+}

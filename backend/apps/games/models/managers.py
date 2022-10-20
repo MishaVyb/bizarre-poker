@@ -4,7 +4,7 @@ import functools
 
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from core.models import (
     CreatedModifiedModel,
     FullCleanSavingMixin,

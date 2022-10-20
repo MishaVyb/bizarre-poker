@@ -6,12 +6,14 @@ from typing import Any
 
 import pytest
 from _pytest.fixtures import SubRequest as PytestSubRequest
-from core.functools.utils import get_func_name, init_logger, is_sorted
+from core.utils import get_func_name, init_logger, is_sorted
+from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import CardList
-from games.services.combos import CLASSIC_COMBOS, Combo, ComboStacks
+from games.services.combos import Combo, ComboStacks
 from tests.tools import param_kwargs
 
 logger = init_logger(__name__, logging.DEBUG)
+DEFAULT_COMBOS = DEFAULT_CONFIG.combos
 
 
 @pytest.fixture(
@@ -20,10 +22,10 @@ logger = init_logger(__name__, logging.DEBUG)
             '01- simple test (4 players)',
             table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
             hands=(
-                ['Ace|H', '3|H'],   # winner: 3|h > 3|c
-                ['Ace|H', '3|C'],   # 2nd place
-                ['2|C', '5|H'],     # 3d olace
-                ['10|S', '9|S'],    # looser
+                ['Ace|H', '3|H'],  # winner: 3|h > 3|c
+                ['Ace|H', '3|C'],  # 2nd place
+                ['2|C', '5|H'],  # 3d olace
+                ['10|S', '9|S'],  # looser
             ),
             rate_groups=([0], [1], [2], [3]),
             expected_combos=(
@@ -37,10 +39,10 @@ logger = init_logger(__name__, logging.DEBUG)
             '02- (the same) but two winners (4 players)',
             table=['Ace|H', 'Ace|D', 'King|C', '5|C', '7|S'],
             hands=(
-                ['Ace|H', '9|H'],   # winner: 9|H == 9|H
-                ['Ace|H', '9|H'],   # winner: 9|H == 9|H
-                ['2|C', '5|H'],     # 2d olace
-                ['10|S', '9|S'],    # looser
+                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
+                ['Ace|H', '9|H'],  # winner: 9|H == 9|H
+                ['2|C', '5|H'],  # 2d olace
+                ['10|S', '9|S'],  # looser
             ),
             rate_groups=([0, 1], [2], [3]),
             expected_combos=(
@@ -66,14 +68,17 @@ def table_and_hands_and_expected_combos(request: PytestSubRequest):
 
     # arrange combos
     combos = []
-    for (expected_name, expected_combo_cards), hand in zip(
-        input_data['expected_combos'], data['hands']
-    ):
+    for (expected_name, expected_combo_cards), hand in zip(input_data['expected_combos'], data['hands']):
         stacks = ComboStacks()
-        kind = stacks.track_and_merge(hand, data['table'])
+        kind = stacks.track_and_merge(
+            hand,
+            data['table'],
+            references=DEFAULT_COMBOS,
+            possible_highest=DEFAULT_CONFIG.deck.interval.max,
+        )
 
         # pre-assertion for input data at fixture param
-        expected: Any = CLASSIC_COMBOS.get(expected_name)
+        expected: Any = DEFAULT_COMBOS.get(expected_name)
         assert kind == expected, 'invalid input test data'
         expected = CardList(*expected_combo_cards).sortby(reverse=True)
         assert CardList(*stacks.cases_chain) == expected, 'invalid input test data'
@@ -82,9 +87,7 @@ def table_and_hands_and_expected_combos(request: PytestSubRequest):
 
     # pre-assertion for input data at fixture param
     assert is_sorted(combos, reverse=True), 'combos must be provided in winning order'
-    for (key, group), rate_group in zip(
-        itertools.groupby(combos), data['rate_groups'], strict=True
-    ):
+    for (key, group), rate_group in zip(itertools.groupby(combos), data['rate_groups'], strict=True):
         assert len(list(group)) == len(rate_group), 'invalid rate_groups provided'
 
     data['expected_combos'] = combos

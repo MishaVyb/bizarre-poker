@@ -4,8 +4,8 @@
 
 # import pytest
 # from _pytest.fixtures import SubRequest as PytestSubRequest
-# from core.functools.decorators import temporally
-# from core.functools.utils import init_logger
+# from core.utils import temporally
+# from core.utils import init_logger
 # from games.backends.cards import CardList, Decks
 # from games.models import Game
 # from rest_framework import status

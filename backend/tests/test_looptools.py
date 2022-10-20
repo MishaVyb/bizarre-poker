@@ -1,6 +1,6 @@
 import pytest
 
-from core.functools.looptools import looptools
+from core.utils import looptools
 
 
 @pytest.mark.parametrize('iterable, default, expected', [

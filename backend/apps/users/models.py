@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User as _DjangoUserModel
 from django.db import models
 from core.models import CreatedModifiedModel, FullCleanSavingMixin
-from core.types import NOT_PROVIDED
+from core.utils.types import NOT_PROVIDED
 from core.validators import bet_multiplicity
 
 

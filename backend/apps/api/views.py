@@ -1,38 +1,28 @@
-import logging
-from functools import cached_property
-from operator import attrgetter
 from typing import TYPE_CHECKING, Type, TypeAlias
-from api import permitions
-from api.exceptions import ConflictState
 
-from core.functools.utils import init_logger
-from django.shortcuts import get_object_or_404
+from core.utils import init_logger
 from games.models import Game, Player
 from games.models.player import PlayerPreform
-from games.selectors import PlayerSelector
 from games.services import actions, stages
-from rest_framework import views, viewsets, mixins, exceptions
-from rest_framework.permissions import (
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-    IsAdminUser,
-)
+from games.services.processors import BaseProcessor
+from rest_framework import exceptions, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError
-from django.db import models
+from users.models import DjangoUserModel, User
+
+from api import permitions
+from api.exceptions import ConflictState
 from api.serializers import (
+    ActionSerializer,
     BetValueSerializer,
     GameSerializer,
     HiddenPlayerSerializer,
     PlayerPreformSerializer,
     PlayerSerializer,
-    ActionSerializer,
 )
-from users.models import User, DjangoUserModel
-from games.services.processors import BaseProcessor
 
 logger = init_logger(__name__)
 
@@ -43,6 +33,9 @@ else:
 
 
 class GamesViewSet(viewsets.ModelViewSet):
+    """
+    Games resorse. Main enter poitn for Plaers, Actions and playersPreform resources.
+    """
     queryset = Game.objects.all()
     serializer_class = GameSerializer
     pagination_class = LimitOffsetPagination
@@ -62,7 +55,6 @@ class GamesViewSet(viewsets.ModelViewSet):
 
 
 class GameInterfaceMixin(_BASE_VIEW):
-
     def perform_authentication(self, request):
         """
         Changing default django user class to custom proxy user class for authenticated
@@ -92,6 +84,13 @@ class GameInterfaceMixin(_BASE_VIEW):
 
 
 class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
+    """
+    Resource to provide list of actions (awaliable and not) and extra pathes to perform
+    those actions. All actions are changing a diferent set of values depending on
+    current game state.
+
+    Mostly, that resource provide action to play game, not a basic CRUD operations.
+    """
     action_url = '/api/v1/games/{game_pk}/actions/{name}/'
 
     def list(self, request: Request, pk: int):
@@ -99,12 +98,23 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
         game = self.get_game()
         player = user.player_at(game)
 
-
         possibles = game.stage.get_possible_actions()
         context = {'action_url': self.action_url, 'game_pk': game.pk}
 
         response_data: dict = {}
-        all_actions = ['bet', 'check', 'reply', 'vabank', 'pass', 'end', 'start']
+
+        # [todo]
+        # generate this dynamecly
+        all_actions = [
+            'bet',
+            'blind',
+            'check',
+            'reply',
+            'vabank',
+            'pass',
+            'end',
+            'start',
+        ]
         for name in all_actions:
             response_data[name] = {'available': False}
         for proto in possibles:
@@ -207,7 +217,7 @@ class PlayersViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    View represents Players inctances and provides:
+    Players resource. Allowed methods:
     - list and retrieve methods
     - create method (when Host approved User joining)
     - destroy method (when User leaves game)
@@ -261,7 +271,7 @@ class PlayersViewSet(
 
         if not game.stage == stages.SetupStage:
             raise ConflictState(
-                f'Admission of participants to the game is not allowed at this stage. ',
+                'Admission of participants to the game is not allowed at this stage. ',
                 game,
                 'invalid_stage',
             )
@@ -278,7 +288,7 @@ class PlayersViewSet(
         game = instance.game
         if self.get_player(game).is_host and not game.stage == stages.SetupStage:
             raise ConflictState(
-                f'Kicking player out of the game is not allowed at this stage. ',
+                'Kicking player out of the game is not allowed at this stage. ',
                 game,
                 'invalid_stage',
             )
@@ -287,7 +297,6 @@ class PlayersViewSet(
         # after player came out we has to run processing to change game state
         # and only after that save() for other players and game inctance will be called
         BaseProcessor(game).run()
-
 
     def get_object(self) -> Player:
         return super().get_object()
@@ -315,7 +324,7 @@ class PlayersPreformViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    View represents futute participants inctances and provides:
+    Resource to operate with future participants inctances and provides:
     - list and retrieve methods
     - create method (when User trying join Game)
     """

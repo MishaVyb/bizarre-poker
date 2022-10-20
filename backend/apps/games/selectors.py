@@ -4,8 +4,8 @@ import itertools
 from operator import attrgetter
 from typing import TYPE_CHECKING, Iterator, Sequence
 
-from core.functools.looptools import circle_after
-from core.functools.utils import init_logger, reverse_attrgetter
+from core.utils import circle_after
+from core.utils import init_logger, reverse_attrgetter
 from users.models import User
 
 logger = init_logger(__name__)
@@ -134,7 +134,6 @@ class PlayerSelector:
     @property
     def winners(self):
         return next(self.groupby_combo)
-
 
     ####################################################################################
     # base filtering

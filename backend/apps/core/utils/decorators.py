@@ -3,8 +3,8 @@ from operator import getitem, setitem
 import time
 from typing import Any
 
-from core.functools.looptools import looptools
-from core.functools.utils import StrColors, init_logger, get_func_name
+from core.utils.looptools import looptools
+from core.utils.functools import StrColors, init_logger, get_func_name
 
 logger = init_logger(__name__)
 

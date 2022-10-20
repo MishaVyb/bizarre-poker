@@ -5,9 +5,9 @@ from copy import deepcopy
 from typing import Callable
 
 import pytest
+from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import CardList, Stacks
 from games.services.combos import (
-    CLASSIC_COMBOS,
     Combo,
     ComboKind,
     ComboKindList,
@@ -17,12 +17,14 @@ from games.services.combos import (
 
 from tests.tools import param_kwargs_list
 
+DEFAULT_COMBOS = DEFAULT_CONFIG.combos
+
 
 @pytest.mark.parametrize(
     'input_data, expected',
     [
         (
-            CLASSIC_COMBOS,
+            DEFAULT_COMBOS,
             [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90],
         )
     ],
@@ -32,9 +34,7 @@ def test_classic_combos_priority(input_data: ComboKindList, expected: list[float
         assert combo.priority == priority
 
 
-def test_combostacks_track(
-    tracking_cards_and_expected_cases: tuple[Stacks, dict[str, Stacks]]
-):
+def test_combostacks_track(tracking_cards_and_expected_cases: tuple[Stacks, dict[str, Stacks]]):
     stacks, expected_cases = tracking_cards_and_expected_cases
 
     # arrange:
@@ -61,55 +61,55 @@ def test_combostacks_track(
     'minor, expected, major',
     [
         pytest.param(
-            CLASSIC_COMBOS.get('one pair'),
+            DEFAULT_COMBOS.get('one pair'),
             True,
             {'rank': [3]},
             id='01',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             True,
             {'rank': [3]},
             id='02',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             True,
             {'rank': [3, 2]},
             id='03',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             False,
             {'rank': [2, 2]},
             id='',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             True,
             {'rank': [3], 'row': [2]},
             id='',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             False,
             {'rank': [2], 'row': [100]},
             id='',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             False,
             {'rank': [2, 2, 2, 2, 2], 'row': [100]},
             id='',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('straight flush'),
+            DEFAULT_COMBOS.get('straight flush'),
             True,
             {'suit': [5], 'row': [5]},
             id='',
         ),
         pytest.param(
-            CLASSIC_COMBOS.get('straight flush'),
+            DEFAULT_COMBOS.get('straight flush'),
             False,
             {'rank': [100], 'suit': [5], 'row': [4, 4, 4, 4, 4]},
             id='',
@@ -122,9 +122,7 @@ def test_combostacks_track(
         ),
     ],
 )
-def test_combokind_is_minor_combo_for(
-    minor: ComboKind, expected: bool, major: Conditions
-):
+def test_combokind_is_minor_combo_for(minor: ComboKind, expected: bool, major: Conditions):
     assert minor.is_minor_combo_for(major) == expected
 
 
@@ -138,7 +136,7 @@ def test_combokind_is_minor_combo_for(
                     CardList('K|H', 'K|C'),
                 ]
             },
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             {
                 'rank': [CardList('Ace|H', 'Ace|C', 'Ace|D')],
             },
@@ -148,7 +146,7 @@ def test_combokind_is_minor_combo_for(
             {
                 'rank': [CardList(), CardList()],
             },
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             {
                 'rank': [CardList()],
             },
@@ -158,7 +156,7 @@ def test_combokind_is_minor_combo_for(
             {
                 'rank': [CardList('Ace|H', 'Ace|C'), CardList('K|H', 'K|C')],
             },
-            CLASSIC_COMBOS.get('full house'),
+            DEFAULT_COMBOS.get('full house'),
             {
                 'rank': [CardList('Ace|H', 'Ace|C'), CardList('K|H', 'K|C')],
             },
@@ -169,7 +167,7 @@ def test_combokind_is_minor_combo_for(
                 'rank': [CardList('Ace|H', 'Ace|C'), CardList('K|H', 'K|C')],
                 'suit': [CardList('10|h', '10|d')],
             },
-            CLASSIC_COMBOS.get('full house'),
+            DEFAULT_COMBOS.get('full house'),
             {
                 'rank': [CardList('Ace|H', 'Ace|C'), CardList('K|H', 'K|C')],
             },
@@ -177,9 +175,7 @@ def test_combokind_is_minor_combo_for(
         ),
     ],
 )
-def test_combokind_trim_to(
-    input_cases: dict[str, Stacks], ref: ComboKind, expected: dict[str, Stacks]
-):
+def test_combokind_trim_to(input_cases: dict[str, Stacks], ref: ComboKind, expected: dict[str, Stacks]):
     combo = ComboStacks()
     combo.cases = deepcopy(input_cases)
     combo.trim_to(ref)
@@ -203,7 +199,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
     with pytest.raises(AssertionError):
         combo = ComboStacks()
         combo.cases = deepcopy(input_cases)
-        combo.trim_to(CLASSIC_COMBOS.get('full house'))
+        combo.trim_to(DEFAULT_COMBOS.get('full house'))
 
 
 @pytest.mark.parametrize(
@@ -214,7 +210,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
                 CardList('A|h'),
                 CardList('A|d'),
             ],
-            CLASSIC_COMBOS.get('one pair'),
+            DEFAULT_COMBOS.get('one pair'),
             {
                 'rank': [CardList('A|h', 'A|d')],
             },
@@ -226,7 +222,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
                 CardList('8|d', '7|s'),
                 CardList('2|c', '2|h'),
             ],
-            CLASSIC_COMBOS.get('three of kind'),
+            DEFAULT_COMBOS.get('three of kind'),
             {
                 'rank': [
                     CardList('red(2|s)', '2|h', '2|c'),
@@ -239,7 +235,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
                 CardList('A|h'),
                 CardList('10|d'),
             ],
-            CLASSIC_COMBOS.get('high card'),
+            DEFAULT_COMBOS.get('high card'),
             {
                 'highest_card': [CardList('A|h')],
             },
@@ -250,7 +246,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
                 CardList('red', 'red'),
                 CardList('black', 'black', 'black'),
             ],
-            CLASSIC_COMBOS.get('pocker'),
+            DEFAULT_COMBOS.get('pocker'),
             {
                 'rank': [
                     CardList(
@@ -266,7 +262,7 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
         ),
         pytest.param(
             [CardList('red')],
-            CLASSIC_COMBOS.get('high card'),
+            DEFAULT_COMBOS.get('high card'),
             {
                 'highest_card': [
                     CardList(
@@ -278,16 +274,18 @@ def test_combokind_trim_to_raises(input_cases: dict[str, Stacks]):
         ),
     ],
 )
-def test_track_and_merge(
-    input_stacks: Stacks, expected_kind: ComboKind, expected_cases: dict[str, Stacks]
-):
+def test_track_and_merge(input_stacks: Stacks, expected_kind: ComboKind, expected_cases: dict[str, Stacks]):
     print('\n')
     random.shuffle(input_stacks)
     for cards in input_stacks:
         random.shuffle(cards)
 
     stacks = ComboStacks()
-    kind = stacks.track_and_merge(*input_stacks)
+    kind = stacks.track_and_merge(
+        *input_stacks,
+        references=DEFAULT_COMBOS,
+        possible_highest=DEFAULT_CONFIG.deck.interval.max,
+    )
 
     # assert kind
     assert kind == expected_kind
@@ -448,11 +446,19 @@ def test_combo_comparison(
 
     # act
     left_stacks = ComboStacks()
-    left_kind = left_stacks.track_and_merge(left_cardlist)
+    left_kind = left_stacks.track_and_merge(
+        left_cardlist,
+        references=DEFAULT_COMBOS,
+        possible_highest=DEFAULT_CONFIG.deck.interval.max,
+    )
     left = Combo(left_kind, left_stacks)
 
     right_stacks = ComboStacks()
-    right_kind = right_stacks.track_and_merge(right_cardlist)
+    right_kind = right_stacks.track_and_merge(
+        right_cardlist,
+        references=DEFAULT_COMBOS,
+        possible_highest=DEFAULT_CONFIG.deck.interval.max,
+    )
     right = Combo(right_kind, right_stacks)
 
     # assert

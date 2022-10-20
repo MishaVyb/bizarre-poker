@@ -3,7 +3,7 @@ import functools
 from typing import Any, Callable, Iterable, Iterator, Optional, TypeAlias, TypeVar
 import typing
 from django.db import models
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 
 logger = init_logger(__name__)
 
@@ -165,6 +165,6 @@ class CreatedModifiedModel(models.Model):
         abstract = True
 
         # WARNING!
-        # do not use descending ordering, it takes PyTest falling
+        # do not use descending ordering, it makes tests fall down
         # and breks down others not obvious dependencies
         ordering = ['created']

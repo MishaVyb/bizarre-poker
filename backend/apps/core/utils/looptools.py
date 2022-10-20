@@ -1,16 +1,5 @@
 """
-Import `looptools` for accessing to a defferent loop generators.
-
-developing:
-[X] clean code style
-[X] pytest
-[X] doc string
-[X] doc string tests
-[X] type hints for default value
-[X] code formating / black / flake8 / isort
-[X] extend API: create previous/following iter only if nesaccery
-[ ] Unsupported target for indexed assignment ("Sequence[_T]")
-[ ] Pytest: check behavior if source iterable is changed while looping
+Import `looptools` to get access to defferent loop generators.
 """
 
 from __future__ import annotations
@@ -275,7 +264,7 @@ def circle_after(
 
     if inclusive:
         if exclude_call(incoming):
-            raise RuntimeError('1- inclusive element in exclude list')
+            raise RuntimeError('Inclusive element in exclude list. ')
         yield incoming
 
     # yield all after

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
 
 from django.forms import CharField
 
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from core.models import (
     CreatedModifiedModel,
     FullCleanSavingMixin,
@@ -23,7 +23,6 @@ from games.configurations.configurations import (
 )
 from games.services.cards import CardList
 from games.services.processors import BaseProcessor
-from games.services.stages import DEFAULT_STAGES
 
 
 if TYPE_CHECKING:
@@ -79,8 +78,9 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     )
     """
     List with actions and stages that have been proceed:
-    >>> [{'performer': str, 'class': str, 'message': str}, ...]
-    For stages performer is None.
+    >>> [{'performer': str | None, 'class': str, 'message': str}, ...]
+
+    (for stages performer is None)
     """
 
 
@@ -96,7 +96,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     @cached_property
     def stages(self):
-        return DEFAULT_STAGES
+        return self.config.stages
 
     @cached_property
     def config(self):

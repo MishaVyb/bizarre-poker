@@ -7,7 +7,7 @@ import sys
 from django.core.management import call_command
 import pytest
 
-from core.functools.utils import change_loggers_level
+from core.utils import change_loggers_level
 
 
 @pytest.fixture

@@ -1,20 +1,17 @@
 import os
-from django.conf import settings
-from django.core.management.base import BaseCommand
-from django.db import models
 
 import pydantic
-from core.functools.utils import init_logger
-from core.functools.utils import StrColors
-
+from core.utils import StrColors, init_logger
+from django.core.management.base import BaseCommand
+from django.db import models
 from games.models import Game, Player
 from games.services import actions, stages
-from users.models import Profile, User
 from games.services.processors import AutoProcessor, BaseProcessor
+from users.models import User
 
 logger = init_logger(__name__)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_FILE_PATH = os.path.join(CURRENT_DIR, 'data.json')
+DEFAULT_FILE_PATH = os.path.join(CURRENT_DIR, 'data.json')
 
 
 class GameSchema(pydantic.BaseModel):
@@ -37,7 +34,7 @@ class Command(BaseCommand):
             'file_path',
             type=str,
             nargs='?',
-            default=TEST_FILE_PATH,
+            default=DEFAULT_FILE_PATH,
         )
 
     def handle(self, *args, **options):

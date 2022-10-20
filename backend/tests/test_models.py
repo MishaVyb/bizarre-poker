@@ -4,8 +4,8 @@ from timeit import timeit
 from typing import Any
 
 import pytest
-from core.functools.decorators import ProcessingTimer, processing_timer
-from core.functools.utils import change_loggers_level, init_logger
+from core.utils import ProcessingTimer, processing_timer
+from core.utils import change_loggers_level, init_logger
 from django.db import IntegrityError, models
 from django.db.models import Prefetch
 from games.models import Game, Player

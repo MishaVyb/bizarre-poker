@@ -1,20 +1,29 @@
-"""Modul for interactions with gaming cards.
+"""
+Modul for interactions with gaming cards.
 
 Card - jast a card
 CardList - list of cards
 Stacks - list of CardLists
 
-BE CAREFUL WITH MIRRORED JOKERS:
-1. сравниваются в первую очередть rank и suit, в независимости от того, что одни из них
-джокер:
-black('A|h') == Card('A|h)
-2. красные и черные джокеры не равны, даже если они равные общему зеркалу
-even on condition black('A|h') == Card('A|h') and red('A|h') == Card('A|h')
-black will never equal red (because of different ranks)
-3. просто сравнивая карты black('A|h') > Card('A|h) -> False, потому что они равны
-но во время сортировки используются дополнительное условие, при котором карта
-сама по себе считается более ценной, чем отреженный джокер. См. метод sortby.
+Cards comparision.
+Be careful with comparison mirrored jokers:
 
+1. In first place we compare rank and suit.
+>>> JokerCard('black', reflection='A|h') == Card('A|h)
+True
+
+2. Secondly, Red and Black Jokers are not equls even if they have the same(!) reflection
+>>> black = JokerCard('black', reflection='A|h')
+>>> red = JokerCard('red', reflection='A|h')
+>>> black == red
+False
+
+3. And finally. black('A|h') < Card('A|h) -> False, because they are equal. But while
+soring we suply extra key condition to achive result where just simple card worth more
+then joker reflected that card. Have a look at CardList.sortby() implementation for more
+details.
+
+Cards string representation.
 You can change default way for string representation by choosing a relevant method.
 It also ovveride repr_method for JokerCard:
 >>> Card.Text.repr_method = 'eng_short_suit'
@@ -27,12 +36,12 @@ import functools
 import itertools
 import random
 from operator import attrgetter
-from typing import ClassVar, Generator, Iterable, SupportsIndex, overload
+from typing import TYPE_CHECKING, ClassVar, Generator, Iterable, SupportsIndex, overload
 
-from core.functools.utils import eq_first, range_inclusevly, split
-from core.functools.decorators import temporally
-from core.functools.utils import init_logger
-from games.configurations import ConfigSchema
+from core.utils import eq_first, init_logger, range_inclusevly, split
+
+if TYPE_CHECKING:
+    from games.configurations import DeckConfig
 
 
 logger = init_logger(__name__)
@@ -503,6 +512,17 @@ class JokerCard(Card):
         initial = {attr: val} if isinstance(attr, str) and isinstance(val, int) else {}
         return JokerCard(self, reflection, initial)
 
+    # @classmethod
+    # def __get_validators__(cls):
+    #     yield cls.validate
+
+    # @classmethod
+    # def validate(
+    #     cls, value: TotalComparableAbstract, field: pydantic.fields.ModelField
+    # ):
+    #     """Empty method to satisfy pydantic requirements for Arbitary Types. """
+    #     return value
+
 
 class CardList(list[Card]):
     '''Mutable sequence of Cards. It could be deck, cards in a hand or on the
@@ -634,7 +654,6 @@ class CardList(list[Card]):
     def __str__(self) -> str:
         return ' '.join([c.__str__() for c in self])
 
-
     @overload
     def __getitem__(self, __i: SupportsIndex, /) -> Card:
         ...
@@ -759,23 +778,20 @@ Stacks = list[CardList]
 
 
 class Decks:
+    """
+    Class for decks generators used to filled up game deck before every round begins.
+    """
+
     @staticmethod
-    def full_deck_plus_jokers(config: ConfigSchema):
-        """yield all 52 cards from highes to smallest and then red/black jokers"""
-        _2 = Card.Text.get_rank_value('2')
-        ace = Card.Text.get_rank_value('Ace')
-        clubs = Card.Text.get_suit_value('Clubs')
-        spades = Card.Text.get_suit_value('Spades')
-
-
-        for _ in range(config.multy_decks_amount):
-            for rank in reversed(range_inclusevly(_2, ace)):
-                for suit in reversed(range_inclusevly(clubs, spades)):
+    def full_deck_plus_jokers(config: DeckConfig):
+        min, max = config.interval.get_borders()
+        for _ in range(config.iterations_amount):
+            for rank in reversed(range_inclusevly(min.rank, max.rank)):
+                for suit in reversed(range_inclusevly(min.suit, max.suit)):
                     yield Card(rank, suit)
 
             for i in range(config.jokers_amount):
                 yield JokerCard('red') if i % 2 else JokerCard('black')
-
 
     @staticmethod
     def factory_from(table: CardList, hands: Stacks):

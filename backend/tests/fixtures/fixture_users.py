@@ -8,7 +8,7 @@ developing:
 
 """
 import pytest
-from core.functools.utils import get_func_name
+from core.utils import get_func_name
 from users.models import User
 
 

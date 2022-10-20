@@ -4,8 +4,8 @@ from typing import Type, TypeVar
 from rest_framework import status
 import pytest
 from tests.base import APIGameProperties
-from core.functools.decorators import temporally
-from core.functools.utils import StrColors, get_func_name, init_logger
+from core.utils import temporally
+from core.utils import StrColors, get_func_name, init_logger
 from games.models import Game
 from games.models.player import PlayerPreform
 from games.services.cards import Decks
@@ -84,19 +84,22 @@ def setup_deck_get_expected_combos(request: pytest.FixtureRequest, table_and_han
 
     # check test arrange
     flops = sum(self.game.config.flops_amounts)
-    neccessary_amount = len(self.usernames) * self.game.config.deal_cards_amount + flops
+    deals = sum(self.game.config.deal_cards_amounts)
+    neccessary_amount = len(self.usernames) * deals + flops
     if deck.length != neccessary_amount:
         pytest.skip('Current test deck intended for another players amount. ' f'{deck.length} != {neccessary_amount}')
 
     # set our test deck to the game
-    setattr(Decks, 'TEST_DECK', deck)
+    self.game.config.deck.Config.allow_mutation = True
     with temporally(
-        self.game.config,
-        deck_shuffling=False,
-        deck_container_name='TEST_DECK',
+        self.game.config.deck,
+        shuffling=False,
+        generator=deck,
     ):
         yield data['expected_combos'], data['rate_groups']
-    delattr(Decks, 'TEST_DECK')
+    self.game.config.deck.Config.allow_mutation = False
+
+
 
 
 @pytest.fixture

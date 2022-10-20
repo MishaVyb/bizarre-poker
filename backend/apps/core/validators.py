@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 
-from core.functools.utils import isinstance_items
+from core.utils import isinstance_items
 
 
 def bet_multiplicity(value: int):

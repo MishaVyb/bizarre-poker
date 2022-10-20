@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Type
 
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from games.services import stages
 from games.services import actions
 from games.services.actions import ActionError, ActionPrototype, BaseAction

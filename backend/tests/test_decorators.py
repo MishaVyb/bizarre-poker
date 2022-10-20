@@ -1,4 +1,4 @@
-from core.functools.decorators import temporally
+from core.utils import temporally
 
 
 # for test porpuses

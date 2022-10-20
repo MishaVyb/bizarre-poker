@@ -1,12 +1,1 @@
-{
-    "small_blind": 5,
-    "big_blind": 10,
-    "bet_multiplicity": 5,
-    "deck_shuffling": true,
-    "deck_container_name": "full_deck_plus_jokers",
-
-    "deal_cards_amount": 2,
-    "flops_amounts": [3, 1, 1],
-    "jokers_amount": 2,
-    "multy_decks_amount": 1
-}
+{}

@@ -3,7 +3,7 @@ from itertools import chain
 import itertools
 
 import pytest
-from core.functools.utils import init_logger
+from core.utils import init_logger
 from games.models import Game, Player
 
 from users.models import User
@@ -17,11 +17,11 @@ from pprint import pformat
 from typing import Iterable, Literal, OrderedDict
 
 import pytest
-from core.functools.utils import StrColors, init_logger
+from core.utils import StrColors, init_logger
 from rest_framework import status
 
 from rest_framework.test import APIClient
-from core.types import JSON
+from core.utils.types import JSON
 from django.http import HttpResponsePermanentRedirect
 
 from games.services.combos import Combo

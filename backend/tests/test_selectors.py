@@ -1,6 +1,6 @@
 import pytest
-from core.functools.decorators import temporally
-from core.functools.utils import init_logger
+from core.utils import temporally
+from core.utils import init_logger
 
 from tests.base import BaseGameProperties
 
