@@ -58,6 +58,11 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     deck: CardList = CardListField(blank=True)
     table: CardList = CardListField(blank=True)
     bank: int = models.PositiveIntegerField(default=0)
+
+    @property
+    def bank_total(self):
+        return self.bank + self.players.aggregate_sum_all_bets()
+
     actions_history: list[dict[str, Any]] = models.JSONField(
         default=get_list_default,
         blank=True,
@@ -71,7 +76,6 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     begins: bool = models.BooleanField(default=False)
     rounds_counter: int = models.PositiveIntegerField(default=1)
-
     stage_index: int = models.PositiveSmallIntegerField(default=0)
 
     @property

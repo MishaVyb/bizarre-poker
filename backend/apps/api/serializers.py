@@ -57,6 +57,7 @@ class GameSerializer(serializers.ModelSerializer):
     stage = StageSerializer(read_only=True)
     config = serializers.JSONField(source='config.dict', read_only=True)
     config_name = serializers.CharField(default='classic', write_only=True)
+    bank_total = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = Game
