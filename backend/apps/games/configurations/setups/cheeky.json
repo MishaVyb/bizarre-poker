@@ -1,1 +1,21 @@
-{}
+{
+    "name": "cheeky",
+    "small_blind": 1,
+    "big_blind": 2,
+    "bet_multiplicity": 1,
+    "deck": {
+        "jokers_amount": 10
+    },
+    "stages": [
+        "DealCardsStage_1",
+        "PlacingBlindsStage",
+        "BiddingsStage_1",
+        "DealCardsStage_2",
+        "BiddingsStage_2",
+        "DealCardsStage_3",
+        "BiddingsStage_3",
+        "OpposingStage"
+    ],
+    "deal_cards_amounts": [2, 2, 2],
+    "flops_amounts": []
+}

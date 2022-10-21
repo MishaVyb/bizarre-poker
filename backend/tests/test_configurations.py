@@ -1,12 +1,15 @@
 from pprint import pformat
+from re import A
 from typing import Type
 
 import pydantic
 import pytest
-from core.utils import init_logger
-from games.configurations.configurations import GameConfig, get_config_schemas
+from core.utils import JSON, init_logger, temporally
+from games.configurations.configurations import CONFIG_SCHEMAS, DEFAULT_CONFIG, GameConfig, get_config_schemas
+from games.models.game import Game
+from games.services.processors import AutoProcessor
 
-from tests.tools import param_kwargs
+from tests.tools import param_kwargs, param_kwargs_list
 
 logger = init_logger(__name__)
 
@@ -33,17 +36,45 @@ def monkeypath_parse_file(request, monkeypatch):
     return json, exception
 
 
-def test_get_config_schemas_rises(monkeypath_parse_file: tuple[dict, Type[Exception]]):
+def test_get_config_schemas_rises(monkeypath_parse_file: tuple[JSON, Type[Exception]]):
     json, exception = monkeypath_parse_file
 
     with pytest.raises(exception):
         get_config_schemas(raises=True)
 
 
-def test_configurations_setups():
-    schemas = get_config_schemas(raises=True)
-    for name, schema in schemas.items():
-        logger.info(f'{name}:\n' + pformat(schema.dict()) + '\n')
+@pytest.mark.django_db
+@pytest.mark.parametrize('config_name', ['foolish', 'classic', 'cheeky', 'bizarre'])
+def test_configurations_setups(simple_game: Game, config_name):
+    # [1] check that no rises and get our point config
+    test_config = get_config_schemas(raises=True)[config_name]
+
+    # [2] make sure that game processing do not falls down
+    with temporally(CONFIG_SCHEMAS, classic=test_config):
+        AutoProcessor(simple_game, stop_after_rounds_amount=2).run()
 
     # [TODO] make assertions
     ...
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'data',
+    [
+        param_kwargs_list(
+            '[01] example from README.md',
+            data={"stages": ["DealCardsStage_1", "OpposingStage"], "deal_cards_amount": 5, "jokers_amount": 10},
+        ),
+    ],
+)
+def test_configurations_examples(data: JSON, simple_game: Game):
+    schema = GameConfig.parse_obj(data)
+    logger.info('\n' + pformat(schema) + '\n')
+
+    with temporally(CONFIG_SCHEMAS, classic=schema):
+        AutoProcessor(simple_game, stop_after_rounds_amount=2).run()
+
+
+@pytest.mark.xfail
+def test_get_json_schema():
+    logger.info('\n' + pformat(DEFAULT_CONFIG.schema()) + '\n')

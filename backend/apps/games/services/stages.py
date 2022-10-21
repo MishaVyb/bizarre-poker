@@ -185,7 +185,12 @@ class DealCardsStage(BaseStage):
 
     def __init__(self, game: Game) -> None:
         super().__init__(game)
-        index = int(self.__class__.__name__[-1]) - 1
+
+        try:
+            index = int(self.__class__.__name__[-1]) - 1
+        except ValueError as e:
+            raise ValueError('Stage class with `amount` property must ends with index.')
+
         self.amount = self.game.config.deal_cards_amounts[index]
 
     def get_message_format(self):
@@ -325,7 +330,11 @@ class FlopStage(BaseStage):
 
     def __init__(self, game: Game) -> None:
         super().__init__(game)
-        index = int(self.__class__.__name__[-1]) - 1
+
+        try:
+            index = int(self.__class__.__name__[-1]) - 1
+        except ValueError as e:
+            raise ValueError('Stage class with `amount` property must ends with index.')
         self.amount = self.game.config.flops_amounts[index]
 
     def get_message_format(self):
@@ -410,7 +419,11 @@ class TearDownStage(BaseStage):
 #       Default Stages
 ########################################################################################
 
+# [TODO] get rid of stage sufixes, use splecial class counter
+#
 DealCardsStage_1 = DealCardsStage.factory('DealCardsStage_1')
+DealCardsStage_2 = DealCardsStage.factory('DealCardsStage_2')
+DealCardsStage_3 = DealCardsStage.factory('DealCardsStage_3')
 
 BiddingsStage_1 = BiddingsStage.factory('BiddingsStage_1')
 BiddingsStage_2 = BiddingsStage.factory('BiddingsStage_2')

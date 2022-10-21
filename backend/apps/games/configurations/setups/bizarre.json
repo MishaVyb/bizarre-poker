@@ -1,1 +1,34 @@
-{}
+{
+    "name": "bizare",
+    "deck": {
+        "jokers_amount": 20,
+        "iterations_amount": 4
+    },
+    "deal_cards_amounts": [4],
+    "flops_amounts": [2, 1, 1],
+
+    "combos": [
+        {"highest_card": [1], "name": "high card"},
+        {"rank":[2], "name": "one pair"},
+        {"rank":[2, 2], "name": "two pair"},
+        {"row":[3], "name": "small straight"},
+        {"suit": [3], "name": "small flush"},
+        {"rank":[3], "name": "three of kind"},
+        {"rank":[2, 2, 2], "name": "three pair"},
+        {"rank":[3, 3], "name": "double three of kind"},
+        {"row":[5], "name": "middle straight"},
+        {"suit": [5], "name": "middle flush"},
+        {"rank":[3, 2], "name": "full house"},
+        {"rank":[4], "name": "four of kind"},
+        {"rank":[5], "name": "pocker"},
+        {"rank":[4, 3], "name": "country house"},
+        {"rank":[6], "name": "siiiiix"},
+        {"suit": [7], "name": "big flush"},
+        {"row":[7], "name": "big straight"},
+        {"rank":[7], "name": "seeeeeven"},
+        {"suit": [8], "name": "full flush"},
+        {"row":[8], "name": "full straight"},
+        {"rank":[5, 3], "name": "mega house"},
+        {"rank":[8], "name": "eighttttttttt"}
+    ]
+}

@@ -7,6 +7,7 @@ import pydantic
 from core.utils import Interval, init_logger
 from django.db import models
 from games.services import stages as stages_module
+from games.services.stages import SetupStage, TearDownStage
 from games.services.cards import Card, CardList, Decks
 from games.services.combos import ComboKind, ComboKindList
 
@@ -63,7 +64,8 @@ class GameConfig(pydantic.BaseModel):
 
     small_blind: int
     big_blind: int
-    bet_multiplicity: int
+    bet_multiplicity: int # by default equals to small_blind
+
     deck: DeckConfig
 
     deal_cards_amounts: list[int]
@@ -78,12 +80,14 @@ class GameConfig(pydantic.BaseModel):
             'stages': {'exclude': True},
             'deck': {'exclude': True},
             'combos': {'exclude': True},
+            'bet_multiplicity': {'required': False}
         }
 
     @pydantic.validator('big_blind')
     def _big_blind_bigger_then_small_blind(cls, big_blind: int, values: dict):
         assert values['small_blind'] < big_blind
         return big_blind
+
 
     @pydantic.validator('bet_multiplicity')
     def _bets_are_multiple_for_bet_multiplicity(
@@ -94,24 +98,23 @@ class GameConfig(pydantic.BaseModel):
         return bet_multiplicity
 
     @pydantic.validator('stages')
-    def _clean_stages(cls, stages: list[str]):
-        if 'SetupStage' in stages:
-            assert stages.count('SetupStage') == 1
-            assert stages[0] == 'SetupStage'
+    def _clean_stages(cls, stages: list[Type[stages_module.BaseStage]]):
+        if SetupStage in stages:
+            assert stages.count(SetupStage) == 1, 'too many SetupStages'
+            assert stages[0] == SetupStage, 'SetupStage should be first'
         else:
-            stages.insert(0, 'SetupStage')
-        if 'TearDownStage' in stages:
-            assert stages.count('TearDownStage') == 1
-            assert stages[-1] == 'TearDownStage'
+            stages.insert(0, SetupStage)
+        if TearDownStage in stages:
+            assert stages.count(TearDownStage) == 1, 'too many TearDownStages'
+            assert stages[-1] == TearDownStage, 'TearDownStage should be last'
         else:
-            stages.append('TearDownStage')
+            stages.append(TearDownStage)
+        return stages
 
-        stages_classes: list[Type[stages_module.BaseStage]] = []
-        for stage in stages:
-            assert hasattr(stages_module, stage)
-            stages_classes.append(getattr(stages_module, stage))
-
-        return stages_classes
+    @pydantic.validator('stages', each_item=True)
+    def _clean_stages_items(cls, stage: str):
+        assert hasattr(stages_module, stage), f'that stage does not exist: {stage}'
+        return getattr(stages_module, stage)
 
     @pydantic.validator('deal_cards_amounts', 'flops_amounts')
     def _amounts_retated_to_stages(
@@ -131,12 +134,15 @@ class GameConfig(pydantic.BaseModel):
 
 
 def get_config_schemas(*, raises: bool = False):
-    # [1] set defaults for all config files:
+    # [1] set defaults for schemas:
     file = os.path.join(CURRENT_DIR, 'default.json')
     default = GameConfig.parse_file(file)
     for name, field in GameConfig.__fields__.items():
         field.required = False
         field.default = getattr(default, name)
+    for name, field in DeckConfig.__fields__.items():
+        field.required = False
+        field.default = getattr(default.deck, name)
 
     # [2] load other setups:
     schemas = {'default': default}

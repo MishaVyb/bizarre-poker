@@ -1,12 +1,3 @@
-"""
-
-warnings:
-user_admin is default
-
-developing:
-[ ] -> QuerySet[AbstractBaseUser] type error
-
-"""
 import pytest
 from core.utils import get_func_name
 from users.models import User
@@ -22,6 +13,14 @@ def vybornyy():
 
 @pytest.fixture
 def simusik():
+    username = get_func_name()
+    user: User = User.objects.create(username=username, password=username)
+    user.set_password(user.username)
+    user.save()
+    return User.objects.get(username=user.username)
+
+@pytest.fixture
+def barticheg():
     username = get_func_name()
     user: User = User.objects.create(username=username, password=username)
     user.set_password(user.username)

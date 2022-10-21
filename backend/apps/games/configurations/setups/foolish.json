@@ -1,1 +1,12 @@
-{}
+{
+    "name": "foolish",
+    "deck": {
+        "interval": ["Jack|Clubs", "Ace|Spades"],
+        "jokers_amount": 0
+    },
+    "stages": [
+        "DealCardsStage_1"
+    ],
+    "deal_cards_amounts": [2],
+    "flops_amounts": [3, 1, 1]
+}

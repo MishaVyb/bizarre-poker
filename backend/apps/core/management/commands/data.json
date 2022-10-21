@@ -34,7 +34,7 @@
         },
         {
             "pk": 2,
-            "config_name": "foolish",
+            "config_name": "bizarre",
             "players": [
                 "vybornyy",
                 "simusik",
@@ -58,6 +58,7 @@
         },
         {
             "pk": 4,
+            "config_name": "cheeky",
             "players": [
                 "vybornyy",
                 "simusik"

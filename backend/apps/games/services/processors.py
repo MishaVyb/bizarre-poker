@@ -176,27 +176,16 @@ class BaseProcessor:
     def _premature_final_condition(self, current_stage: BaseStage):
         """Any condition to proceed to the final stage skiping others."""
         # check, maybe game already at final stage or was
-        opposing_index = self.game.stages.index(stages.OpposingStage)
+        try:
+            opposing_index = self.game.stages.index(stages.OpposingStage)
+        except ValueError:
+            # [FIXME]
+            # in case game has no opposing stage we mast proceed to TearDownStage
+            return False
+
         if self.game.stage_index >= opposing_index:
             return False
 
-        # conditions = {}
-        # # [1] all players exept one passed -> go to final
-        # conditions['all_passed'] = len(list(self.game.players.active)) == 1
-
-        # # [2] VaBank was placed
-        # performer = self.game.stage.performer
-        # if performer:
-        #     check = actions.PlaceBetCheck.prototype(self.game, performer)
-        #     conditions['only_check'] = current_stage.get_possible_actions() == [check]
-
-        # if any(conditions.values()):
-        #     codes = [code for code in conditions if conditions[code]]
-        #     logger.info(
-        #         f'Premature final condition {codes} satisfied. '
-        #         'Opposing Stage will be exicuted after. '
-        #     )
-        #     return True
         conditions: list[PrematureFinalCondition] = [
             AllOtherPassedCondition(),
             NoneBiddingsCondition(),
