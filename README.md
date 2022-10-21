@@ -64,7 +64,7 @@ Did you mess sometimes with broken feelings? This game perfectly suits you. In c
 - Single page application for WEB and Rest API for other clients.
 - Storing every game state on server side that user has no worries about losing connection or close his laptop. User can continue from point it was ended.
 - Almost *realtime* updating game state in WEB without any splecial actions.
-- A lot of thing easy to customize. Bizarre Poker has 4 pre-difined configurations (`classic``foolish``crazy` and `bizarre`) and you may add onother one.
+- A lot of thing easy to customize. Bizarre Poker has 4 pre-difined configurations (`classic`, `foolish`, `crazy` and `bizarre`) and you may add onother one.
 - `force` action which allows user to play not only with friends, but also alone.
 
 ## Built With
