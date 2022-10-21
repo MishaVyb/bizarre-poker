@@ -81,8 +81,9 @@ class BaseProcessor:
         headline = StrColors.bold('Processing')
         logger.info(f'{headline} {self.game}. ')
 
+        # [NOTE]
         # we are getting current stage from Game only once to cache their properties
-        # when stage complited run(..) will be called again and we ask we new stage
+        # when stage complited run(..) will be called again and we ask for stage again
         current_stage = self.game.stage
 
         # [01] actions
@@ -94,10 +95,10 @@ class BaseProcessor:
         if status in [self.STOP, self.FORCED_STOP]:
             return status
 
-        # CONTINUE RECURSIVELY
         return self._subrunner()
 
     def _actions_processing(self, current_stage: BaseStage):
+        # [NOTE]
         # No catching rasies here: if processor contains invalid actions - it's failed.
         # The logic that we dont want give to user even an possobility to make invalid
         # action
@@ -110,11 +111,13 @@ class BaseProcessor:
                 action.act()
                 self._make_history(action)
             else:
-                raise ActionError(action)  # NO POSSIBLE FOUND FOR THAT ACTION...
+                # no possible found for that action (processor contains invalid action)
+                raise ActionError(action)
 
     def _stage_processing(self, current_stage: BaseStage):
         premature_final = self._premature_final_condition(current_stage)
 
+        # [NOTE]
         # But cacthing rases here. If requirement unsatisfied, it is totally okey.
         # We just try to be sure. Stop processing and make response in that case.
         try:
@@ -184,9 +187,9 @@ class BaseProcessor:
             return False
 
         if current_stage == stages.SetupStage:
-            return False # game not started yet
+            return False  # game not started yet
         if self.game.stage_index >= opposing_index:
-            return False # alerady at final stages
+            return False  # alerady at final stages
 
         conditions: list[PrematureFinalCondition] = [
             AllOtherPassedCondition(),
@@ -221,11 +224,9 @@ class AutoProcessor(BaseProcessor):
         self,
         game: Game,
         *,
-        with_actions: list[ActionPrototype] = [],  # also could be stop factor
+        with_actions: list[ActionPrototype] = [],
         stop_before_stage: Type[BaseStage] = None,
-        stop_after_stage: Type[
-            BaseStage
-        ] = None,  # means: process this stage inclusevly
+        stop_after_stage: Type[BaseStage] = None,
         stop_before_action: ActionPrototype | None = None,
         stop_after_action: ActionPrototype | None = None,
         stop_after_rounds_amount: int | None = None,
@@ -367,6 +368,7 @@ class AutoProcessor(BaseProcessor):
         if self.stop_factor.get('stop_after_stage') == current_stage:
             return self.FORCED_STOP
 
+        # [NOTE]
         # second check for stop_before_stage: when stage has been complited (CONTINUE)
         # stage_index goes to next stage and we need to re-check if this stage is stop
         # factor. if yes, we need to interrupt processing to prevent auto acting actions

@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import pytest
 from core.utils import Interval
-from games.configurations.configurations import CONFIG_SCHEMAS
+from games.configurations.configurations import CONFIG_SCHEMAS, DEFAULT_CONFIG
 
 from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
 
@@ -247,7 +247,7 @@ def test_cardlist_init_by_str_cards_raises(cards: list[str], expected: Exception
         ),
         pytest.param(
             '  A-1, K-D,   ]',
-            ValueError("invalid brackets `[` `]` at instance='  A-1, K-D,   ]'"),
+            ValueError("Invalid brackets `[` `]` at instance='  A-1, K-D,   ]'"),
         ),
     ],
 )
@@ -577,7 +577,7 @@ def test_cardlist_groupby(input_data: CardList, expected: dict[str, Stacks]):
 
 
 def test_full_deck_plus_jokers():
-    config = CONFIG_SCHEMAS['default'].deck
+    config = DEFAULT_CONFIG.deck
 
     assert config.interval == Interval(min=Card('2|Clubs'), max=Card('Ace|Spades'))
     cards_amount = 52

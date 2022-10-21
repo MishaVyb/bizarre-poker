@@ -9,7 +9,7 @@ import functools
 import itertools
 from copy import deepcopy
 import logging
-from typing import TYPE_CHECKING, ClassVar, Iterable
+from typing import TYPE_CHECKING, ClassVar, Iterable, TypeAlias
 
 from core.utils import init_logger
 from core.utils import is_sorted
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 logger = init_logger(__name__, logging.WARNING)
 
-Conditions = dict[str, tuple[int, ...]]
+Conditions: TypeAlias = dict[str, tuple[int, ...]]
 
 
 class ExtraComboException(Exception):
@@ -48,13 +48,27 @@ class NoComboException(Exception):
 
 @functools.total_ordering
 class ComboKind:
-    """Class for annotation specific type of combination.
+    """
+    Class for annotation specific type of combination.
 
     All groups lists shold be init by straight sequences from highest to smallest.
     Anyway, they have sorted inside, to be shure.
 
-        `name`: Verbose name of combination kind
-        `cases`: Main dictianary to store all conditional cases
+        `name`: Verbose name of combination kind.
+        `cases`: Main dictianary to store all conditional cases.
+
+    There are 4 possible cases `rank`, `suit`, `row` and `highest_card`. They all are
+    defined as sequence of positive integers. For example:
+    >>> rank = [2, 2]   # Two pairs
+    >>> straight = [5]  # Five cards in a row (aka `strit`)
+
+    Diferent cases also can be mixed toogether.
+    >>> ConboKind(straight = [5], suit = [5])   # simple definition for `staight-flash`
+
+    [NOTE][BUG]
+    But it makes not obvious behavior with Jokers in the deck when we try to compare
+    diferent ComboStacks with the equal ComboKind. And it may falls down. Do not use
+    Jokers and mixed ComboKind cases together.
     """
 
     _CONDITION_KEYS: ClassVar[set[str]] = {'rank', 'suit', 'row', 'highest_card'}
@@ -90,7 +104,7 @@ class ComboKind:
     def is_minor_combo_for(self, major: Conditions):
         """
         Return whether self (minor) combination cases includes (or equal) major cases.
-        self cases <= major
+        `self.cases` <= `major.cases`
 
         >>> self = ComboKind(suit=[5], row=[5])
         >>> self.is_minor_combo_for({'suit': [6], 'row': [7]})
@@ -111,10 +125,10 @@ class ComboKind:
 
         value: bool = True
         for key in self.cases:
-            # длина больше или равна
+            # check len
             value = value and len(major[key]) >= len(self.cases[key])
             for greater, smaller in zip(major[key], self.cases[key]):
-                # каждый элемент больше или равен
+                # check each item
                 value = value and greater >= smaller
                 if not value:
                     break
@@ -134,6 +148,9 @@ class ComboKindList(list[ComboKind]):
                 priority += step
 
     def get(self, name: str) -> ComboKind:
+        """
+        Simple shortcut to get ComboKind by name.
+        """
         try:
             return next(filter(lambda c: c.name == name, self))
         except StopIteration:
@@ -143,7 +160,8 @@ class ComboKindList(list[ComboKind]):
             )
 
     def get_by_conditions(self, conditions: Conditions) -> ComboKind:
-        """Finding equivalent combination in self list.
+        """
+        Finding equivalent combination in self list.
 
         Going through all combos from highest to smallest until self combination is not
         major for referense.
@@ -158,7 +176,8 @@ class ComboKindList(list[ComboKind]):
 
 @functools.total_ordering
 class ComboStacks:
-    """Contains lists of stacks equivalented to ComboKind condtitions groups.
+    """
+    Contains dict of stacks equivalented to ComboKind condtitions groups.
     By default `init()` creates an epty object.
     Call `track_and_merge()` method to complete initialization.
     """
@@ -167,6 +186,11 @@ class ComboStacks:
     leftovers: CardList
     cases: dict[str, Stacks]
     extra_cases: dict[str, Stacks]
+
+    # default track methods:
+    track_equal = combo_trackers.track_equal
+    track_row = combo_trackers.track_row
+    track_highest = combo_trackers.track_highest
 
     @property
     def conditions(self):
@@ -179,10 +203,6 @@ class ComboStacks:
     def cases_chain(self):
         return itertools.chain(*itertools.chain(*self.cases.values()))
 
-    # default track methods
-    track_equal = combo_trackers.track_equal
-    track_row = combo_trackers.track_row
-    track_highest = combo_trackers.track_highest
 
     def __init__(self, player: Player | None = None):
         if player:
@@ -217,6 +237,7 @@ class ComboStacks:
         if not isinstance(other, ComboStacks) or not self.__comparison_permition(other):
             return NotImplemented
 
+        # [NOTE]
         # we won`t use self.source attribute, because it contains not processed at
         # tracking jokers (they are not mirrored), therefore two seperate checkings
         # for cases and for leftovers
@@ -226,8 +247,12 @@ class ComboStacks:
         if not isinstance(other, ComboStacks) or not self.__comparison_permition(other):
             return NotImplemented
 
+        # [NOTE]
         # we won`t use self.source attribute, because it contains not processed at
-        # tracking jokers (they are not mirrored). [1] comare cases # [2] compare other
+        # tracking jokers (they are not mirrored).
+        # [1] comare cases
+        # [2] compare other
+        #
         for key in self.cases:
             if not self.cases[key] < other.cases[key]:
                 return False
@@ -278,13 +303,13 @@ class ComboStacks:
         references,
         possible_highest,
     ) -> ComboKind:
-        """Find any possible combination in stacks (even a Highest Card).
+        """
+        Find any possible combination in stacks (even a Highest Card).
+        Merge self to 'closest' ComboKind for references and return it.
 
         `*stacks`: where to trace combinations
-        `possible_highest`: the most highest card in the deck
-        (to prepend jokers into straight combos from the edges)
-
-        return: reference of ComboKind which self has merged to
+        `possible_highest`: the most highest card in the deck (to prepend jokers into
+        straight combos from the edges)
 
         To coplite searching metodh creates a new merged CardList inside.
         Source stacks remain unmodified.
@@ -306,7 +331,8 @@ class ComboStacks:
             self.trim_to(e.nearest)
             kind = e.nearest
 
-        # Note: we check `not c.is_jokers` because jokers are always has been used.
+        # [NOTE]
+        # we check `not c.is_jokers` because jokers are always has been used.
         # if we skip this cheking, not mirrored jokers at source will compare with
         # mirrored at stacks and it return false.
         used = list(self.cases_chain)
@@ -318,6 +344,9 @@ class ComboStacks:
 
 @dataclass(order=True)
 class Combo:
+    """
+    Simple data class to contain both kind and stacks wich represent that kind.
+    """
     kind: ComboKind
     stacks: ComboStacks
 

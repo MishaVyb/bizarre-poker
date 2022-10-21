@@ -1,42 +1,23 @@
 from __future__ import annotations
-import functools
 
-
-from typing import Any, Callable, TypeVar
-
-from core.utils import StrColors, init_logger
-from core.models import (
-    CreatedModifiedModel,
-    FullCleanSavingMixin,
-    IterableManager,
-    get_list_default,
-    related_manager_method,
-)
-from core.validators import bet_multiplicity, bet_multiplicity_list, int_list_validator
-from django.db import IntegrityError, models
-from django.db.models import F, functions
-from games.models.managers import PlayerManager
-from games.selectors import PlayerSelector
-from games.services.cards import CardList
-from games.services.combos import Combo, ComboStacks
+from core.models import CreatedModifiedModel, FullCleanSavingMixin, get_list_default
+from core.utils import init_logger
+from core.validators import int_list_validator
+from django.db import models
+from django.db.models import F
 from games.models import Game
 from games.models.fields import CardListField
+from games.models.managers import PlayerManager
+from games.services.cards import CardList
+from games.services.combos import Combo, ComboStacks
 from users.models import User
-
 
 logger = init_logger(__name__)
 
-_T = TypeVar('_T')
-
 
 class Player(FullCleanSavingMixin, CreatedModifiedModel):
-    """Model for representing single user at curtain game.
-
-    `is_dealer`
-    A dealer button is used to represent the player in the dealer position.
-    The dealer button rotates clockwise after each round, changing the position of the
-    dealer and blinds. Dealer position number is always 0.
-
+    """
+    Model for representing single user at curtain game.
     """
 
     _manager_for_related_fields: PlayerManager[Player] = PlayerManager()
@@ -54,7 +35,8 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
     )
     hand: CardList = CardListField(blank=True)
 
-    # Note: for PlaceBetCheck action we append 0 to bets, it makes us to know: have user
+    # [NOTE]
+    # for PlaceBetCheck action we append 0 to bets, it makes us to know: have user
     # made an answer or not. So bets = [0] means that bet was placed, but with 0 value.
     bets: list[int] = models.JSONField(
         blank=True,
@@ -71,6 +53,11 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
 
     @property
     def is_dealer(self):
+        """
+        A dealer button is used to represent the player in the dealer position.
+        The dealer button rotates clockwise after each round, changing the position of
+        the dealer and blinds. Dealer position number is always 0.
+        """
         return self.position == 0
 
     @property
@@ -127,6 +114,8 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
             self.position = last.position + 1 if last else 0
 
     def delete(self, *args, **kwargs):
+        # [TODO] move that implementation to View function that makes that action.
+
         # exclude self from game players selector
         self.game.select_players(self.other_players)
 

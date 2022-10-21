@@ -49,7 +49,6 @@ def test_get_config_schemas_rises(monkeypath_parse_file: tuple[JSON, Type[Except
 @pytest.mark.parametrize(
     'config_name',
     [
-        'default',
         'foolish',
         'classic',
         'cheeky',

@@ -1,41 +1,30 @@
 from __future__ import annotations
+
 from functools import cached_property
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
-
-from django.forms import CharField
-
-from core.utils import StrColors, init_logger
 from core.models import (
     CreatedModifiedModel,
     FullCleanSavingMixin,
     UpdateMethodMixin,
     get_list_default,
 )
+from core.utils import StrColors, init_logger
 from django.db import models
 from django.urls import reverse
+from games.configurations.configurations import CONFIG_SCHEMAS, ConfigChoices
 from games.models.fields import CardListField
 from games.models.managers import GameManager
 from games.selectors import PlayerSelector
-from games.configurations.configurations import (
-    CONFIG_SCHEMAS,
-    ConfigChoices,
-)
 from games.services.cards import CardList
 from games.services.processors import BaseProcessor
-
+from users.models import User
 
 if TYPE_CHECKING:
     from .player import Player, PlayerManager
 
 
-from users.models import User
-
 logger = init_logger(__name__)
-
-
-def get_deck_default():
-    ...
 
 
 class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
@@ -51,9 +40,8 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     @property
     def players(self) -> PlayerSelector:
         if self._players_selector is None:
-            # raise RuntimeError('None selector. Call for select_players(..) before.')
             logger.warning(
-                StrColors.red(
+                StrColors.yellow(
                     'None selector. Call for select_players(..) before. '
                     'They will be selected here to continue. '
                 )
@@ -70,8 +58,6 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     deck: CardList = CardListField(blank=True)
     table: CardList = CardListField(blank=True)
     bank: int = models.PositiveIntegerField(default=0)
-    # status: str = models.CharField(max_length=200, blank=True)
-    # """requirement unsatisfied message"""
     actions_history: list[dict[str, Any]] = models.JSONField(
         default=get_list_default,
         blank=True,

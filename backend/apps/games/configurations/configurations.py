@@ -12,8 +12,10 @@ from games.services.cards import Card, CardList, Decks
 from games.services.combos import ComboKind, ComboKindList
 
 logger = init_logger(__name__)
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETUPS_DIR = os.path.join(CURRENT_DIR, 'setups')
+DEFAULT_FILE = os.path.join(CURRENT_DIR, 'default.json')
 
 
 class ConfigChoices(models.TextChoices):
@@ -64,7 +66,7 @@ class GameConfig(pydantic.BaseModel):
 
     small_blind: int
     big_blind: int
-    bet_multiplicity: int # by default equals to small_blind
+    bet_multiplicity: int
 
     deck: DeckConfig
 
@@ -80,14 +82,13 @@ class GameConfig(pydantic.BaseModel):
             'stages': {'exclude': True},
             'deck': {'exclude': True},
             'combos': {'exclude': True},
-            'bet_multiplicity': {'required': False}
+            'bet_multiplicity': {'required': False},
         }
 
     @pydantic.validator('big_blind')
     def _big_blind_bigger_then_small_blind(cls, big_blind: int, values: dict):
         assert values['small_blind'] < big_blind
         return big_blind
-
 
     @pydantic.validator('bet_multiplicity')
     def _bets_are_multiple_for_bet_multiplicity(
@@ -133,9 +134,7 @@ class GameConfig(pydantic.BaseModel):
         return ComboKindList([ComboKind(**combo) for combo in combos])
 
 
-def get_config_schemas(*, raises: bool = False):
-    # [1] set defaults for schemas:
-    file = os.path.join(CURRENT_DIR, 'default.json')
+def apply_defauls(file: str):
     default = GameConfig.parse_file(file)
     for name, field in GameConfig.__fields__.items():
         field.required = False
@@ -143,15 +142,25 @@ def get_config_schemas(*, raises: bool = False):
     for name, field in DeckConfig.__fields__.items():
         field.required = False
         field.default = getattr(default.deck, name)
+    return default
 
-    # [2] load other setups:
-    schemas = {'default': default}
+
+try:
+    DEFAULT_CONFIG = apply_defauls(DEFAULT_FILE)
+except Exception as e:
+    raise RuntimeError(
+        'Applying defaults to GameConfig and DeckConfig failed. \n'
+        f'You probably change default config file: {DEFAULT_FILE}. \n '
+        'Or change GameConfig or DeckConfig schemas. Don`t do that. \n'
+        f'Detail: {e}.'
+    )
+
+
+def get_config_schemas(*, raises: bool = False):
+    schemas: dict[str, GameConfig] = {}
     for name, verbose in ConfigChoices.choices:
         file = os.path.join(SETUPS_DIR, f'{name}.json')
         try:
-            # set curent file name as default config name
-            GameConfig.__fields__['name'].default = name
-            # read config from file:
             schemas[name] = GameConfig.parse_file(file)
         except Exception as e:
             schemas[name] = GameConfig()
@@ -166,4 +175,3 @@ def get_config_schemas(*, raises: bool = False):
 
 
 CONFIG_SCHEMAS: dict[str, GameConfig] = get_config_schemas()
-DEFAULT_CONFIG: GameConfig = CONFIG_SCHEMAS['default']

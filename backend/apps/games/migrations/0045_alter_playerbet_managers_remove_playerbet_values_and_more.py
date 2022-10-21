@@ -3,7 +3,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 import django.db.models.manager
-import games.models.player
+
 
 
 class Migration(migrations.Migration):
@@ -27,7 +27,10 @@ class Migration(migrations.Migration):
             model_name='playerbet',
             name='value',
             field=models.PositiveIntegerField(
-                default=0, validators=[games.models.player.bet_multiplicity]
+                default=0,
+                validators=[
+                    # games.models.player.bet_multiplicity
+                ],
             ),
             preserve_default=False,
         ),

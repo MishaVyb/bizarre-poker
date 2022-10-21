@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
             model_name='game',
             name='deck_generator',
             field=models.CharField(
-                default=games.models.game.get_deck_default,
+                # default=games.models.game.get_deck_default,
                 max_length=79,
                 verbose_name='name of deck generator method or contaianer',
             ),

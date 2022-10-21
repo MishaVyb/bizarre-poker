@@ -18,7 +18,9 @@ class Migration(migrations.Migration):
             name='bets',
             field=models.JSONField(
                 default=core.models.get_list_default,
-                validators=[core.validators.bet_multiplicity_list],
+                validators=[
+                    # core.validators.bet_multiplicity_list
+                ],
             ),
         ),
         migrations.AlterField(

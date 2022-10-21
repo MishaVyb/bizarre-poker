@@ -1,35 +1,13 @@
 from __future__ import annotations
-import functools
 
+from typing import TypeVar
 
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from core.utils import StrColors, init_logger
-from core.models import (
-    CreatedModifiedModel,
-    FullCleanSavingMixin,
-    IterableManager,
-    related_manager_method,
-)
-from core.validators import bet_multiplicity
-from django.db import IntegrityError, models
-from django.db.models import F, functions
-
-from games.selectors import PlayerSelector
-from games.services.cards import CardList
-from games.services.combos import Combo, ComboStacks
-
-from games.models.fields import CardListField
-from users.models import User
-
+from core.models import IterableManager, related_manager_method
+from core.utils import init_logger
+from django.db import models
 
 logger = init_logger(__name__)
-
 _T = TypeVar('_T')
-
-if TYPE_CHECKING:
-    from games.models import Player
-    from games.models import Game
 
 
 class GameManager(models.Manager[_T]):
@@ -38,18 +16,22 @@ class GameManager(models.Manager[_T]):
         Call to prefetch all nessaccery related data to handling players.
         Then call for game.select_players(..) method to initialize selector.
         """
+        # [NOTE] we have to:
+        #
+        # prefetch 'players_manager' because:
+        # [1] to know player name (for logging) | player.user.username
+        # [2] to find a player for user who make Action | user.player_at(game)
+        #
+        # prefetch 'players_manager__user' because:
+        # [1] to know other players bank wich is max possible value for bet (VaBank)
+        # [2] to chance players bank when placing bet or taking benefint
+        #
+        # and 'players_manager__user__profile'.
         prefetch_lookups = (
             'players_manager',
-            # we need to load this:
-            # [1] to know player name (for logging) | player.user.username
-            # [2] to find a player for user who make Action | user.player_at(game)
             'players_manager__user',
-            # we need to load this:
-            # [1] to know other players bank wich is max possible value for bet (VaBank)
-            # [2] to chance players bank when placing bet or taking benefint
             'players_manager__user__profile',
         )
-        # prefetch_related for other side of FogigenKey field (not select_related)
         return super().prefetch_related(*prefetch_lookups)
 
 

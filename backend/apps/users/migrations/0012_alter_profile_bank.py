@@ -15,7 +15,10 @@ class Migration(migrations.Migration):
             model_name='profile',
             name='bank',
             field=models.PositiveIntegerField(
-                default=1000, validators=[core.validators.bet_multiplicity]
+                default=1000,
+                validators=[
+                    # core.validators.bet_multiplicity
+                ],
             ),
         ),
     ]
