@@ -14,14 +14,22 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FILE_PATH = os.path.join(CURRENT_DIR, 'data.json')
 
 
+class UserSchema(pydantic.BaseModel):
+    username: str
+    password: str = ''
+    is_staff: bool = False
+    profile_bank = 1000
+
+
 class GameSchema(pydantic.BaseModel):
     pk: int
     players: list[str]
+    config_name: str = 'classic'
     run: dict[str, str] = {}
 
 
 class TestDataSchema(pydantic.BaseModel):
-    users: list[dict[str, str]]
+    users: list[UserSchema]
     games: list[GameSchema]
 
 
@@ -52,12 +60,14 @@ class Command(BaseCommand):
             model.objects.all().delete()
 
         for user_data in data.users:
-            user = User(**user_data)
-            password = user_data.get('password') or user.username
+            # profile_bank = del
+            user = User(**user_data.dict(exclude={'profile_bank'}))
+            password = user_data.password or user.username
             user.set_password(password)
-
-            # Profile objects creates inside at clean(..) method
             user.save()
+            user.profile.bank = user_data.profile_bank
+            user.profile.save()
+            
             admin = 'admin' if user.is_staff else ''
             logger.info(
                 f'User {admin} created. Authentication credentials: '
@@ -75,8 +85,13 @@ class Command(BaseCommand):
                 .order_by('ordering')
             )
 
-            game = Game(players=users, pk=game_data.pk, commit=True)
-            logger.info(f'Game created. Players: {game.players}')
+            game = Game(
+                players=users,
+                pk=game_data.pk,
+                config_name=game_data.config_name,
+                commit=True,
+            )
+            logger.info(f'Game "{game.config.name}" created. Players: {game.players}')
 
             if game_data.run:
                 kwargs = {

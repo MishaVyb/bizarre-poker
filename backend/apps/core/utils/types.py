@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from typing import Any, OrderedDict, TypeVar, Union
-
-import pydantic
+from abc import abstractmethod
+from typing import Any, OrderedDict, Protocol, TypeVar, Union, runtime_checkable
 
 _JSON_SUPPORTED = str | int | bool | float | None | list | dict | OrderedDict
 
@@ -16,21 +14,25 @@ JSON = dict[str, Any] | list[Any]
 NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 """Class for represent absence of value at defaults. Wnen None can't be used. """
 
-
+# [FIXME]
 # class _NotProvidedClass:
 #     """Class for represent absence of value at defaults. Wnen None can't be used."""
 #     pass
+
 NOT_PROVIDED = type('_NotProvidedClass', (object,), {})
 """Class for represent absence of value at defaults. Wnen None can't be used."""
 
+@runtime_checkable
+class Comparable(Protocol):
+    """Protocol for annotating comparable types."""
 
-class ComparableAbstract(metaclass=ABCMeta):
     @abstractmethod
-    def __lt__(self, other: Any) -> bool:
-        ...
+    def __lt__(self: _CT, other: _CT) -> bool:
+        pass
 
 
-class TotalComparableAbstract(metaclass=ABCMeta):
+@runtime_checkable
+class TotalComparableAbstract(Protocol):
     @abstractmethod
     def __lt__(self, other: Any) -> bool:
         ...
@@ -55,18 +57,8 @@ class TotalComparableAbstract(metaclass=ABCMeta):
     def __gt__(self, other: Any) -> bool:
         ...
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
 
-    @classmethod
-    def validate(
-        cls, value: TotalComparableAbstract, field: pydantic.fields.ModelField
-    ):
-        """Pointless method to satisfy pydantic requirements for Arbitary Types."""
-        return value
-
-
-_SupportsRichComparison = TypeVar('_SupportsRichComparison', bound=ComparableAbstract)
-_TotalComparable = TypeVar('_TotalComparable', bound=TotalComparableAbstract)
-'Simple extension for SupportsRichComparison Type'
+_CT = TypeVar("_CT", bound=Comparable)
+'CompareableType. Similar to SupportsRichComparisonT'
+_TCT = TypeVar('_TCT', bound=TotalComparableAbstract)
+'TutalCompareableType. Similar to SupportsRichComparisonT, but also supports equals. '

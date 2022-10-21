@@ -233,7 +233,7 @@ class TestGameAPI(APIGameProperties):
     def possible_actions_names(self):
         return [action['name'] for action in self.response_data]
 
-    @pytest.mark.skip('[todo] need to refactor')
+    @pytest.mark.skip('[TODO] need to refactor')
     def test_actions_endpoint_list(self):
         """test list method: get all avaliable actions"""
         self.assert_response(

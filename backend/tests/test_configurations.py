@@ -45,5 +45,5 @@ def test_configurations_setups():
     for name, schema in schemas.items():
         logger.info(f'{name}:\n' + pformat(schema.dict()) + '\n')
 
-    # [todo] make assertions
+    # [TODO] make assertions
     ...

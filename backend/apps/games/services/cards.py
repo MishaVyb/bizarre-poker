@@ -9,7 +9,7 @@ Cards comparision.
 Be careful with comparison mirrored jokers:
 
 1. In first place we compare rank and suit.
->>> JokerCard('black', reflection='A|h') == Card('A|h)
+>>> JokerCard('black', reflection='A|h') == Card('A|h')
 True
 
 2. Secondly, Red and Black Jokers are not equls even if they have the same(!) reflection

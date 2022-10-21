@@ -91,29 +91,36 @@ class BaseStage:
             )
         return possible
 
-    def get_possible_values_for(
-        self, action: Type[BaseAction] | BaseAction
-    ) -> int | Interval[int] | None:
+    def is_values_awailable(self, action: Type[BaseAction] | BaseAction) -> bool:
+        """
+        Called inside get_possible_values_for(..) before preparing any values.
+        """
         action_type = action if isinstance(action, type) else type(action)
         action_instance = action if isinstance(action, BaseAction) else None
 
         if action_type not in self.possible_actions_classes:
             logger.error('Asking for necessary values for not supported action. ')
-            return None
+            return False
 
         if self.performer is None:
             logger.error('Asking for necessary values when there are no performer. ')
-            return None
+            return False
 
         if not action_type.values_expected:
             if not action_instance:
                 # for action type return None
-                # for action instances return [] and prepere values in sub classes
+                # for action instances otherwise values will be prepared in sub classes
                 # (for action instaces we alwayse preparing a values because they ask
                 # them at self init methods)
-                return None
+                return False
 
-        return []
+        return True
+
+    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> int | Interval[int] | None:
+        if not self.is_values_awailable(action):
+            return None
+        raise NotImplementedError('Must be implemented in subclass. ')
+
 
     @property
     def performer(self) -> None | Player:
@@ -239,13 +246,14 @@ class BiddingsStage(BaseStage):
     def get_possible_values_for(
         self, action: Type[BaseAction] | BaseAction
     ) -> Interval[int] | None:
-        if super().get_possible_values_for(action) is None:
+        if not self.is_values_awailable(action):
             return None
 
-        # max bet -minus- player's bet
+        # that checked at 'is_values_awailable', but assertion here to avoid mypy error
+        assert self.performer
         return Interval(
-            min=self.game.players.aggregate_max_bet() - self.performer.bet_total,  # type: ignore
-            max=self.game.players.aggregate_possible_max_bet_for_player(self.performer),  # type: ignore
+            min=self.game.players.aggregate_max_bet() - self.performer.bet_total,
+            max=self.game.players.aggregate_possible_max_bet_for_player(self.performer),
             step=self.game.config.bet_multiplicity,
         )
 
@@ -296,7 +304,7 @@ class PlacingBlindsStage(BiddingsStage):
         raise RuntimeError
 
     def get_possible_values_for(self, action: Type[BaseAction] | BaseAction):
-        if super(BiddingsStage, self).get_possible_values_for(action) is None:
+        if not self.is_values_awailable(action):
             return None
 
         if self.performer == next(self.game.players.after_dealer_all):

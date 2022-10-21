@@ -39,7 +39,7 @@ class TestGameStages(BaseGameProperties):
             step=self.game.config.bet_multiplicity,
         )
 
-    @pytest.mark.skip('[todo] need to refactor')
+    @pytest.mark.skip('[TODO] need to refactor')
     def test_get_possible_actions_at_biddings_stages(self):
         game = self.game
 

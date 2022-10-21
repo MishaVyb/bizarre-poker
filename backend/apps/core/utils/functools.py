@@ -6,7 +6,7 @@ import logging
 import operator
 import re
 from typing import Any, Callable, Iterable, Sequence, SupportsIndex
-from core.utils.types import _SupportsRichComparison
+from core.utils.types import _CT
 
 
 def init_logger(name, level=logging.DEBUG) -> logging.Logger:
@@ -131,8 +131,8 @@ class StrColors:
 
 
 def is_sorted(
-    *sequences: Sequence[_SupportsRichComparison],
-    key: str | Callable[[_SupportsRichComparison], Any] | None = None,
+    *sequences: Sequence[_CT],
+    key: str | Callable[[_CT], Any] | None = None,
     reverse: bool = False,
 ) -> bool:
     # comparisons operator

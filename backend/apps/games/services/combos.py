@@ -123,9 +123,9 @@ class ComboKind:
 
 
 class ComboKindList(list[ComboKind]):
-    def __init__(self, __iterable: Iterable[ComboKind], *, set_pryority=True) -> None:
+    def __init__(self, __iterable: Iterable[ComboKind], *, set_priority=True) -> None:
         super().__init__(__iterable)
-        if set_pryority:
+        if set_priority:
             assert self
             priority: float = 0.00
             step: float = 1.00 / len(self)

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Type, TypeVar, overload
 
-from django.contrib.auth import get_user_model
+
 from django.contrib.auth.models import User as _DjangoUserModel
 from django.db import models
 from core.models import CreatedModifiedModel, FullCleanSavingMixin
 from core.utils.types import NOT_PROVIDED
-from core.validators import bet_multiplicity
 
 
 if TYPE_CHECKING:
@@ -20,7 +19,8 @@ _T = TypeVar('_T')
 
 
 class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
-    players: PlayerManager[Player]  # OneToMany related field defined by Django
+    players: PlayerManager[Player]
+    profile: Profile
 
     @overload
     def player_at(self, game: Game) -> Player:

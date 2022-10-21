@@ -83,7 +83,6 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     (for stages performer is None)
     """
 
-
     begins: bool = models.BooleanField(default=False)
     rounds_counter: int = models.PositiveIntegerField(default=1)
 
@@ -228,5 +227,3 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
 
     def clean(self) -> None:
         pass
-
-

@@ -24,7 +24,7 @@ class ConfigChoices(models.TextChoices):
 
 class DeckConfig(pydantic.BaseModel):
     generator: Callable[[DeckConfig], Iterable[Card]] | CardList
-    interval: Interval[Card]  # type: ignore
+    interval: Interval[Card]
     shuffling: bool
     jokers_amount: int
     iterations_amount: int
@@ -118,7 +118,7 @@ class GameConfig(pydantic.BaseModel):
         cls, amounts: list[int], values: dict, field: pydantic.fields.ModelField
     ):
         return amounts
-        # [todo] get rid of stage number suffix and validate amounts here
+        # [TODO] get rid of stage number suffix and validate amounts here
         # ...
         # ...
         related_to = 'FlopStage' if field.name == 'flops_amounts' else 'DealCardsStage'

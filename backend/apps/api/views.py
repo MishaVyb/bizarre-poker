@@ -103,7 +103,7 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
 
         response_data: dict = {}
 
-        # [todo]
+        # [TODO]
         # generate this dynamecly
         all_actions = [
             'bet',

@@ -3,24 +3,22 @@
         {
             "username": "vybornyy",
             "is_staff": true
-
         },
         {
             "username": "simusik",
             "is_staff": true
-
         },
         {
-            "username": "barticheg"
-
+            "username": "barticheg",
+            "pofile_bank": 500
         },
         {
-            "username": "arthur.morgan"
-
+            "username": "arthur.morgan",
+            "pofile_bank": 150
         },
         {
-            "username": "werhner.herzeg"
-
+            "username": "werhner.herzeg",
+            "pofile_bank": 0
         }
     ],
     "games": [
@@ -36,6 +34,7 @@
         },
         {
             "pk": 2,
+            "config_name": "foolish",
             "players": [
                 "vybornyy",
                 "simusik",
