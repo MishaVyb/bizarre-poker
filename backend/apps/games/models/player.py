@@ -108,14 +108,11 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
         ordering = [F('position').asc(nulls_last=True), 'id']
 
     def __repr__(self) -> str:
-        try:
-            n = self.position if self.position is not None else '?'
-            h = '(h)' if self.is_host else ''
-            d = '(d)' if self.is_dealer else ''
-            name = self.user.username
-            return f'({n}) {name}{h}{d}'
-        except Exception:
-            return f'{self.__class__.__name__}'
+        n = self.position if self.position is not None else '?'
+        h = '(h)' if self.is_host else ''
+        d = '(d)' if self.is_dealer else ''
+        name = self.user.username
+        return f'({n}) {name}{h}{d}'
 
     def __str__(self) -> str:
         return self.user.username

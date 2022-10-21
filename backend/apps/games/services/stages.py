@@ -71,20 +71,21 @@ class BaseStage:
 
     def get_possible_actions(
         self,
-        from_origin_actions: Iterable[Type[actions.BaseAction]] = [],
+        from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None,
     ) -> list[ActionPrototype]:
         """
         Return a set of all various prototypes for actions that could be acted. Note:
         Actions could be mutually exclusive and could not be able acted all together.
         """
-        origin = from_origin_actions or self.possible_actions_classes
+        if from_origin_actions is None:
+            from_origin_actions = self.possible_actions_classes
 
         if not self.performer:
             logger.warning('Asking for possible actions when there are no performer. ')
             return []
 
         possible = []
-        for action_class in origin:
+        for action_class in from_origin_actions:
             action_values = self.get_possible_values_for(action_class)
             possible.append(
                 action_class.prototype(self.game, self.performer, action_values)
@@ -116,11 +117,12 @@ class BaseStage:
 
         return True
 
-    def get_possible_values_for(self, action: Type[BaseAction] | BaseAction) -> int | Interval[int] | None:
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ) -> int | Interval[int] | None:
         if not self.is_values_awailable(action):
             return None
         raise NotImplementedError('Must be implemented in subclass. ')
-
 
     @property
     def performer(self) -> None | Player:
@@ -152,10 +154,32 @@ class SetupStage(BaseStage):
     message: str = 'game begins'
     message_requirement_unsatisfied: str = 'wait while {player} start this game'
 
+    def enough_players_requirement(self):
+        return len(self.game.players) > 1
+
+    def enough_money_requirement(self):
+        smallest_bank = self.game.players.aggregate_min_users_bank()
+        return self.game.config.big_blind <= smallest_bank
+
+    def host_approved_start_requirement(self):
+        return self.game.begins
+
     requirements = (
-        lambda self: self.game.begins,
-        lambda self: len(self.game.players) > 1,
+        enough_players_requirement,
+        enough_money_requirement,
+        host_approved_start_requirement,
     )
+
+    def get_possible_actions(
+        self, from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None
+    ) -> list[ActionPrototype]:
+        if not all(
+            (self.enough_players_requirement(), self.enough_money_requirement())
+        ):
+            # pre-check requrimants fails, StartAction unawailable
+            from_origin_actions = []
+
+        return super().get_possible_actions(from_origin_actions)
 
     def get_performer(self) -> Player:
         return self.game.players.host
@@ -189,7 +213,14 @@ class DealCardsStage(BaseStage):
         try:
             index = int(self.__class__.__name__[-1]) - 1
         except ValueError as e:
-            raise ValueError('Stage class with `amount` property must ends with index.')
+            # [FIXME] here is a tmp solution. we need to get rid of the stage indexes
+            #
+            if len(self.game.config.deal_cards_amounts) == 1:
+                index = 0
+            else:
+                raise ValueError(
+                    'Stage class with `amount` property must ends with index.'
+                )
 
         self.amount = self.game.config.deal_cards_amounts[index]
 
@@ -226,12 +257,14 @@ class BiddingsStage(BaseStage):
 
     def get_possible_actions(
         self,
-        from_origin_actions: Iterable[Type[actions.BaseAction]] = [],
+        from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None,
     ) -> list[ActionPrototype]:
-        origin = list(from_origin_actions) or list(self.possible_actions_classes)
+        if from_origin_actions is None:
+            from_origin_actions = self.possible_actions_classes
+        origin = list(from_origin_actions)
+
         # we take origin[0] because it contains basic (main) action
         values = self.get_possible_values_for(origin[0])
-
         if not values:
             return super().get_possible_actions(origin)
 
@@ -256,11 +289,12 @@ class BiddingsStage(BaseStage):
 
         # that checked at 'is_values_awailable', but assertion here to avoid mypy error
         assert self.performer
-        return Interval(
-            min=self.game.players.aggregate_max_bet() - self.performer.bet_total,
-            max=self.game.players.aggregate_possible_max_bet_for_player(self.performer),
-            step=self.game.config.bet_multiplicity,
-        )
+
+        step = self.game.config.bet_multiplicity
+        min = self.game.players.aggregate_max_bet() - self.performer.bet_total
+        max = self.game.players.aggregate_possible_max_bet_for_player(self.performer)
+        max = max - (max % step)
+        return Interval(min=min, max=max, step=step)
 
     def execute(self):
         self.accept_bets()

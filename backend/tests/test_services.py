@@ -93,6 +93,30 @@ class TestGameStages(BaseGameProperties):
         assert expected_actions_classes == result_action_classes
 
 
+    def test_start_stage_bank_less_then_big_blind(self):
+        poorman = self.players['vybornyy']
+        poorman.user.profile.bank = self.game.config.small_blind
+        poorman.user.profile.save()
+
+
+        # [1] start is not awailable
+        with pytest.raises(actions.ActionError):
+            actions.StartAction.run(self.game)
+
+        # [2] and AutoProcessor not falls down
+        AutoProcessor(self.game, stop_after_rounds_amount=1).run()
+
+
+    def test_start_stage_one_player(self):
+        self.game.players_manager.exclude(user=self.users['vybornyy']).delete()
+
+        # [1] start is not awailable
+        with pytest.raises(actions.ActionError):
+            actions.StartAction.run(self.game)
+
+        # [2] and AutoProcessor not falls down
+        AutoProcessor(self.game, stop_after_stage=stages.OpposingStage).run()
+
     def test_flop_stage(self):
         # arrange
         AutoProcessor(self.game, stop_after_stage=stages.SetupStage).run()

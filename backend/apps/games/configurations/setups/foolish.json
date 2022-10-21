@@ -5,7 +5,7 @@
         "jokers_amount": 0
     },
     "stages": [
-        "DealCardsStage_1"
+        "DealCardsStage"
     ],
     "deal_cards_amounts": [2],
     "flops_amounts": [3, 1, 1]

@@ -28,7 +28,13 @@ logger = init_logger(__name__)
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures('someuser', 'setup_game', 'setup_participant', 'setup_urls', 'setup_clients',)
+@pytest.mark.usefixtures(
+    'someuser',
+    'setup_game',
+    'setup_participant',
+    'setup_urls',
+    'setup_clients',
+)
 class TestGameAPI(APIGameProperties):
 
     ####################################################################################
@@ -296,22 +302,21 @@ class TestGameAPI(APIGameProperties):
         )
         self.make_log()
 
-
     def test_actions_endpoint_blind_bet_reply_check_vabank_pass(self, setup_users_banks: list[int]):
         self.assert_response('[1] vybornyy make avaliable action', 'vybornyy', 'POST', 'start')
 
-        self.assert_response('', 'simusik', 'POST', 'blind')    # 5$
+        self.assert_response('', 'simusik', 'POST', 'blind')  # 5$
         self.assert_response('', 'barticheg', 'POST', 'blind')  # 10$
 
         # first biddings stage:
         bet = 20
-        self.assert_response('act valid value', 'vybornyy', 'POST', 'bet', value=bet) # 20$
-        self.assert_response('', 'simusik', 'POST', 'reply')    # 15$
+        self.assert_response('act valid value', 'vybornyy', 'POST', 'bet', value=bet)  # 20$
+        self.assert_response('', 'simusik', 'POST', 'reply')  # 15$
         self.assert_response('', 'barticheg', 'POST', 'pass')
 
         # next biddings stage:
         self.assert_response('', 'simusik', 'POST', 'check')
-        self.assert_response('', 'vybornyy', 'POST', 'vabank') # 990$
+        self.assert_response('', 'vybornyy', 'POST', 'vabank')  # 990$
         self.assert_response('', 'simusik', 'POST', 'pass')
 
         test = '[2] check that winner got his benefit because all passed'
@@ -323,15 +328,13 @@ class TestGameAPI(APIGameProperties):
         assert winner_bank == self.initial_users_bank['vybornyy'] + benefit
 
     def test_actions_endpoint_force_continue(self):
-        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # start
-        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # blind
-        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # blind
-        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # reply
-        self.assert_response('', 'vybornyy', 'POST', 'forceContinue') # reply
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue')  # start
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue')  # blind
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue')  # blind
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue')  # reply
+        self.assert_response('', 'vybornyy', 'POST', 'forceContinue')  # reply
 
         assert self.game.stage == stages.BiddingsStage_2
-
-
 
     ####################################################################################
     # Test playerPreform Endpont
@@ -351,15 +354,5 @@ class TestGameAPI(APIGameProperties):
         self.assert_response('', 'someuser', 'POST', 'playersPreform', status.HTTP_201_CREATED)
         self.assert_response('', 'participant', 'POST', 'playersPreform', status.HTTP_400_BAD_REQUEST)
         self.assert_response('', 'vybornyy', 'POST', 'playersPreform', status.HTTP_403_FORBIDDEN)
-
-
-
-@pytest.mark.django_db
-#@pytest.mark.usefixtures()
-class TestForceContinueAction(APIGameProperties):
-    def test_actions_endpoint_force_continue_with_another_data(self, apply_default_data, apply_game, setup_urls, setup_clients):
-        change_loggers_level(logging.ERROR)
-        for i in range(200):
-            self.assert_response('', 'simusik', 'POST', 'forceContinue')
 
 

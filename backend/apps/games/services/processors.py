@@ -174,17 +174,19 @@ class BaseProcessor:
         return self.CONTINUE
 
     def _premature_final_condition(self, current_stage: BaseStage):
-        """Any condition to proceed to the final stage skiping others."""
-        # check, maybe game already at final stage or was
+        """Any condition to proceed to the final stage skip others."""
         try:
             opposing_index = self.game.stages.index(stages.OpposingStage)
         except ValueError:
             # [FIXME]
-            # in case game has no opposing stage we mast proceed to TearDownStage
+            # in that case game has no opposing stage we mast proceed to TearDownStage
+            # tmp solution:
             return False
 
+        if current_stage == stages.SetupStage:
+            return False # game not started yet
         if self.game.stage_index >= opposing_index:
-            return False
+            return False # alerady at final stages
 
         conditions: list[PrematureFinalCondition] = [
             AllOtherPassedCondition(),

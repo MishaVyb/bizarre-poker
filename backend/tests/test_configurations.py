@@ -1,3 +1,4 @@
+import logging
 from pprint import pformat
 from re import A
 from typing import Type
@@ -5,6 +6,7 @@ from typing import Type
 import pydantic
 import pytest
 from core.utils import JSON, init_logger, temporally
+from core.utils.functools import change_loggers_level
 from games.configurations.configurations import CONFIG_SCHEMAS, DEFAULT_CONFIG, GameConfig, get_config_schemas
 from games.models.game import Game
 from games.services.processors import AutoProcessor
@@ -44,17 +46,24 @@ def test_get_config_schemas_rises(monkeypath_parse_file: tuple[JSON, Type[Except
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('config_name', ['foolish', 'classic', 'cheeky', 'bizarre'])
+@pytest.mark.parametrize(
+    'config_name',
+    [
+        'default',
+        'foolish',
+        'classic',
+        'cheeky',
+        'bizarre',
+    ],
+)
 def test_configurations_setups(simple_game: Game, config_name):
     # [1] check that no rises and get our point config
     test_config = get_config_schemas(raises=True)[config_name]
 
     # [2] make sure that game processing do not falls down
+    change_loggers_level(logging.ERROR)
     with temporally(CONFIG_SCHEMAS, classic=test_config):
-        AutoProcessor(simple_game, stop_after_rounds_amount=2).run()
-
-    # [TODO] make assertions
-    ...
+        AutoProcessor(simple_game, stop_after_rounds_amount=40).run()
 
 
 @pytest.mark.django_db
@@ -63,7 +72,7 @@ def test_configurations_setups(simple_game: Game, config_name):
     [
         param_kwargs_list(
             '[01] example from README.md',
-            data={"stages": ["DealCardsStage_1", "OpposingStage"], "deal_cards_amount": 5, "jokers_amount": 10},
+            data={"stages": ["DealCardsStage", "OpposingStage"], "deal_cards_amount": 5, "jokers_amount": 10},
         ),
     ],
 )

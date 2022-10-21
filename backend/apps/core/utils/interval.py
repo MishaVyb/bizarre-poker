@@ -30,8 +30,13 @@ class Interval(GenericModel, Generic[_TCT]):
     def _step_is_multiple(cls, step: _TCT | None, values: dict):
         if not step:
             return None
-        min = values['min']
-        max = values['max']
+        try:
+            min = values['min']
+            max = values['max']
+        except KeyError as e:
+            raise ValueError(f'Both min and max are required: {e}')
+
+
         assert min % step == 0, f'Interval must be with: {min} % {step} == 0'
         assert max % step == 0, f'Interval must be with: {max} % {step} == 0'
         return step

@@ -1,3 +1,6 @@
 {
-    "name": "classic"
+    "name": "classic",
+    "deck": {
+        "jokers_amount": 5
+    }
 }

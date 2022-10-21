@@ -34,7 +34,6 @@
         {"suit": [5], "name": "flush"},
         {"rank":[3, 2], "name": "full house"},
         {"rank":[4], "name": "four of kind"},
-        {"row":[5], "suit":[5], "name": "straight flush"},
         {"rank":[5], "name": "pocker"}
     ]
 }

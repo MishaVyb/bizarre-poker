@@ -203,9 +203,14 @@ class ComboStacks:
         if self.conditions != other.conditions:
             logger.error('Comparison between combos stacks with different conditions. ')
             return False
-        if not len(self.leftovers) == len(other.leftovers):
-            logger.error('Comparison between combos whith different len of source. ')
+        if len(self.source) != len(other.source):
+            logger.error('Comparison between combos stacks with different len source. ')
             return False
+        if not len(self.leftovers) == len(other.leftovers):
+            # [FIXME]
+            # we need to handle that extra case somehow
+            logger.error('Comparison between combos whith different len of leftovers. ')
+            return True
         return True
 
     def __eq__(self, other: object) -> bool:

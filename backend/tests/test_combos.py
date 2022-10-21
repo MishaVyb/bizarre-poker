@@ -17,8 +17,20 @@ from games.services.combos import (
 
 from tests.tools import param_kwargs_list
 
-DEFAULT_COMBOS = DEFAULT_CONFIG.combos
-
+DEFAULT_COMBOS = ComboKindList(
+    [
+        ComboKind(highest_card=[1], name='high card'),
+        ComboKind(rank=[2], name='one pair'),
+        ComboKind(rank=[2, 2], name='two pair'),
+        ComboKind(rank=[3], name='three of kind'),
+        ComboKind(row=[5], name='straight'),
+        ComboKind(suit=[5], name='flush'),
+        ComboKind(rank=[3, 2], name='full house'),
+        ComboKind(rank=[4], name='four of kind'),
+        ComboKind(row=[5], suit=[5], name='straight flush'),
+        ComboKind(rank=[5], name='pocker'),
+    ]
+)
 
 @pytest.mark.parametrize(
     'input_data, expected',
