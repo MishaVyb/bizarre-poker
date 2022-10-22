@@ -39,7 +39,7 @@ class PlayerSelector:
     @property
     def _list(self):
         """tool for debuging"""
-        return list(self)
+        return tuple(self)
 
     ####################################################################################
     # players searshing
@@ -48,17 +48,15 @@ class PlayerSelector:
     def get(self, *, user: User) -> Player:
         return next(filter(lambda p: p.user == user, self._source))
 
-    def exclude(
-        self, *, player: Player | None = None, user: User | None = None
-    ) -> list[Player]:
+    def exclude(self, *, player: Player | None = None, user: User | None = None):
         if player and user:
             raise ValueError('Too many exclude parameters. ')
 
         if player:
-            return list(filter(lambda p: p != player, self._source))
+            return tuple(filter(lambda p: p != player, self._source))
         elif user:
             user_player = self.get(user=user)
-            return list(filter(lambda p: p != user_player, self._source))
+            return tuple(filter(lambda p: p != user_player, self._source))
 
         raise ValueError('No exclude parameters was provided. ')
 
@@ -164,6 +162,10 @@ class PlayerSelector:
     @property
     def host(self) -> Player:
         return next(filter(attrgetter('is_host'), self._source))
+
+    @property
+    def not_host(self):
+        return tuple(filter(reverse_attrgetter('is_host'), self._source))
 
     @property
     def dealer(self) -> Player:

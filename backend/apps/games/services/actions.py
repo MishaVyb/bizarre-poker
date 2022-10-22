@@ -1,7 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Generic, Literal, Type, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Generic,
+    Literal,
+    Sequence,
+    Type,
+    TypeAlias,
+    TypeVar,
+)
 
 from core.utils import Interval, init_logger
 
@@ -13,8 +22,9 @@ if TYPE_CHECKING:
     from games.models.player import Player
     from games.services.stages import BaseStage
 
-logger = init_logger(__name__)
+    _ActionValuesTypes: TypeAlias = int | Interval[int] | Sequence[Player] | Player
 
+logger = init_logger(__name__)
 
 _ACTION = TypeVar('_ACTION', bound='BaseAction')
 'Bounded TypeVar for Generic functions that takes any subtype of BaseAction class. '
@@ -42,7 +52,8 @@ class ActionError(Exception):
 
 
 class BaseAction:
-    value: int  # type annotation for subclasses
+    value: int | Player
+    'Action value: int for PlaceBet, Player for KickOut'
     values_expected: ClassVar[bool] = False
     'Special class flag that stages could know is value neccessary for action or not'
 
@@ -52,7 +63,7 @@ class BaseAction:
     def get_message_format(self):
         return self.message.format(player=self.player)
 
-    def __init__(self, game: Game, player: Player, **kwargs) -> None:
+    def __init__(self, game: Game, player: Player) -> None:
         check_objects_continuity(player, game.players)
         self.game = game
         self.player = player
@@ -73,7 +84,7 @@ class BaseAction:
         cls: Type[_ACTION],
         game: Game,
         user: User | Player,
-        action_values: int | Interval[int] | None = None,
+        action_values: _ActionValuesTypes | None = None,
         suitable_stage_class: Type[BaseStage] | None = None,
     ) -> ActionPrototype[_ACTION]:
         if isinstance(user, User):
@@ -121,7 +132,7 @@ class ActionPrototype(Generic[_ACTION]):
     action_class: Type[_ACTION]
     game: Game
     player: Player
-    action_values: int | Interval[int] | None = None
+    action_values: _ActionValuesTypes | None = None
     'action preppared with value in Interval range or with certain value'
     suitable_stage_class: Type[BaseStage] | None = None
     'action prperared for acting at stgae (only for AutoProcessor handling)'
@@ -168,10 +179,12 @@ class ActionPrototype(Generic[_ACTION]):
                 return False
             if isinstance(self.action_values, type(other.action_values)):
                 return self.action_values == other.action_values
-            elif isinstance(self.action_values, Interval):
+            elif isinstance(self.action_values, Interval) and isinstance(
+                other.action_values, int
+            ):
                 return other.action_values in self.action_values
-            else:
-                return NotImplemented
+
+            return NotImplemented
 
         if not isinstance(other, BaseAction):
             return NotImplemented
@@ -204,12 +217,11 @@ class ActionPrototype(Generic[_ACTION]):
                 return False
 
             if isinstance(self.action_values, Interval):
-                if other.value not in self.action_values:
-                    return False
+                return other.value in self.action_values
+            elif isinstance(self.action_values, Sequence):
+                return other.value in self.action_values
             else:
-                if not other.value == self.action_values:
-                    return False
-
+                return other.value == self.action_values
         elif self.action_values:
             return False
 
@@ -230,13 +242,6 @@ class StartAction(BaseAction):
         self.game.presave()
 
 
-class ForceContinueAction(BaseAction):
-    name = 'forceContinue'
-    message: str = '{player} forcing game continue'
-    ...
-    ...
-
-
 class EndAction(BaseAction):
     name = 'end'
     message: str = '{player} make this game ends'
@@ -246,13 +251,76 @@ class EndAction(BaseAction):
         self.game.presave()
 
 
+class ForceContinueAction(BaseAction):
+    name = 'forceContinue'
+    message: str = '{player} forcing game continue'
+    # [TODO]
+    # Move from AutoProcessing to that seperate Action
+
+
+class LeaveGame(BaseAction):
+    name = 'leaving'
+    message: str = '{player} leaves game'
+
+    def act(self):
+        self.destroy(self.player)
+
+    def destroy(self, leaver: Player):
+        # exclude self from game players selector
+        self.game.select_players(leaver.other_players)
+
+        # change player positions for new selector
+        for i, player in enumerate(self.game.players):
+            player.position = i
+            player.presave()
+
+        # transfer all bets to game bank
+        self.game.bank += leaver.bet_total
+        self.game.presave()
+
+        # perform destroy
+        leaver.delete()
+
+
+class KickOut(LeaveGame):
+    name = 'kick'
+    message: str = '{player} kicks out {kicker}'
+    values_expected = True
+    value: Player
+
+    def __init__(self, game: Game, player: Player, value: Player) -> None:
+        self.value = value
+        super().__init__(game, player)
+
+    def act(self):
+        self.destroy(self.value)
+
+    def get_message_format(self):
+        return self.message.format(player=self.player.user, kicker=self.value)
+
+
+########################################################################################
+# Biddings Actions
+########################################################################################
+
+
+class PassAction(BaseAction):
+    name = 'pass'
+    message: str = '{player} says pass'
+
+    def act(self):
+        self.player.is_active = False
+        self.player.presave()
+
+
 class PlaceBet(BaseAction):
     name = 'bet'
     message: str = '{player} place bet {value:.2f}'
     values_expected = True
+    value: int
 
     def get_message_format(self):
-        return self.message.format(player=self.player.user, value=self.value / 100)
+        return self.message.format(player=self.player.user, value=self.value)
 
     def __init__(self, game: Game, player: Player, value: int):
         self.value = value
@@ -340,12 +408,3 @@ class PlaceBetVaBank(PlaceBet):
             raise ActionError(self, 'invalid_values')
 
         super().__init__(game, player, value=values.max)
-
-
-class PassAction(BaseAction):
-    name = 'pass'
-    message: str = '{player} says pass'
-
-    def act(self):
-        self.player.is_active = False
-        self.player.presave()

@@ -113,23 +113,6 @@ class Player(FullCleanSavingMixin, CreatedModifiedModel):
             last = self.game.players_manager.last()
             self.position = last.position + 1 if last else 0
 
-    def delete(self, *args, **kwargs):
-        # [TODO] move that implementation to View function that makes that action.
-
-        # exclude self from game players selector
-        self.game.select_players(self.other_players)
-
-        # change player positions for new selector
-        for i, player in enumerate(self.game.players):
-            player.position = i
-            player.presave()
-
-        # transfer all bets to game bank
-        self.game.bank += self.bet_total
-        self.game.presave()
-
-        super().delete(*args, **kwargs)
-
     def clean(self) -> None:
         pass
 

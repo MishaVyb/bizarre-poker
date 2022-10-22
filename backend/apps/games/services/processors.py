@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Type
 
 from core.utils import StrColors, init_logger
+from core.utils.interval import Interval
 from games.services import stages
 from games.services import actions
 from games.services.actions import ActionError, ActionPrototype, BaseAction
@@ -43,10 +44,9 @@ class NoneBiddingsCondition(PrematureFinalCondition):
     message = 'bidding for nothing, only place bet check is allowed'
 
     def __call__(self, game: Game):
-        performer = game.stage.performer
-        if performer:
-            check_action = actions.PlaceBetCheck.prototype(game, performer)
-            return game.stage.get_possible_actions() == [check_action]
+        values = game.stage.get_possible_values_for(actions.PlaceBet)
+        if isinstance(values, Interval):
+            return (0, 0) == values.borders
         return False
 
 
@@ -159,6 +159,7 @@ class BaseProcessor:
     def _make_history(self, latest: BaseStage | BaseAction):
         performer = getattr(latest, 'player', None)
         value = getattr(latest, 'value', None)
+        value = value if isinstance(value, int) else str(value)
         self.game.actions_history.append(
             {
                 'class': latest.__class__.__name__,

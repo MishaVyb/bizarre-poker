@@ -246,7 +246,7 @@ class Card:
         """
         Card support access to self attributes via card[key].
 
-        >>> Card(Ace|Hearts)['rank']
+        >>> Card('Ace|Hearts')['rank']
         14
         """
         return self.__dict__[key]
@@ -708,7 +708,7 @@ class Decks:
 
     @staticmethod
     def full_deck_plus_jokers(config: DeckConfig):
-        min, max = config.interval.get_borders()
+        min, max = config.interval.borders
         for _ in range(config.iterations_amount):
             for rank in reversed(range_inclusevly(min.rank, max.rank)):
                 for suit in reversed(range_inclusevly(min.suit, max.suit)):

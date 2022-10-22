@@ -60,10 +60,10 @@ class ComboKind:
     There are 4 possible cases `rank`, `suit`, `row` and `highest_card`. They all are
     defined as sequence of positive integers. For example:
     >>> rank = [2, 2]   # Two pairs
-    >>> straight = [5]  # Five cards in a row (aka `strit`)
+    >>> straight = [5]  # Five cards in a row (aka `street`)
 
     Diferent cases also can be mixed toogether.
-    >>> ConboKind(straight = [5], suit = [5])   # simple definition for `staight-flash`
+    >>> ComboKind(row = [5], suit = [5])   # simple definition for `staight-flash`
 
     [NOTE][BUG]
     But it makes not obvious behavior with Jokers in the deck when we try to compare

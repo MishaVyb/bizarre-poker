@@ -36,6 +36,10 @@ class GamesViewSet(viewsets.ModelViewSet):
     """
     Games resorse. Main enter poitn for Plaers, Actions and playersPreform resources.
     """
+
+    def get_serializer(self, *args, **kwargs):
+        return super().get_serializer(*args, **kwargs)
+
     queryset = Game.objects.all()
     serializer_class = GameSerializer
     pagination_class = LimitOffsetPagination
@@ -89,8 +93,10 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
     those actions. All actions are changing a diferent set of values depending on
     current game state.
 
-    Mostly, that resource provide action to play game, not a basic CRUD operations.
+    ../actions/ do not provide methods to any usual CRUD operations, only to play game.
     """
+
+    permission_classes = (permitions.UserInGame,)
     action_url = '/api/v1/games/{game_pk}/actions/{name}/'
 
     def list(self, request: Request, pk: int):
@@ -240,7 +246,6 @@ class PlayersViewSet(
         """
         Get different serializers to control player hand and combo visability.
         """
-        # super().get_serializer_class()
         if not self.request.user.is_authenticated:
             return HiddenPlayerSerializer
 
@@ -286,17 +291,13 @@ class PlayersViewSet(
 
     def perform_destroy(self, instance: Player):
         game = instance.game
-        if self.get_player(game).is_host and not game.stage == stages.SetupStage:
-            raise ConflictState(
-                'Kicking player out of the game is not allowed at this stage. ',
-                game,
-                'invalid_stage',
-            )
-
-        super().perform_destroy(instance)  # instance.delete()
-        # after player came out we has to run processing to change game state
-        # and only after that save() for other players and game inctance will be called
-        BaseProcessor(game).run()
+        try:
+            if self.get_player(game).is_host:
+                actions.KickOut.run(game, self.request.user, value=instance)
+            else:
+                actions.LeaveGame.run(game, self.request.user)
+        except actions.ActionError as e:
+            raise ConflictState(e.action)
 
     def get_object(self) -> Player:
         return super().get_object()

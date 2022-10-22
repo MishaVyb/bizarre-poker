@@ -7,7 +7,7 @@ import pydantic
 from core.utils import Interval, init_logger
 from django.db import models
 from games.services import stages as stages_module
-from games.services.stages import SetupStage, TearDownStage
+from games.services.stages import BaseStage, SetupStage, TearDownStage
 from games.services.cards import Card, CardList, Decks
 from games.services.combos import ComboKind, ComboKindList
 
@@ -72,7 +72,7 @@ class GameConfig(pydantic.BaseModel):
 
     deal_cards_amounts: list[int]
     flops_amounts: list[int]
-    stages: list[str]
+    stages: list[Type[BaseStage]]
 
     combos: ComboKindList
 
@@ -112,7 +112,7 @@ class GameConfig(pydantic.BaseModel):
             stages.append(TearDownStage)
         return stages
 
-    @pydantic.validator('stages', each_item=True)
+    @pydantic.validator('stages', each_item=True, pre=True)
     def _clean_stages_items(cls, stage: str):
         assert hasattr(stages_module, stage), f'that stage does not exist: {stage}'
         return getattr(stages_module, stage)

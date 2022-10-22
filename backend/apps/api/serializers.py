@@ -56,8 +56,7 @@ class GameSerializer(serializers.ModelSerializer):
     table = CardSerializer(many=True, read_only=True)
     stage = StageSerializer(read_only=True)
     config = serializers.JSONField(source='config.dict', read_only=True)
-    config_name = serializers.CharField(default='classic', write_only=True)
-    bank_total = serializers.IntegerField(write_only=True)
+    bank_total = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Game
@@ -68,6 +67,9 @@ class GameSerializer(serializers.ModelSerializer):
         read_only_fields = [
             field.attname for field in Game._meta.fields if field.name != 'config_name'
         ]
+        extra_kwargs = {
+            'config_name': {'write_only': True}
+        }
 
 
 class CurrentGameDefault:

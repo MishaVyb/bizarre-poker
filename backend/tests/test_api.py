@@ -175,6 +175,7 @@ class TestGameAPI(APIGameProperties):
             'players/simusik',
             status.HTTP_409_CONFLICT,
         )
+
         self.assert_response(
             'success: delete himself', 'simusik', 'DELETE', 'players/simusik', status.HTTP_204_NO_CONTENT
         )

@@ -44,7 +44,7 @@ class TestPlayerSelector(BaseGameProperties):
         assert [p.is_dealer for p in game.players] == [True, False, False]
 
     def test_player_other_players_property(self):
-        expected = [self.players['simusik'], self.players['barticheg']]
+        expected = (self.players['simusik'], self.players['barticheg'])
         assert self.game.players.dealer.other_players == expected
 
     def test_player_bet(self):

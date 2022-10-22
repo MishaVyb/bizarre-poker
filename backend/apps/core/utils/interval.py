@@ -44,7 +44,8 @@ class Interval(GenericModel, Generic[_TCT]):
     def __repr__(self) -> str:
         return f'[{self.min}]->[{self.max}]' + (f'//{self.step}' if self.step else '')
 
-    def get_borders(self):
+    @property
+    def borders(self):
         return (self.min, self.max)
 
     def __contains__(self, items: _TCT | Iterable[_TCT] | None):

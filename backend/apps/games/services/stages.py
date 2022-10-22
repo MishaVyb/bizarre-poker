@@ -1,7 +1,10 @@
 from __future__ import annotations
+from copy import copy
 
 from pprint import pformat
-from typing import TYPE_CHECKING, Callable, Iterable, Type
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, TypeAlias
+
+from black import Sequence
 
 from core.utils import Interval, StrColors, init_logger
 from games.services import actions
@@ -11,6 +14,7 @@ from games.services.cards import CardList
 if TYPE_CHECKING:
     from ..models import Player
     from ..models.game import Game
+    _ActionValuesTypes: TypeAlias = int | Interval[int] | Sequence[Player] | Player
 
 logger = init_logger(__name__)
 
@@ -31,7 +35,7 @@ class RequirementNotSatisfied(Exception):
         possibles = "".join(map(str, self.stage.get_possible_actions()))
         return (
             f'{headline}. '
-            f'Requirement <{name}> are not satisfied ({verbose_message}). '
+            f'Requirement <{name}> are not satisfied ({verbose_message}). \n'
             f'Possible actions: {possibles}. '
         )
 
@@ -40,7 +44,7 @@ class BaseStage:
     requirements: tuple[Callable[[BaseStage], bool], ...] = ()
     """Requirements for stage execution. """
 
-    possible_actions_classes: tuple[type[BaseAction], ...] = ()
+    possible_actions_classes: tuple[Type[BaseAction], ...] = ()
     """Any possible actions at that stage (main action at 0 index). """
 
     message: str = 'stage has been proceed'
@@ -72,7 +76,7 @@ class BaseStage:
     def get_possible_actions(
         self,
         from_origin_actions: Iterable[Type[actions.BaseAction]] | None = None,
-    ) -> list[ActionPrototype]:
+    ) -> list[ActionPrototype[Any]]:
         """
         Return a set of all various prototypes for actions that could be acted. Note:
         Actions could be mutually exclusive and could not be able acted all together.
@@ -84,13 +88,19 @@ class BaseStage:
             logger.warning('Asking for possible actions when there are no performer. ')
             return []
 
-        possible = []
+        possibles: list[ActionPrototype[Any]] = []
         for action_class in from_origin_actions:
             action_values = self.get_possible_values_for(action_class)
-            possible.append(
+            possibles.append(
                 action_class.prototype(self.game, self.performer, action_values)
             )
-        return possible
+
+        # Append base actions wich are allowew at every stage for every player.
+        # [1] LeaveGame
+        for player in self.game.players.not_host:
+            possibles.append(actions.LeaveGame.prototype(self.game, player))
+
+        return possibles
 
     def is_values_awailable(self, action: Type[BaseAction] | BaseAction) -> bool:
         """
@@ -109,9 +119,10 @@ class BaseStage:
 
         if not action_type.values_expected:
             if not action_instance:
-                # for action type return None
-                # for action instances otherwise values will be prepared in sub classes
-                # (for action instaces we alwayse preparing a values because they ask
+                # [NOTE]
+                # for action type None is returned.
+                # for action instances otherwise values will be prepared in sub classes.
+                # (for action instaces we always preparing a values because they ask
                 # them at self init methods)
                 return False
 
@@ -119,7 +130,7 @@ class BaseStage:
 
     def get_possible_values_for(
         self, action: Type[BaseAction] | BaseAction
-    ) -> int | Interval[int] | None:
+    ) -> _ActionValuesTypes | None:
         if not self.is_values_awailable(action):
             return None
         raise NotImplementedError('Must be implemented in subclass. ')
@@ -150,7 +161,10 @@ class BaseStage:
 
 
 class SetupStage(BaseStage):
-    possible_actions_classes = (actions.StartAction,)
+    possible_actions_classes = (
+        actions.StartAction,
+        actions.KickOut,
+    )
     message: str = 'game begins'
     message_requirement_unsatisfied: str = 'wait while {player} start this game'
 
@@ -180,6 +194,13 @@ class SetupStage(BaseStage):
             from_origin_actions = []
 
         return super().get_possible_actions(from_origin_actions)
+
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ) -> _ActionValuesTypes | None:
+        if not self.is_values_awailable(action):
+            return None
+        return self.game.players.not_host
 
     def get_performer(self) -> Player:
         return self.game.players.host
@@ -242,11 +263,16 @@ class BiddingsStage(BaseStage):
         actions.PlaceBetVaBank,
         actions.PassAction,
     )
+
+    def all_players_haggled_requirement(self):
+        return not bool(list(self.game.players.without_bet))
+
+    def all_beds_equal_requirement(self):
+        return self.game.players.check_bet_equality()
+
     requirements = (
-        # every_player_place_bet_or_say_pass
-        lambda self: not bool(list(self.game.players.without_bet)),
-        # all_beds_equal
-        lambda self: self.game.players.check_bet_equality(),
+        all_players_haggled_requirement,
+        all_beds_equal_requirement
     )
 
     message: str = 'bets are accepted'
