@@ -1,28 +1,18 @@
 from __future__ import annotations
-from io import StringIO
-from itertools import chain
-import logging
+
 import re
 
 import pytest
-from core.utils import TemporaryContext
-from core.utils import StrColors, change_loggers_level, init_logger
-from rest_framework import status
-from django.core.management import call_command
-from rest_framework.test import APIClient
-from core.utils.types import JSON
-from django.http import HttpResponsePermanentRedirect
+from core.utils import StrColors, TemporaryContext, init_logger
 from games.configurations.configurations import CONFIG_SCHEMAS
-from games.models.player import Player, PlayerPreform
-from games.services import stages
+from games.models.player import PlayerPreform
+from games.services import actions, stages
 from games.services.cards import Card
-
-from games.services import actions
-from games.services.processors import AutoProcessor, BaseProcessor
-from tests.base import BaseGameProperties, APIGameProperties
-from games.services.combos import Combo
+from games.services.processors import AutoProcessor
+from rest_framework import status
 from users.models import User
 
+from tests.base import APIGameProperties
 
 logger = init_logger(__name__)
 

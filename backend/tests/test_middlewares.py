@@ -1,13 +1,9 @@
 import pytest
-from users.models import User
-from django.contrib.auth.models import AnonymousUser
-from django.http import HttpResponse
-from django.test import Client
-from django.urls import reverse
 from rest_framework.response import Response
-from rest_framework.test import APIClient
+from users.models import User
 
-from tests.base import APIGameProperties, BaseGameProperties
+from tests.base import APIGameProperties
+
 
 @pytest.mark.django_db
 class TestApiMidlware(APIGameProperties):

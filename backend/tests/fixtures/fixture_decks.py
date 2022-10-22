@@ -10,6 +10,7 @@ from core.utils import get_func_name, init_logger, is_sorted
 from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import CardList
 from games.services.combos import Combo, ComboStacks
+
 from tests.tools import param_kwargs
 
 logger = init_logger(__name__, logging.DEBUG)

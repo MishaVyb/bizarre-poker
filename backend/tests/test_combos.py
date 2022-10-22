@@ -7,13 +7,8 @@ from typing import Callable
 import pytest
 from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import CardList, Stacks
-from games.services.combos import (
-    Combo,
-    ComboKind,
-    ComboKindList,
-    ComboStacks,
-    Conditions,
-)
+from games.services.combos import (Combo, ComboKind, ComboKindList,
+                                   ComboStacks, Conditions)
 
 from tests.tools import param_kwargs_list
 

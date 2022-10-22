@@ -4,8 +4,7 @@ from typing import Any, Callable
 
 import pytest
 from core.utils import Interval
-from games.configurations.configurations import CONFIG_SCHEMAS, DEFAULT_CONFIG
-
+from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import Card, CardList, Decks, JokerCard, Stacks
 
 

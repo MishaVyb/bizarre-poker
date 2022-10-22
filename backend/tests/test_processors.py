@@ -1,15 +1,10 @@
-from pprint import pformat
 
 import pytest
-from core.utils import StrColors, init_logger
+from core.utils import init_logger
 from games.services import actions, stages
-from games.services.combos import Combo
-
 from games.services.processors import AutoProcessor
-from users.models import User
 
 from tests.base import BaseGameProperties
-from tests.tools import param_kwargs_list
 
 logger = init_logger(__name__)
 

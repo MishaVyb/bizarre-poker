@@ -1,9 +1,7 @@
 import pytest
-from core.utils import temporally
-from core.utils import init_logger
+from core.utils import init_logger, temporally
 
 from tests.base import BaseGameProperties
-
 
 logger = init_logger(__name__)
 

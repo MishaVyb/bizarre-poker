@@ -1,9 +1,7 @@
-from pprint import pformat
 import pytest
 from core.utils import Interval, StrColors, init_logger, is_sorted
 from games.services import actions, stages
 from games.services.combos import Combo
-
 from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
 
@@ -343,7 +341,7 @@ class TestGameActions(BaseGameProperties):
     def players_bets_total(self):
         return [p.bet_total for p in self.game.players.active]
 
-    # @pytest.mark.skip('test need refactoring! because of pass action at blind stage')
+    
     def test_place_bet_all_actions_and_pass_action(self, setup_users_banks):
         """This test has assertion for:
 

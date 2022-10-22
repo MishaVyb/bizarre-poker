@@ -1,13 +1,13 @@
 
-from io import StringIO
 import logging
 import os
-from pprint import pprint
 import sys
-from django.core.management import call_command
-import pytest
+from io import StringIO
+from pprint import pprint
 
+import pytest
 from core.utils import change_loggers_level
+from django.core.management import call_command
 
 
 @pytest.fixture

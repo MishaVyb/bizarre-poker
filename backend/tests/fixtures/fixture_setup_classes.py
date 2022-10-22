@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 from typing import Type, TypeVar
-from rest_framework import status
+
 import pytest
-from tests.base import APIGameProperties
-from core.utils import temporally
-from core.utils import StrColors, get_func_name, init_logger
+from core.utils import StrColors, get_func_name, init_logger, temporally
 from games.models import Game
 from games.models.player import PlayerPreform
 from games.services.cards import Decks
-
+from rest_framework import status
 from rest_framework.test import APIClient
-from tests.base import BaseGameProperties
-from tests.test_api import TestGameAPI
 from users.models import User
+
+from tests.base import APIGameProperties, BaseGameProperties
+from tests.test_api import TestGameAPI
 
 logger = init_logger(__name__)
 _T = TypeVar('_T')

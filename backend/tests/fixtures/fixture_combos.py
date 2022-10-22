@@ -1,6 +1,5 @@
 import pytest
 from _pytest.fixtures import SubRequest as PytestSubRequest
-
 from games.services.cards import CardList, Stacks
 
 from tests.tools import param_kwargs

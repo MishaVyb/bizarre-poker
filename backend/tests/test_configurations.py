@@ -1,13 +1,14 @@
 import logging
 from pprint import pformat
-from re import A
 from typing import Type
 
 import pydantic
 import pytest
 from core.utils import JSON, init_logger, temporally
 from core.utils.functools import change_loggers_level
-from games.configurations.configurations import CONFIG_SCHEMAS, DEFAULT_CONFIG, GameConfig, get_config_schemas
+from games.configurations.configurations import (CONFIG_SCHEMAS,
+                                                 DEFAULT_CONFIG, GameConfig,
+                                                 get_config_schemas)
 from games.models.game import Game
 from games.services.processors import AutoProcessor
 

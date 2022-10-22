@@ -1,6 +1,5 @@
 from core.utils import temporally
 
-
 # for test porpuses
 TEST_GLOBAL = 'default'
 

@@ -1,31 +1,19 @@
 from __future__ import annotations
-from itertools import chain
+
 import itertools
-
-import pytest
-from core.utils import init_logger
-from games.models import Game, Player
-
-from users.models import User
-from typing import Iterable, Literal, OrderedDict
-from rest_framework import status
-from rest_framework.response import Response
-from copy import copy
-
 import re
+from copy import copy
 from pprint import pformat
-from typing import Iterable, Literal, OrderedDict
+from typing import Literal, OrderedDict
 
 import pytest
 from core.utils import StrColors, init_logger
-from rest_framework import status
-
-from rest_framework.test import APIClient
 from core.utils.types import JSON
-from django.http import HttpResponsePermanentRedirect
-
-from games.services.combos import Combo
-
+from games.models import Game, Player
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.test import APIClient
+from users.models import User
 
 logger = init_logger(__name__)
 

@@ -1,13 +1,11 @@
-from io import StringIO
 import logging
-import os
-from pprint import pprint
-import sys
-from django.core.management import call_command
+from io import StringIO
+
 import pytest
+from core.utils.functools import change_loggers_level
+from django.core.management import call_command
 
 from tests.base import APIGameProperties
-from core.utils.functools import change_loggers_level
 
 
 @pytest.mark.django_db

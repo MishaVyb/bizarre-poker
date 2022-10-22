@@ -1,18 +1,17 @@
 from typing import Type
-import pydantic
+
 import pytest
-
-
-from core.utils.functools import eq_first
 from core.utils import Interval
+from core.utils.functools import eq_first
 from games.services.cards import Card
 from pydantic.error_wrappers import ValidationError
+
 
 @pytest.mark.parametrize(
     "minor, major, expected",
     [
-        ('sima', 'Sima loves you', True),
-        ('s', 'Sima loves you', True),
+        ('sima', 'Sima think of you', True),
+        ('s', 'Sima think of you', True),
         ('sima', 'M', False),
         ('sima', 'misha', False),
         ('si', 's', False),

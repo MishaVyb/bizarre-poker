@@ -4,16 +4,17 @@ from timeit import timeit
 from typing import Any
 
 import pytest
-from core.utils import ProcessingTimer, processing_timer
-from core.utils import change_loggers_level, init_logger
-from django.db import IntegrityError, models
+from core.utils import (ProcessingTimer, change_loggers_level, init_logger,
+                        processing_timer)
+from django.db import IntegrityError
 from django.db.models import Prefetch
 from games.models import Game, Player
 from games.models.managers import PlayerManager, PlayerQuerySet
-from games.services import actions, stages
+from games.services import actions
 from games.services.cards import CardList
 from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
+
 from tests.base import BaseGameProperties
 from tests.tools import ExtendedQueriesContext
 
