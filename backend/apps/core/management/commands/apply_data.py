@@ -5,6 +5,7 @@ from core.utils import StrColors, init_logger
 from django.core.management.base import BaseCommand
 from django.db import models
 from games.models import Game, Player
+from games.models.player import PlayerPreform
 from games.services import actions, stages
 from games.services.processors import AutoProcessor, BaseProcessor
 from users.models import User
@@ -24,6 +25,7 @@ class UserSchema(pydantic.BaseModel):
 class GameSchema(pydantic.BaseModel):
     pk: int
     players: list[str]
+    playersPreform: list[str] = []
     config_name: str = 'classic'
     run: dict[str, str] = {}
 
@@ -67,7 +69,7 @@ class Command(BaseCommand):
             user.save()
             user.profile.bank = user_data.profile_bank
             user.profile.save()
-            
+
             admin = 'admin' if user.is_staff else ''
             logger.info(
                 f'User {admin} created. Authentication credentials: '
@@ -91,7 +93,16 @@ class Command(BaseCommand):
                 config_name=game_data.config_name,
                 commit=True,
             )
-            logger.info(f'Game "{game.config.name}" created. Players: {game.players}')
+
+            preforms = [
+                PlayerPreform(game=game, user=User.objects.get(username=name))
+                for name in game_data.playersPreform
+            ]
+            PlayerPreform.objects.bulk_create(preforms)
+            logger.info(
+                f'Game [{game.pk}] "{game.config.name}" created. Players: {game.players}. '
+                f'In waiting: {preforms}. '
+            )
 
             if game_data.run:
                 kwargs = {

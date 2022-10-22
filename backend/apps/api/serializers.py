@@ -53,6 +53,7 @@ class GameSerializer(serializers.ModelSerializer):
         read_only=True,
         source='players_manager',
     )
+    players_preforms = serializers.StringRelatedField(many=True, read_only=True)
     table = CardSerializer(many=True, read_only=True)
     stage = StageSerializer(read_only=True)
     config = serializers.JSONField(source='config.dict', read_only=True)
@@ -67,9 +68,7 @@ class GameSerializer(serializers.ModelSerializer):
         read_only_fields = [
             field.attname for field in Game._meta.fields if field.name != 'config_name'
         ]
-        extra_kwargs = {
-            'config_name': {'write_only': True}
-        }
+        extra_kwargs = {'config_name': {'write_only': True}}
 
 
 class CurrentGameDefault:
@@ -153,6 +152,6 @@ class PlayerPreformSerializer(serializers.ModelSerializer):
             UniqueTogetherValidator(
                 queryset=PlayerPreform.objects.all(),
                 fields=['user', 'game'],
-                message='User could not make many request to join a sigle game. ',
+                message='User can not make many request to join a sigle game. ',
             )
         ]

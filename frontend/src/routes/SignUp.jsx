@@ -5,11 +5,8 @@ import { AuthContext } from '../context'
 import useLoadingWrapper from '../hooks/useLoadingWrapper'
 import AuthService from '../services/AuthService'
 
-const Login = ({preventCamingBack}) => {
-  // after login client goues to previous page
-  // preventCamingBack option used when Login component mounts to '/logout' page
-  // (we dont need go back to logout just after login)
 
+const SignUp = () => {
   const defaultAuth = { username: '', password: '' }
   const [auth, setAuth] = useState(defaultAuth)
   const [errors, setErrors] = useState(null)
@@ -18,22 +15,18 @@ const Login = ({preventCamingBack}) => {
 
   const [makeLogin, isLoading] = useLoadingWrapper(async () => {
     const authService = new AuthService()
-    await authService.login(auth.username, auth.password)
+    await authService.signUp(auth.username, auth.password)
     setErrors(authService.error_message)
 
     if (!authService.error_message) {
-      console.log('got token: ' + authService.token)
+      console.log('sign up and login -> got token: ' + authService.token)
       context.setAuth({
         username: auth.username,
         token: authService.token,
       })
       localStorage.setItem('username', auth.username)
       localStorage.setItem('token', authService.token)
-      if (preventCamingBack){
-        navigate('/me')
-      } else {
-        navigate(-1)
-      }
+      navigate(-1)
     }
   })
 
@@ -81,7 +74,7 @@ const Login = ({preventCamingBack}) => {
             </Form.Group>
             {errorItems}
             <Button variant="primary" type="submit" disabled={isLoading}>
-              {isLoading ? 'loading…' : 'login'}
+              {isLoading ? 'loading…' : 'sign up'}
             </Button>
           </Form>
         </Card>
@@ -89,5 +82,4 @@ const Login = ({preventCamingBack}) => {
     </Container>
   )
 }
-
-export default Login
+export default SignUp

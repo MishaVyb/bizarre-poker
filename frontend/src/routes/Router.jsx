@@ -12,6 +12,7 @@ import { AuthContext } from '../context'
 import Logout from './Logout'
 import MePage from './MePage'
 import delay from '../utils/functools'
+import SignUp from './SignUp'
 
 const AuthRequired = ({ children }) => {
   const { auth } = useContext(AuthContext)
@@ -71,6 +72,14 @@ export const getRouter = (authService, gameService) => {
           element: (
             <AnonymousOnly>
               <Login />
+            </AnonymousOnly>
+          ),
+        },
+        {
+          path: 'signup',
+          element: (
+            <AnonymousOnly>
+              <SignUp />
             </AnonymousOnly>
           ),
         },

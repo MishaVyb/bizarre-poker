@@ -52,9 +52,10 @@
                 "simusik",
                 "barticheg"
             ],
-            "run": {
-                "stop_before_stage": "BiddingsStage_2"
-            }
+            "playersPreform": [
+                "barticheg",
+                "arthur.morgan"
+            ]
         },
         {
             "pk": 4,
@@ -64,7 +65,7 @@
                 "simusik"
             ],
             "run": {
-                "stop_before_stage": "OpposingStage"
+                "stop_before_stage": "BiddingsStage_2"
             }
         },
         {

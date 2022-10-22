@@ -1,13 +1,23 @@
 import React from 'react'
-import { useLoaderData } from 'react-router-dom'
+import { Container, Row } from 'react-bootstrap'
+import { Link, useLoaderData } from 'react-router-dom'
+import Loader from '../components/UI/Loader'
 
 const MePage = () => {
   const userDetail = useLoaderData()
-  console.log('GameListPage' + {...userDetail})
+  if (!userDetail) {
+    return <Loader/>
+  }
+  console.log('MePage', {...userDetail})
   return (
-    <div>
-      {userDetail.id} | {userDetail.username}
-    </div>
+    <Container>
+      <Row>
+        <h3>Hi, {userDetail.username}!</h3>
+      </Row>
+      <Row>
+        <Link to={'/'}><h3>go to games</h3></Link>
+      </Row>
+    </Container>
   )
 }
 

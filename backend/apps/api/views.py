@@ -336,5 +336,8 @@ class PlayersPreformViewSet(
         permitions.UserNotInGame | permitions.ReadOnly & IsAuthenticated
     ]
 
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
-        return PlayerPreform.objects.filter(pk=self.kwargs['pk'])
+        return PlayerPreform.objects.filter(game__pk=self.kwargs['pk'])

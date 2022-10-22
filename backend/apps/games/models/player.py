@@ -142,3 +142,9 @@ class PlayerPreform(models.Model):
                 name='unique: User could not make many request to join a sigle game. ',
             ),
         ]
+
+    def __repr__(self) -> str:
+        return f'🕑({self.user.username})'
+
+    def __str__(self) -> str:
+        return self.user.username

@@ -15,13 +15,14 @@ from django.urls import reverse
 from games.configurations.configurations import CONFIG_SCHEMAS, ConfigChoices
 from games.models.fields import CardListField
 from games.models.managers import GameManager
+
 from games.selectors import PlayerSelector
 from games.services.cards import CardList
 from games.services.processors import BaseProcessor
 from users.models import User
 
 if TYPE_CHECKING:
-    from .player import Player, PlayerManager
+    from .player import Player, PlayerManager, PlayerPreform
 
 
 logger = init_logger(__name__)
@@ -30,8 +31,9 @@ logger = init_logger(__name__)
 class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     objects: GameManager[Game] = GameManager()
 
-    # OneToMany related field initialize by Django
+    # OneToMany related fields initialized by Django
     players_manager: PlayerManager[Player]
+    players_preforms: models.Manager[PlayerPreform]
 
     # players -- default is empty selector
     # call init with players to deftine PlayerSelector or call to prefetch_related

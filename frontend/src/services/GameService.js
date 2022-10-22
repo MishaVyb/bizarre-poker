@@ -4,15 +4,17 @@ import delay from '../utils/functools'
 
 const ENDPOINTS = {
   games: '/api/v1/games/',
-  gameDetail: '/api/v1/games/:gameId/',
+  gameDetail: '/api/v1/games/{game_pk}/',
 
-  players: '/api/v1/games/:gameId/players/',
-  playersDetail: '/api/v1/games/:gameId/players/:playerId',
-  playersMe: '/api/v1/games/:gameId/players/me',
-  playersOther: '/api/v1/games/:gameId/players/other',
+  players: '/api/v1/games/{game_pk}/players/',
+  playersDetail: '/api/v1/games/{game_pk}/players/:playerId',
+  playersMe: '/api/v1/games/{game_pk}/players/me',
+  playersOther: '/api/v1/games/{game_pk}/players/other',
 
-  actions: '/api/v1/games/:gameId/actions/',
-  forceContinue: '/api/v1/games/:gameId/actions/forceContinue/',  // mostly for test porpuses
+  playersPreforms: '/api/v1/games/{game_pk}/playersPreforms/',
+
+  actions: '/api/v1/games/{game_pk}/actions/',
+  forceContinue: '/api/v1/games/{game_pk}/actions/forceContinue/',
 }
 
 export default class GameService {
@@ -43,6 +45,16 @@ export default class GameService {
     const response = await axios.get(ENDPOINTS.games)
     return response.data
   }
+  async getCreateChoices() {
+    if (!this.token) {
+      console.log('warning : No token provided. ')
+      return null
+    }
+
+    await delay(500)
+    const response = await axios.options(ENDPOINTS.games, this.config)
+    return response.data?.actions?.POST?.config_name?.choices
+  }
 
   async getPlayed() {}
 
@@ -60,7 +72,17 @@ export default class GameService {
     return response.data
   }
 
-  async join() {}
+  async join(gameId) {
+    if (!this.token) {
+      console.log('warning : No token provided. ')
+      return null
+    }
+
+    const response = await axios.post(
+      ENDPOINTS.playersPreforms.replace('{game_pk}', gameId), {}, this.config
+    )
+    return response.data
+  }
 
 
   // tmp solution
@@ -71,7 +93,7 @@ export default class GameService {
       return null
     }
     const response = await axios.post(
-      ENDPOINTS.forceContinue.replace(':gameId', gameId),
+      ENDPOINTS.forceContinue.replace('{game_pk}', gameId),
       data,
       this.config
     )
@@ -98,25 +120,25 @@ export default class GameService {
 
     console.log('info : gameDetailLoader')
     let response = await axios.get(
-      ENDPOINTS.gameDetail.replace(':gameId', params.gameId),
+      ENDPOINTS.gameDetail.replace('{game_pk}', params.gameId),
       this.config
     )
     const game = response.data
 
     response = await axios.get(
-      ENDPOINTS.playersMe.replace(':gameId', params.gameId),
+      ENDPOINTS.playersMe.replace('{game_pk}', params.gameId),
       this.config
     )
     const playerMe = response.data
 
     response = await axios.get(
-      ENDPOINTS.playersOther.replace(':gameId', params.gameId),
+      ENDPOINTS.playersOther.replace('{game_pk}', params.gameId),
       this.config
     )
     const playersOther = response.data
 
     response = await axios.get(
-      ENDPOINTS.actions.replace(':gameId', params.gameId),
+      ENDPOINTS.actions.replace('{game_pk}', params.gameId),
       this.config
     )
     const actions = response.data

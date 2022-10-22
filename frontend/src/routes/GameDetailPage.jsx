@@ -20,7 +20,7 @@ const GamePage = () => {
   // and then re-load loader
   const submit = useSubmit()
   useEffect(() => {
-    const id = setInterval(submit, 1000)
+    const id = setInterval(submit, 5000)
     return () => {
       clearInterval(id)
     }
