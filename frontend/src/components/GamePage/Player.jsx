@@ -1,27 +1,71 @@
-import React from 'react'
-import { Alert, Badge, Card, Col, Container, Row } from 'react-bootstrap'
+import React, { useContext } from 'react'
+import { Alert, Badge, Button, Card, Col, Container, OverlayTrigger, Popover, Row, Tooltip } from 'react-bootstrap'
 import { useLoaderData, useRouteLoaderData } from 'react-router-dom'
+import { AuthContext } from '../../context'
+import CardsString from '../UI/CardsString'
 import CardList from './CardList'
 import classes from './Player.module.css'
 
-const Player = ({children}) => {
+const Player = ({latest, title, children}) => {
   const player = children
   const {game} = useLoaderData()
+  const {auth} = useContext(AuthContext)
 
-  let action
-  for (let i = game.actions_history.length - 1; i >= 0; i--) {
-    action = game.actions_history[i]
-    if (action.performer == player.user) {
-      break
-    }
+  let lastPerformed
+  if (latest?.performer == player.user ) {
+    lastPerformed =  <Col><Alert variant="info">{latest.message}</Alert></Col>
   }
+
+  const popover = (
+    <Popover id="popover-basic">
+      <Popover.Header as="h3">{player.combo?.kind} by thouse cards</Popover.Header>
+      <Popover.Body>
+        <CardsString>{player.combo?.chain}</CardsString>
+      </Popover.Body>
+    </Popover>
+  )
 
   return (
     <Card className={player.is_performer ? classes.performerCard : classes.notPerformerCard}>
 
-      {/* ---------- name --------- */}
+      {/* ---------- name and host / dealer --------- */}
       <Card.Title className={player.is_performer ? 'text-white' : ''}>
-        {player.user}
+        <Row>
+          {player.is_host
+            ? (
+              <OverlayTrigger placement="bottom" overlay={
+                <Tooltip id={'tooltip-is-host'}>
+                  host user
+                </Tooltip>
+              }
+              >
+                <Col>
+                  {'👑'}
+                </Col>
+              </OverlayTrigger>
+            )
+            : <Col></Col>
+          }
+          <Col md="auto">
+            {title ? title : player.user}
+          </Col>
+          {player.is_dealer
+            ? (
+              <OverlayTrigger placement="bottom" overlay={
+                <Tooltip id={'tooltip-is-host'}>
+                  dealer player
+                </Tooltip>
+              }
+              >
+                <Col>
+                  {'🎩'}
+                </Col>
+              </OverlayTrigger>
+            )
+            :<Col></Col>
+          }
+        </Row>
+
       </Card.Title>
 
       {/* ---------- hand --------- */}
@@ -30,24 +74,39 @@ const Player = ({children}) => {
       <Card.Footer>
         <Row>
           {/* ------- profile_bank --------- */}
-          <Col><Badge bg="light" text="dark"><strong>{''}{player.profile_bank}{'$'}</strong></Badge></Col>
+          <Col><Badge bg="light" text="dark"><strong>{''}{player.profile_bank}{' $'}</strong></Badge></Col>
 
           {/* ---------- combo ------------- */}
           {player.combo
-            ? <Col><Badge bg="danger" text=''><strong>{''}{player.combo?.kind}</strong></Badge></Col>
+            ? (
+              <Col md="auto">
+                <OverlayTrigger trigger="click" placement="right" overlay={popover}>
+                  <Button variant="danger" size="sm" text=''><strong>{''}{player.combo?.kind}</strong></Button>
+                </OverlayTrigger>
+              </Col>
+            )
             : <></>
           }
 
           {/* ---------- bet_total --------- */}
           {player.bets.length
-            ? <Col><Badge bg="success" ><strong>{''}{player.bet_total}</strong></Badge></Col>
+            ? (
+              <OverlayTrigger placement="bottom" overlay={
+                <Tooltip id={'tooltip'}>
+                  sum all of bets for this stage
+                </Tooltip>
+              }
+              >
+                <Col><Badge bg="success" ><strong>{player.bet_total}{' $'}</strong></Badge></Col>
+              </OverlayTrigger>
+            )
             : <></>
           }
         </Row>
 
-        {/* ---------- action history --------- */}
+        {/* ---------- last player action --------- */}
         <Row>
-          <Col><Alert variant="info">{action?.message}</Alert></Col>
+          {lastPerformed}
         </Row>
       </Card.Footer>
 

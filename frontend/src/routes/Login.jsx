@@ -22,13 +22,17 @@ const Login = ({preventCamingBack}) => {
     setErrors(authService.error_message)
 
     if (!authService.error_message) {
-      console.log('got token: ' + authService.token)
+
+      const userDetail = await authService.me()
       context.setAuth({
         username: auth.username,
+        user: userDetail,
         token: authService.token,
       })
+
       localStorage.setItem('username', auth.username)
       localStorage.setItem('token', authService.token)
+
       if (preventCamingBack){
         navigate('/me')
       } else {
@@ -39,8 +43,6 @@ const Login = ({preventCamingBack}) => {
 
   const loginSubmit = async (event) => {
     event.preventDefault()
-    console.log('logging in with:')
-    console.log(auth)
     makeLogin()
   }
 

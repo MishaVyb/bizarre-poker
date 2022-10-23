@@ -30,21 +30,15 @@ const GameItem = ({ game }) => {
       title: 'join',
       variant: 'outline-primary',
       onClick: () => {
-        gameService.join(game.id)
-        submit()
+        if (!auth?.username) {
+          navigate('login')
+        } else {
+          gameService.join(game.id)
+          submit()
+        }
       }
     }
-
-
   }
-
-
-
-  // const playerItems = game.players.map((player) => (
-
-  //   <Col key={player}>{player}</Col>
-
-  // ))
 
 
   return (

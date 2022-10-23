@@ -29,7 +29,7 @@ const AnonymousOnly = ({ children }) => {
   const { auth } = useContext(AuthContext)
   if (auth && !auth.isLoading) {
     console.log('->anonimous-only-redirection->')
-    return <Navigate to="/me" replace />
+    return <Navigate to="/" replace />
   }
   return children
 }
@@ -65,6 +65,7 @@ export const getRouter = (authService, gameService) => {
             // and only after that response loader will reload data from server
           },
           loader: gameService.gameDetailLoader, // one loader -> many requests
+          //errorElement: <ErrorPage />
 
         },
         {

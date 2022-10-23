@@ -33,6 +33,20 @@ function App() {
         username: localStorage.getItem('username'),
         token: localStorage['token'],
       }
+
+      ////////////////// extra //////////////////////////
+      // load user detail in background (no waiting)
+      const service = new AuthService(loadedAuth.token)
+      service.me().then((userDetatil) => {
+        console.log('info : get `me` at App mounting sucessfuly')
+        loadedAuth.user = userDetatil
+        setAuth(loadedAuth)
+
+      }).catch((error)=>{
+        console.log('error : get `me` failed', error)
+      })
+      ////////////////////////////////////////////////
+
       setAuth(loadedAuth)
     } else {
       setAuth(null)

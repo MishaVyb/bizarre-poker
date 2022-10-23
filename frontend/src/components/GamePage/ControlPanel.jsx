@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react'
-import { Button, ButtonGroup, Col, Row  } from 'react-bootstrap'
+import { Button, ButtonGroup, Col, OverlayTrigger, Row, Tooltip  } from 'react-bootstrap'
 import {Form as BootsrtrapForm }  from 'react-bootstrap'
 import { Form, useLoaderData} from 'react-router-dom'
 import { AuthContext } from '../../context'
@@ -10,13 +10,20 @@ const ControlPanel = ({ children}) => {
 
   const actions = children
   const {game} = useLoaderData()
-  const {gameService} = useContext(AuthContext)
+  const {gameService, auth} = useContext(AuthContext)
   const [betValue, setBetValue] = useState(actions.bet?.values?.min)
 
 
   const getButtons = ()=>{
     let buttons = []
     for (const [name, action] of Object.entries(actions)) {
+      if (name == 'kick') {
+        continue
+      }
+      if ((name == 'start' || name == 'end') && !action.available ) {
+        continue
+      }
+
       const valueElement = (name === 'bet' && action.available
         ? <strong>{betValue}{'$ '}</strong>
         : <></>
@@ -28,23 +35,36 @@ const ControlPanel = ({ children}) => {
       )
       buttons.push(
         (
-          <Button type='submit' variant={variant} key={name} disabled={!action.available}
-            onClick={()=> {
+          <OverlayTrigger key={name} placement="bottom" overlay={
+            <Tooltip id={'tooltip-is-host'}>
+              {action.help}
+            </Tooltip>
+          }
+          >
+            <Button type='submit' variant={variant} disabled={!action.available}
+              onClick={()=> {
               // pass betValue as POST data to every actions
               // but it will take affect only on bet action,
               // other action will ignore data on server side
-              gameService.post(action.url, {value: betValue})
-            }}
-          >
-            {valueElement}{name}
-          </Button>)
+                gameService.post(action.url, {value: betValue})
+              }}
+            >
+              {valueElement}{name}
+            </Button>
+          </OverlayTrigger>
+        )
       )
     }
     return buttons
   }
 
-  const buttons = useMemo(getButtons, [betValue, actions])
+  let forceShow = false
+  if (!auth.user) {
+    console.log('error : not user detail : [force] button will be showed just in case user is staff')
+    forceShow = true
+  }
 
+  const buttons = useMemo(getButtons, [betValue, actions])
   return (
 
     <Form
@@ -72,14 +92,23 @@ const ControlPanel = ({ children}) => {
           />
         </Col>
         <Col>
-          <ButtonGroup className="me-2" aria-label="First group">
+          <ButtonGroup>
+
             {buttons}
-            <Button variant='danger' type='submit' onClick={()=> {
-              console.log('onClick : forceContinue')
-              gameService.forceContinue(game.id)
-            }}>
-          force
-            </Button>
+            {
+              // this special action not in actions list and is allowed only for staff users
+              auth.user?.is_staff || forceShow
+                ? (
+                  <Button variant='danger' type='submit' onClick={()=> {
+                    console.log('onClick : forceContinue')
+                    gameService.forceContinue(game.id)
+                  }}>
+                    force
+                  </Button>
+                )
+                : <></>
+            }
+
           </ButtonGroup>
         </Col>
       </Row>

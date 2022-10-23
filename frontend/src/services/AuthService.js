@@ -2,10 +2,10 @@ import axios from 'axios'
 import autoBind from 'auto-bind'
 
 const ENDPOINTS = {
-  login: 'api/v1/auth/token/login/',
-  logout: 'api/v1/auth/token/logout/',
+  login: '/api/v1/auth/token/login/',
+  logout: '/api/v1/auth/token/logout/',
   users: '/api/v1/auth/users/',
-  me: 'api/v1/auth/users/me/',
+  me: '/api/v1/auth/users/me/',
 }
 
 export default class AuthService {

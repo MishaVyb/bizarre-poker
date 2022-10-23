@@ -8,7 +8,6 @@ const MePage = () => {
   if (!userDetail) {
     return <Loader/>
   }
-  console.log('MePage', {...userDetail})
   return (
     <Container>
       <Row>
