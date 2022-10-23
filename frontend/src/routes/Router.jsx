@@ -56,7 +56,7 @@ export const getRouter = (authService, gameService) => {
             </AuthRequired>
           ),
           action: async ({ params, request }) => {
-            console.log('ACTION', params, request)
+            console.log('info : router : action')
             // submiting a form (on <ControlPanel>) -> router `action` -> delay  -> reload `loader`
             // + post reqest to server API - need to make it before - so here is delay(..)
             await delay(100)
@@ -65,8 +65,6 @@ export const getRouter = (authService, gameService) => {
             // and only after that response loader will reload data from server
           },
           loader: gameService.gameDetailLoader, // one loader -> many requests
-          //errorElement: <ErrorPage />
-
         },
         {
           path: 'login',

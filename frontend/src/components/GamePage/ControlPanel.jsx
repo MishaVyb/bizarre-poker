@@ -2,15 +2,16 @@ import React, { useContext, useMemo, useState } from 'react'
 import { Button, ButtonGroup, Col, OverlayTrigger, Row, Tooltip  } from 'react-bootstrap'
 import {Form as BootsrtrapForm }  from 'react-bootstrap'
 import { Form, useLoaderData} from 'react-router-dom'
-import { AuthContext } from '../../context'
+import { AuthContext, ErrorContext } from '../../context'
 
 
-const ControlPanel = ({ children}) => {
+const ControlPanel = ({ children }) => {
   // children -- list of awaliable actions
 
   const actions = children
   const {game} = useLoaderData()
   const {gameService, auth} = useContext(AuthContext)
+  const {setError} = useContext(ErrorContext)
   const [betValue, setBetValue] = useState(actions.bet?.values?.min)
 
 
@@ -18,6 +19,9 @@ const ControlPanel = ({ children}) => {
     let buttons = []
     for (const [name, action] of Object.entries(actions)) {
       if (name == 'kick') {
+        continue
+      }
+      if (name == 'leave') {
         continue
       }
       if ((name == 'start' || name == 'end') && !action.available ) {
@@ -46,7 +50,9 @@ const ControlPanel = ({ children}) => {
               // pass betValue as POST data to every actions
               // but it will take affect only on bet action,
               // other action will ignore data on server side
-                gameService.post(action.url, {value: betValue})
+                gameService.post(action.url, {value: betValue}).catch((error)=> {
+                  setError(error)
+                })
               }}
             >
               {valueElement}{name}
@@ -99,9 +105,12 @@ const ControlPanel = ({ children}) => {
               // this special action not in actions list and is allowed only for staff users
               auth.user?.is_staff || forceShow
                 ? (
-                  <Button variant='danger' type='submit' onClick={()=> {
+                  <Button variant='danger' type='submit' onClick={() => {
                     console.log('onClick : forceContinue')
                     gameService.forceContinue(game.id)
+                      .catch((error)=> {
+                        setError(error)
+                      })
                   }}>
                     force
                   </Button>

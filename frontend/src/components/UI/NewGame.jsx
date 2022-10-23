@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, Col, Container, Form, Modal, Row } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
-import { AuthContext } from '../../context'
+import { AuthContext, ErrorContext } from '../../context'
 import useLoadingWrapper from '../../hooks/useLoadingWrapper'
 import Loader from './Loader'
 
@@ -13,10 +13,11 @@ const NewGame = ({show, setShow}) => {
   const handleClose = () => setShow(false)
 
   const [value, setValue] = useState(0)
-  const [errors, setErrors] = useState(null)
   const [choices, setChoices] = useState([])
   const {auth, gameService} = useContext(AuthContext)
+  const {setError} = useContext(ErrorContext)
   const navigate = useNavigate()
+
 
 
   const [getChoices, loadingChoices] = useLoadingWrapper(async () => {
@@ -41,13 +42,15 @@ const NewGame = ({show, setShow}) => {
     )
   })
   const [performCreation, loadingCreations] = useLoadingWrapper(async () => {
-    const newGame = await gameService.create()
-    setErrors(gameService.error_message)
-
-    if (!gameService.error_message) {
+    const config = choices[value].value
+    let newGame
+    newGame = await gameService.create(config).catch((error) => {setError(error)})
+    if (newGame) {
       navigate(`/games/${newGame.id}/`)
-
+    } else {
+      setShow(false)
     }
+
   })
 
 
@@ -57,15 +60,7 @@ const NewGame = ({show, setShow}) => {
     performCreation()
   }
 
-  let errorItems
-  if (errors) {
-    errorItems = Object.entries(errors).map(([key, value]) => (
-      <Alert variant="danger" key={key}>
-        <h5>{key}</h5>
-        {value}
-      </Alert>
-    ))
-  }
+
 
   return (
     <Modal show={show} onHide={handleClose}>
@@ -96,13 +91,11 @@ const NewGame = ({show, setShow}) => {
             <Row>
               {choicesItems}
             </Row>
-
-            {errorItems}
           </Container>
         </Form>
       </Modal.Body>
       <Modal.Footer >
-        {errorItems}
+
         <Container className="">
           <Row>
             <Button variant="primary-outline" onClick={handleClose}>

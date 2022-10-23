@@ -29,7 +29,6 @@ const OffcanvasPlayers = ({...props}) => {
     lastPosition = player.position  // [todo] need refactoring
     let button
     if (playerMe.is_host) {
-      //const isDisabled = (game.stage.name == 'SetupStage'
 
       const isDisabled = !actions.kick?.available
       button = (
@@ -37,7 +36,7 @@ const OffcanvasPlayers = ({...props}) => {
           placement="end"
           overlay={
             <Tooltip id={'tooltip-fdsa'}>
-              
+
             </Tooltip>
           }
         >
@@ -66,7 +65,6 @@ const OffcanvasPlayers = ({...props}) => {
   const preplayersComonents = game.players_preforms.map((preplayer, i) => {
     const handleKick = async () => {
       const response = await gameService.approveJoin(game.id, preplayer)
-      console.log(response)
       submit()
     }
 
@@ -78,7 +76,7 @@ const OffcanvasPlayers = ({...props}) => {
         </Button>
       )
     }
-    console.log(preplayer)
+
     return (
       <Row key={preplayer}>
         <Col>
@@ -106,7 +104,7 @@ const OffcanvasPlayers = ({...props}) => {
         <Offcanvas.Body>
           <Offcanvas.Title>in game</Offcanvas.Title>
           {playersComonents}
-          <Offcanvas.Title>waiting for approval</Offcanvas.Title>
+          <Offcanvas.Title>{preplayersComonents.length ? 'waiting for approval' : ''}</Offcanvas.Title>
           {preplayersComonents}
         </Offcanvas.Body>
       </Offcanvas>

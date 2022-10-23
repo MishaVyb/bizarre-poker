@@ -1,6 +1,6 @@
-import { React, useEffect, useState } from 'react'
+import { React, useContext, useEffect, useState } from 'react'
 import { Alert, Badge, Button, ButtonGroup, Col, Container, Offcanvas, OverlayTrigger, Row, Tooltip } from 'react-bootstrap'
-import { useLoaderData, useSubmit } from 'react-router-dom'
+import { useLoaderData, useNavigate, useSubmit } from 'react-router-dom'
 
 import CardList from '../components/GamePage/CardList'
 import Player from '../components/GamePage/Player'
@@ -8,38 +8,44 @@ import Loader from '../components/UI/Loader'
 import ControlPanel from '../components/GamePage/ControlPanel'
 import OffcanvasHistory from '../components/UI/OffcanvasHistory'
 import OffcanvasPlayers from '../components/UI/OffcanvasPlayers'
+import GameService from '../services/GameService'
+import { AuthContext, ErrorContext } from '../context'
 
 const GamePage = () => {
   const data = useLoaderData()
+  const {gameService} = useContext(AuthContext)
+  const {setError} = useContext(ErrorContext)
+  const navigate = useNavigate()
+
   if (!data) {
     return <Loader />
   }
   const { game, playerMe, playersOther, actions } = data
 
-  // ------ Offcanvas
-
-  const [showPlayers, setShowPlayers] = useState(false)
-  const handleShowPlayers = () => { setShowPlayers(true)}
-  const handleClosePlayers = () => setShowPlayers(false)
-
-  const [showHistory, setShowHistory] = useState(false)
-  const handleCloseHistory = () => setShowHistory(false)
-  const handleShowHistory = () => setShowHistory(true)
-
-
-
   //------------- AUTO RELOADER ----------
   // we are making fake post request to the same page every 2 sec
   // react-router-dom handle this faky submit action in router 'action' attribute
   // and then re-load loader
-  // const submit = useSubmit()
-  // useEffect(() => {
-  //   const id = setInterval(submit, 5000)
-  //   return () => {
-  //     clearInterval(id)
-  //   }
-  // }, [])
+  const submit = useSubmit()
+  useEffect(() => {
+    const id = setInterval(submit, 2500)
+    return () => {
+      clearInterval(id)
+    }
+  }, [])
   //---------------------------------------
+
+  let notEnoughPlayers
+  if (game.players.length == 1) {
+    notEnoughPlayers = (<Alert variant="danger">you can not play by 1 player! <strong>join somebody</strong></Alert>)
+  }
+  let notEnoughMoney
+  for (let i = 0; i < playersOther.length; i++) {
+    const player = playersOther[i]
+    if (player.profile_bank < game.config.big_blind) {
+      notEnoughMoney = (<Alert variant="danger"><strong>{player.user}</strong> does not have enough money! <strong>kick him out</strong></Alert>)
+    }
+  }
 
   let latestStageAction
   let latestPlayerAction
@@ -65,17 +71,32 @@ const GamePage = () => {
     <Container className={'text-center'}>
       {/* ------------ info panel -------------- */}
       <Row>
-        <Col>
-          {latestStageAction}
-        </Col>
+        {notEnoughPlayers ? (<Col>{notEnoughPlayers}</Col>) : <></>}
+        {notEnoughMoney ? (<Col>{notEnoughMoney}</Col>) : <></>}
+        {latestStageAction ? (<Col>{latestStageAction}</Col>) : <></>}
+
         <Col>
           <Alert variant="info">{game.stage.status}</Alert>
         </Col>
       </Row>
+
+      {/* ------------ second info panel -------------- */}
       <Row>
         <Col>
-          <OffcanvasPlayers placement="start"/>
+          <ButtonGroup>
+            <OffcanvasPlayers placement="start"/>
+            <Button variant='outline-danger' onClick={()=>{
+
+              gameService.leave(game.id, playerMe.user).catch((error)=>{setError(error)})
+              navigate('/')
+
+
+            }}>
+              leave game
+            </Button>
+          </ButtonGroup>
         </Col>
+
         <Col>
           <ButtonGroup>
             <OverlayTrigger placement="bottom" overlay={
@@ -88,7 +109,7 @@ const GamePage = () => {
             </OverlayTrigger>
             <OverlayTrigger placement="bottom" overlay={
               <Tooltip id={'tooltip'}>
-                game bank
+                round bank
               </Tooltip>
             }
             >

@@ -16,6 +16,11 @@ const Player = ({latest, title, children}) => {
     lastPerformed =  <Col><Alert variant="info">{latest.message}</Alert></Col>
   }
 
+  const dealTotalAmount = game.config.deal_cards_amounts.reduce(
+    (partialSum, a) => partialSum + a,
+    0
+  )
+
   const popover = (
     <Popover id="popover-basic">
       <Popover.Header as="h3">{player.combo?.kind} by thouse cards</Popover.Header>
@@ -69,7 +74,7 @@ const Player = ({latest, title, children}) => {
       </Card.Title>
 
       {/* ---------- hand --------- */}
-      <CardList amount={game.config.deal_cards_amount}>{player.hand}</CardList>
+      <CardList amount={dealTotalAmount}>{player.hand}</CardList>
 
       <Card.Footer>
         <Row>

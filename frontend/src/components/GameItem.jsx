@@ -48,6 +48,9 @@ const GameItem = ({ game }) => {
           <Col>
             <h3>{game.id}</h3>
           </Col>
+          <Col>
+            {auth.username == game.host ? <Badge bg="warning">hosted</Badge> : <></>}
+          </Col>
 
           <Col>
             <Badge bg='light'>

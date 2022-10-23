@@ -58,13 +58,13 @@ export default class GameService {
 
   ////////////////////////////// create destroy game  ////////////////////////////////////////
 
-  async create() {
+  async create(config_name) {
     if (!this.token) {
       console.log('warning : No token provided. ')
       return null
     }
 
-    const response = await axios.post(ENDPOINTS.games, {}, this.config)
+    const response = await axios.post(ENDPOINTS.games, {config_name}, this.config)
     return response.data
   }
 
@@ -102,8 +102,12 @@ export default class GameService {
 
     const url = ENDPOINTS.playersDetail.replace('{game_pk}', gameId).replace('{username}', username)
     const response = await axios.delete(url, this.config)
-    console.log(`${username} kicked out`)
     return response.data
+  }
+
+  async leave(gameId, username) {
+    // just a riderection to the same post request
+    return this.kick(gameId, username)
   }
 
 
@@ -133,6 +137,7 @@ export default class GameService {
       this.config
     )
     return response.data
+
   }
 
 
