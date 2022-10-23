@@ -49,7 +49,7 @@ const GameItem = ({ game }) => {
             <h3>{game.id}</h3>
           </Col>
           <Col>
-            {auth.username == game.host ? <Badge bg="warning">hosted</Badge> : <></>}
+            {auth?.username == game.host ? <Badge bg="warning">hosted</Badge> : <></>}
           </Col>
 
           <Col>
