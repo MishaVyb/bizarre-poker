@@ -4,18 +4,17 @@
     "big_blind": 2,
     "bet_multiplicity": 1,
     "deck": {
-        "jokers_amount": 10
+        "jokers_amount": 20
     },
     "stages": [
         "DealCardsStage_1",
-        "PlacingBlindsStage",
         "BiddingsStage_1",
-        "DealCardsStage_2",
+        "FlopStage_1",
         "BiddingsStage_2",
-        "DealCardsStage_3",
+        "FlopStage_2",
         "BiddingsStage_3",
         "OpposingStage"
     ],
-    "deal_cards_amounts": [2, 2, 2],
-    "flops_amounts": []
+    "deal_cards_amounts": [2],
+    "flops_amounts": [3, 2, 2]
 }

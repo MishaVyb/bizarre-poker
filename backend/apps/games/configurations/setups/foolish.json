@@ -1,12 +1,15 @@
 {
     "name": "foolish",
-    "deck": {
-        "interval": ["Jack|Clubs", "Ace|Spades"],
-        "jokers_amount": 0
-    },
     "stages": [
-        "DealCardsStage"
+        "FlopStage_1",
+        "DealCardsStage_1",
+        "FlopStage_2",
+        "FlopStage_3",
+        "DealCardsStage_2",
+        "FlopStage_4",
+        "FlopStage_5",
+        "OpposingStage"
     ],
-    "deal_cards_amounts": [2],
-    "flops_amounts": [3, 1, 1]
+    "deal_cards_amounts": [1, 1],
+    "flops_amounts": [1, 1, 1, 1, 1]
 }

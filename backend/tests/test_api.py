@@ -331,6 +331,7 @@ class TestGameAPI(APIGameProperties):
     # Test playerPreform Endpont
     ####################################################################################
 
+    @pytest.mark.xfail
     def test_player_preform_endpoint(self):
         # list
         self.assert_response('', 'anonymous', 'GET', 'playersPreform', status.HTTP_401_UNAUTHORIZED)

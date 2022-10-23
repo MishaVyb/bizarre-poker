@@ -22,6 +22,8 @@ class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
     players: PlayerManager[Player]
     profile: Profile
 
+    REQUIRED_FIELDS = ['profile', 'is_staff']
+
     @overload
     def player_at(self, game: Game) -> Player:
         ...

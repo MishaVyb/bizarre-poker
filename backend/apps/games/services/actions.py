@@ -235,7 +235,8 @@ class ActionPrototype(Generic[_ACTION]):
 
 class StartAction(BaseAction):
     name = 'start'
-    message: str = '{player} make this game beggins'
+    message: str = '{player} makes this game begins'
+    help_text: str = 'if you`re ready, click to begin'
 
     def act(self):
         self.game.begins = True
@@ -244,7 +245,8 @@ class StartAction(BaseAction):
 
 class EndAction(BaseAction):
     name = 'end'
-    message: str = '{player} make this game ends'
+    message: str = '{player} makes this game end'
+    help_text: str = 'continue to next game round'
 
     def act(self):
         self.game.begins = False
@@ -253,14 +255,15 @@ class EndAction(BaseAction):
 
 class ForceContinueAction(BaseAction):
     name = 'forceContinue'
-    message: str = '{player} forcing game continue'
+    message: str = '{player} is forcing game continue'
     # [TODO]
     # Move from AutoProcessing to that seperate Action
 
 
 class LeaveGame(BaseAction):
-    name = 'leaving'
+    name = 'leave'
     message: str = '{player} leaves game'
+    help_text: str = 'quit this game'
 
     def act(self):
         self.destroy(self.player)
@@ -285,6 +288,7 @@ class LeaveGame(BaseAction):
 class KickOut(LeaveGame):
     name = 'kick'
     message: str = '{player} kicks out {kicker}'
+    help_text: str = 'remove this player from game'
     values_expected = True
     value: Player
 
@@ -307,6 +311,7 @@ class KickOut(LeaveGame):
 class PassAction(BaseAction):
     name = 'pass'
     message: str = '{player} says pass'
+    help_text: str = 'do not reply to bet and skip this round'
 
     def act(self):
         self.player.is_active = False
@@ -316,8 +321,10 @@ class PassAction(BaseAction):
 class PlaceBet(BaseAction):
     name = 'bet'
     message: str = '{player} place bet {value:.2f}'
+    help_text: str = 'place bet'
     values_expected = True
     value: int
+
 
     def get_message_format(self):
         return self.message.format(player=self.player.user, value=self.value)
@@ -341,6 +348,7 @@ class PlaceBet(BaseAction):
 class PlaceBlind(PlaceBet):
     name = 'blind'
     message: str = '{player} place {blind} blind'
+    help_text: str = 'blind is a neccessary bet at beginings'
     values_expected = False
 
     def get_message_format(self):
@@ -360,13 +368,14 @@ class PlaceBlind(PlaceBet):
 
 
 class PlaceBetCheck(PlaceBet):
-    """Player won`t place any bet.
-
-    In that case we place 0 to mark that plyer made his desigion about bet.
+    """
+    Player won`t place any bet.
+    In that case we place 0 to mark that plyer made his decision about bet.
     """
 
     name = 'check'
     message: str = '{player} says check'
+    help_text: str = 'place nothing'
     values_expected = False
 
     def __init__(self, game: Game, player: Player):
@@ -375,10 +384,13 @@ class PlaceBetCheck(PlaceBet):
 
 
 class PlaceBetReply(PlaceBet):
-    """Reply to other player bet. Place min possible bet value."""
+    """
+    Reply to other player bet. Place min possible bet value.
+    """
 
     name = 'reply'
     message: str = '{player} reply to bet'
+    help_text: str = 'reply to opponents bet'
     values_expected = False
 
     def __init__(self, game: Game, player: Player):
@@ -398,6 +410,7 @@ class PlaceBetVaBank(PlaceBet):
 
     name = 'vabank'
     message: str = '{player} placed all in (vabank)'
+    help_text: str = 'all in'
     values_expected = False
 
     def __init__(self, game: Game, player: Player):

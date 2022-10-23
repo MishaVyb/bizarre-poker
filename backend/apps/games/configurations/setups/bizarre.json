@@ -4,8 +4,8 @@
         "jokers_amount": 20,
         "iterations_amount": 4
     },
-    "deal_cards_amounts": [4],
-    "flops_amounts": [2, 1, 1],
+    "deal_cards_amounts": [3],
+    "flops_amounts": [2, 2, 1],
 
     "combos": [
         {"highest_card": [1], "name": "high card"},

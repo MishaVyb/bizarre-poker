@@ -440,7 +440,10 @@ class OpposingStage(BaseStage):
 
 
 class TearDownStage(BaseStage):
-    possible_actions_classes = (actions.EndAction,)
+    possible_actions_classes = (
+        actions.EndAction,
+        actions.KickOut,
+    )
     message: str = 'game round is over'
     message_requirement_unsatisfied: str = (
         'wait while {player} confirm ending this game'
@@ -450,6 +453,13 @@ class TearDownStage(BaseStage):
 
     def get_performer(self) -> Player:
         return self.game.players.host
+
+    def get_possible_values_for(
+        self, action: Type[BaseAction] | BaseAction
+    ) -> _ActionValuesTypes | None:
+        if not self.is_values_awailable(action):
+            return None
+        return self.game.players.not_host
 
     def execute(self):
         self.clean_game_data()
@@ -493,3 +503,5 @@ BiddingsStage_4 = BiddingsStage.factory('BiddingsStage_4')
 FlopStage_1 = FlopStage.factory('FlopStage_1')
 FlopStage_2 = FlopStage.factory('FlopStage_2')
 FlopStage_3 = FlopStage.factory('FlopStage_3')
+FlopStage_4 = FlopStage.factory('FlopStage_4')
+FlopStage_5 = FlopStage.factory('FlopStage_5')

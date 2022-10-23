@@ -1,18 +1,41 @@
+
+from djoser.serializers import UserSerializer
 from games.models import Game, Player
 from games.models.player import PlayerPreform
 from games.services.actions import ActionPrototype
 from games.services.cards import Card, JokerCard
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
-from users.models import User
+from users.models import Profile, User
 
 from apps.api import validators
+from djoser.conf import settings
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('bank',)
+
+class CustomUserSerializer(UserSerializer):
+    """
+    Extend default to provide user pofile.
+    """
+    profile = UserProfileSerializer(read_only=True)
+
+    class Meta(UserSerializer.Meta):
+        model = User
+        fields = tuple(User.REQUIRED_FIELDS) + (
+            settings.USER_ID_FIELD,
+            settings.LOGIN_FIELD,
+        )
+
 
 
 class ActionSerializer(serializers.Serializer):
     available = serializers.BooleanField(default=True)
     url = serializers.SerializerMethodField()
     values = serializers.JSONField(source='action_values.dict', allow_null=True)
+    help = serializers.CharField(source='action_class.help_text', allow_null=True)
 
     def get_url(self, obj: ActionPrototype):
         url = self.context.get('action_url')
@@ -58,6 +81,13 @@ class GameSerializer(serializers.ModelSerializer):
     stage = StageSerializer(read_only=True)
     config = serializers.JSONField(source='config.dict', read_only=True)
     bank_total = serializers.IntegerField(read_only=True)
+    host = serializers.SerializerMethodField(read_only=True)
+
+    def get_host(self, obj: Game):
+        """
+        Shortcut to more easy frontend handling.
+        """
+        return str(obj.players.host)
 
     class Meta:
         model = Game
@@ -99,9 +129,11 @@ class PlayerSerializer(serializers.ModelSerializer):
         model = Player
         exclude = ('id', 'created', 'modified')
         extra_kwargs = {
-            # position is requered for model but not for serializer
-            # position is generated at model init_clean before saving
+            # [NOTE] position and is_host:
+            # those fiels are requered for model but not for serializer
+            # (they will be generated at model init_clean before saving)
             'position': {'read_only': True},
+            'is_host': {'read_only': True},
         }
         validators = [
             UniqueTogetherValidator(

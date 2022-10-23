@@ -18,7 +18,7 @@
         },
         {
             "username": "werhner.herzeg",
-            "pofile_bank": 0
+            "pofile_bank": 50
         }
     ],
     "games": [
@@ -53,7 +53,7 @@
                 "barticheg"
             ],
             "playersPreform": [
-                "barticheg",
+                "werhner.herzeg",
                 "arthur.morgan"
             ]
         },
@@ -72,6 +72,12 @@
             "pk": 5,
             "players": [
                 "vybornyy"
+            ],
+            "playersPreform": [
+                "simusik",
+                "barticheg",
+                "arthur.morgan",
+                "werhner.herzeg"
             ]
         }
     ]

@@ -63,7 +63,7 @@ class ComboKind:
     >>> straight = [5]  # Five cards in a row (aka `street`)
 
     Diferent cases also can be mixed toogether.
-    >>> ComboKind(row = [5], suit = [5])   # simple definition for `staight-flash`
+    >>> kind = ComboKind(row = [5], suit = [5])  # simple definition for `staight-flash`
 
     [NOTE][BUG]
     But it makes not obvious behavior with Jokers in the deck when we try to compare

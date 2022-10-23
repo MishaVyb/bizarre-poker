@@ -182,6 +182,13 @@ SWAGGER_SETTINGS = {
    }
 }
 
+
+DJOSER = {
+    'SERIALIZERS': {
+        'current_user': 'api.serializers.CustomUserSerializer',
+    },
+}
+
 CORS_ORIGIN_WHITELIST = [
      'http://localhost:3000'
 ]

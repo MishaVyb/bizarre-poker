@@ -42,15 +42,12 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     @property
     def players(self) -> PlayerSelector:
         if self._players_selector is None:
-            logger.warning(
-                StrColors.yellow(
-                    'None selector. Call for select_players(..) before. '
-                    'They will be selected here to continue. '
-                )
-            )
+            detail = 'Call for select_players(..) before. They will be selected here. '
+            logger.warning(StrColors.yellow('None selector.') + detail)
             self.select_players(force_cashing=True, force_prefetching=True)
             return self.players
         return self._players_selector
+
 
     config_name: str = models.CharField(
         choices=ConfigChoices.choices,

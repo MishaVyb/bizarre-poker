@@ -8,10 +8,10 @@ from games.services.processors import BaseProcessor
 from rest_framework import exceptions, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
-from users.models import DjangoUserModel, User
+from users.models import DjangoUserModel, Profile, User
 
 from api import permitions
 from api.exceptions import ConflictState
@@ -99,30 +99,22 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
     permission_classes = (permitions.UserInGame,)
     action_url = '/api/v1/games/{game_pk}/actions/{name}/'
 
+    # [TODO]
+    # get this list from ActionsViewSet extra actions configuration
+    all_actions = ('bet', 'blind', 'check', 'reply', 'vabank', 'pass', 'end', 'start')
+
     def list(self, request: Request, pk: int):
         user: User = request.user
         game = self.get_game()
         player = user.player_at(game)
 
+        response_data: dict = {}
+        for name in self.all_actions:
+            response_data[name] = {'available': False}
         possibles = game.stage.get_possible_actions()
         context = {'action_url': self.action_url, 'game_pk': game.pk}
 
-        response_data: dict = {}
 
-        # [TODO]
-        # generate this dynamecly
-        all_actions = [
-            'bet',
-            'blind',
-            'check',
-            'reply',
-            'vabank',
-            'pass',
-            'end',
-            'start',
-        ]
-        for name in all_actions:
-            response_data[name] = {'available': False}
         for proto in possibles:
             if proto.player == player:
                 serializer = ActionSerializer(instance=proto, context=context)
@@ -189,7 +181,7 @@ class ActionsViewSet(GameInterfaceMixin, viewsets.ViewSet):
     @action(
         methods=['post'],
         detail=False,
-        # permission_classes=[IsAdminUser],
+        permission_classes=[IsAdminUser],
         url_path='forceContinue',
         url_name='forceContinue',
     )
@@ -225,7 +217,7 @@ class PlayersViewSet(
     """
     Players resource. Allowed methods:
     - list and retrieve methods
-    - create method (when Host approved User joining)
+    - create method (when Host approv User joining)
     - destroy method (when User leaves game)
     """
 
@@ -235,12 +227,7 @@ class PlayersViewSet(
         | permitions.HostCreatePlayer
         | permitions.UserDestroyPlayer,
     )
-
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    def get_serializer_context(self):
-        return super().get_serializer_context()
+    lookup_value_regex = r"[\w.]+"  # to include dots (.) in url path
 
     def get_serializer_class(self):
         """
@@ -274,12 +261,12 @@ class PlayersViewSet(
         user: User = serializer.validated_data['user']
         game: Game = serializer.validated_data['game']
 
-        if not game.stage == stages.SetupStage:
-            raise ConflictState(
-                'Admission of participants to the game is not allowed at this stage. ',
-                game,
-                'invalid_stage',
+        if game.stage not in [stages.SetupStage, stages.TearDownStage]:
+            message = (
+                'Admission of participants is not allowed at this stage. '
+                'Only between rounds. '
             )
+            raise ConflictState(message, game, 'invalid_stage')
 
         try:
             player_preform = PlayerPreform.objects.get(user=user, game=game)
@@ -287,16 +274,18 @@ class PlayersViewSet(
             raise exceptions.NotFound('User is not waiting to take part in game. ')
 
         player_preform.delete()
-        return super().perform_create(serializer)  # serializer.save()
+        super().perform_create(serializer)  # serializer.save()
 
     def perform_destroy(self, instance: Player):
         game = instance.game
+
         try:
             if self.get_player(game).is_host:
                 actions.KickOut.run(game, self.request.user, value=instance)
             else:
                 actions.LeaveGame.run(game, self.request.user)
         except actions.ActionError as e:
+            # allowed only between rounds: at SetupStage and TearDownStage
             raise ConflictState(e.action)
 
     def get_object(self) -> Player:
@@ -335,6 +324,7 @@ class PlayersPreformViewSet(
     permission_classes = [
         permitions.UserNotInGame | permitions.ReadOnly & IsAuthenticated
     ]
+    lookup_value_regex = r"[\w.]+"  # to include dots (.) in url path
 
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
