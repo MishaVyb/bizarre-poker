@@ -10,15 +10,15 @@
         },
         {
             "username": "barticheg",
-            "pofile_bank": 500
+            "pofile_bank": 1250
         },
         {
             "username": "arthur.morgan",
-            "pofile_bank": 150
+            "pofile_bank": 500
         },
         {
             "username": "werhner.herzeg",
-            "pofile_bank": 50
+            "pofile_bank": 750
         }
     ],
     "games": [
@@ -28,21 +28,23 @@
                 "vybornyy",
                 "simusik",
                 "barticheg",
-                "arthur.morgan",
                 "werhner.herzeg"
+            ],
+            "playersPreform": [
+                "arthur.morgan"
             ]
         },
         {
             "pk": 2,
             "config_name": "bizarre",
             "players": [
-                "vybornyy",
                 "simusik",
+                "vybornyy",
                 "barticheg",
                 "arthur.morgan"
             ],
             "run": {
-                "stop_before_stage": "PlacingBlindsStage"
+                "stop_before_stage": "FlopStage_1"
             }
         },
         {
@@ -69,6 +71,7 @@
             }
         },
         {
+            "config_name": "foolish",
             "pk": 5,
             "players": [
                 "vybornyy"

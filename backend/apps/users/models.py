@@ -20,7 +20,14 @@ _T = TypeVar('_T')
 
 class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
     players: PlayerManager[Player]
-    profile: Profile
+    _profile: Profile
+
+    @property
+    def profile(self):
+        # [FIXME]
+        if not hasattr(self, '_profile'):
+            Profile.objects.create(user=self)
+        return self._profile
 
     REQUIRED_FIELDS = ['profile', 'is_staff']
 
@@ -43,8 +50,7 @@ class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
             return default
 
     def clean(self):
-        if not hasattr(self, 'profile'):
-            Profile.objects.create(user=self)
+        pass
 
     class Meta:
         proxy = True
@@ -57,7 +63,7 @@ class Profile(FullCleanSavingMixin, CreatedModifiedModel):
     """
 
     user: UserProxy = models.OneToOneField(
-        UserProxy, on_delete=models.CASCADE, related_name='profile'
+        UserProxy, on_delete=models.CASCADE, related_name='_profile'
     )
     bank: int = models.PositiveIntegerField(default=1000)
     """Users money account in cents. Default is 10.00$."""

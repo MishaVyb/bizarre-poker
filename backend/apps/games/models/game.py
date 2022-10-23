@@ -165,7 +165,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         return `self`
         """
         if force_prefetching:
-            lookup = 'user__profile'
+            lookup = 'user___profile'
             default_source = self.players_manager.prefetch_related(lookup).all()
         else:
             default_source = self.players_manager.all()
@@ -197,7 +197,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # using selectr_related through players_manager, not prefetch_related
         # because anyway we will cashe qs, so it`s better make 1 query then 3
         # (1- for players 2- for users 3- for user.profiles)
-        qs = self.players_manager.select_related('user__profile')
+        qs = self.players_manager.select_related('user___profile')
 
         # just update selected players at this game instance
         # in this case we need force_cashing for index acsessing
