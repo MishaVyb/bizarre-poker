@@ -3,7 +3,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/github_username/repo_name">
-    <img src="frontend/public/images/three-cards-toogether.png" alt="Logo" width="500" height="250">
+    <img src="frontend/public/images/three-cards-toogether.png" alt="Logo">
   </a>
 
 <h3 align="center">Bizarre Poker</h3>
@@ -58,7 +58,7 @@
 
 #
 # About The Project
-Did you mess sometimes with broken feelings? This game perfectly suits you. In classic poker game we probably get nothing higher than `tree of kind` or `flush`. But everybody has real chance to get `straight flush` or even `poker` in this game. A lot of jokers, huge decks, interesting combinations. It's funny, it's cheeky, it's bizarre!
+Did you mess sometimes with broken feelings? This game perfectly suits you. In classic poker game we probably get nothing higher than `Tree of Kind` or `Flush`. But everybody has real chance to get `Four of Kind` or even `Poker` in this game. A lot of jokers, huge decks, interesting combinations. It's funny, it's cheeky, it's bizarre!
 
 ## Features
 - Single page application for WEB and Rest API for other clients.
@@ -72,6 +72,7 @@ Did you mess sometimes with broken feelings? This game perfectly suits you. In c
 ![](https://img.shields.io/badge/python-3.10.4-blue)
 ![](https://img.shields.io/badge/django-4.1-blue)
 ![](https://img.shields.io/badge/DRF-3.13.1-blue)
+![](https://img.shields.io/badge/pydantic-1.9.2-blue)
 ![](https://img.shields.io/badge/pytest-7.1.2-blue)
 <br>
 
@@ -111,7 +112,7 @@ This is a simple guide how to build up an application locally. Just follow this 
    $ cd bizarre-poker/backend
    ```
    ```sh
-   $ python3.10.4 -m venv venv
+   $ python3.10 -m venv venv
    ```
    ```sh
    $ source venv/bin/activate
@@ -153,7 +154,8 @@ To make sure that everything is right, open new shell window and make a request 
    ```
 8. **Thats all.** Browser will open [localhost](http://localhost:3000) automatically and you're supposed to see home page:
 
-<img width="913" alt="Screenshot 2022-10-18 at 15 40 26" src="https://user-images.githubusercontent.com/103563736/196431942-be0ed814-20c6-44c0-a0b5-80af2ccba1e3.png">
+<img width="758" alt="Screenshot 2022-10-23 at 15 43 54" src="https://user-images.githubusercontent.com/103563736/197392871-fdfa6d0f-8ea4-4494-9014-6cc66d75b846.png">
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -175,9 +177,10 @@ Go to [configurations][configurations-module-url] module. You can describe new c
 ```sh
 $ touch backend/apps/games/configurations/setups/my_config.json
 ```
-- . Specify list of stages and any other amounts you want. <br>
+- Specify list of stages and any other amounts you want. <br>
 ```json
 {
+    "name": "my_config",
     "stages": ["DealCardsStage", "OpposingStage"],
     "deal_cards_amount": 5,
     "jokers_amount": 10
@@ -192,11 +195,22 @@ class ConfigChoices(models.TextChoices):
     MY_CONFIG = 'my_config'
 ```
 
+- If server is running, you have to restart it to apply changes. <br>
+  All config files are uploading at program launch.
+```sh
+$ python manage.py runserver
+```
+- For now you can choose your custom configuration at game creation. <br>
+  **Enjoy!** <br>
+<img width="408" alt="Screenshot 2022-10-23 at 16 00 30" src="https://user-images.githubusercontent.com/103563736/197393595-4fb135a9-4058-4cb9-8ebb-a297a7227f72.png">
 
 ## Scripts
 You can play game by writing small python scripts right in django `shell`. Or describe them as django `command`. Package [services][services-module-url] provides all necessary tools to make actions. Here's an example:
 
 ### 1.1. Before We Start
+
+You may choose the way for writing game scripts.
+
 #### Make script as `Command`
 
 - Create module with name of your game script.
@@ -266,9 +280,9 @@ except actions.ActionError as e:
     pass
 ```
 
-- *Say* `pass` by other players and have a look how game ends.
+- Finally, let's quit game by one player and *Say* `pass` by other and look how game ends.
 ```python
-actions.PassAction.run(game)
+actions.LeaveGame.run(game)
 actions.PassAction.run(game)
 ```
 ### 4. Run auto.
@@ -316,15 +330,33 @@ See <mark>auto-generated</mark> documentation for API to get all info about avai
 - <a href="http://127.0.0.1:8000/api/redoc/">ReDoc</a>
 
 ## WEB
-The most native way to try all feauteres. Go to browser, make login and create new game or join others. Then open game page by clicking `continue` button. Or use this url.
+The most native way to try all application feauteres.
 
-> http://localhost:3000/games/1/
+### 1. Log in.
+Go to browser and log in or sign up.
+It is recomended to use  <a href="#Data">default data</a> described above and make log in as `admin` user with this authentication credentials:
 
-Depending on current state of data, you'll see something like that.
+> username: vybornyy <br>
+> password: vybornyy
 
-![](https://user-images.githubusercontent.com/103563736/196442314-068fa6e5-fed8-49b7-8f3b-b8320a735a96.jpg)
+But it's not neccassery. **Do everything you want**.
 
-Don't hessitate playing alone. If you are logged in as `admin` user, it is avaliable perform action for another player.
+### 2. Join games.
+Just click `join` button. Notice that `host` of the game has to approve your participation. Or you can create new game. In that way you will be `host` player.
+
+  <img width="784" alt="Screenshot 2022-10-23 at 16 49 26" src="https://user-images.githubusercontent.com/103563736/197395972-fc64b630-74b5-41a6-8bae-cece67683202.png">
+
+### 2. Game page. Small hints.
+
+- join other players or kick out them (if you are `host` and only between game rounds)
+  <img width="394" alt="Screenshot 2022-10-23 at 16 42 05" src="https://user-images.githubusercontent.com/103563736/197395738-db2598b3-53a1-4139-80ec-ce5a62829609.png">
+
+- see your combination detail by clicling on combo name
+  <img width="411" alt="Screenshot 2022-10-23 at 16 45 59" src="https://user-images.githubusercontent.com/103563736/197395834-ac6589c0-45c6-4798-beb7-9e44297e5342.png">
+
+- and don't hessitate playing alone. If you are logged in as `admin` user, it is avaliable perform action for another players.
+  <img width="329" alt="Screenshot 2022-10-23 at 16 48 33" src="https://user-images.githubusercontent.com/103563736/197395935-de630c39-3fa7-48e8-9823-59a72e6456ed.png">
+
 
 > `force` is a special button to proceed game further. It makes action by current game performer. Supplied mostly for test purposes.
 
