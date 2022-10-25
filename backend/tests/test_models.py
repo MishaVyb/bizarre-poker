@@ -13,7 +13,7 @@ from games.models.managers import PlayerManager, PlayerQuerySet
 from games.services import actions
 from games.services.cards import CardList
 from games.services.processors import AutoProcessor, BaseProcessor
-from users.models import User
+from users.models import Profile, User
 
 from tests.base import BaseGameProperties
 from tests.tools import ExtendedQueriesContext
@@ -431,3 +431,16 @@ class TestPlayerManager(BaseGameProperties):
         assert qs is not another_qs
         assert qs[0] is not another_qs[0]
         assert another_qs[0].is_active is True
+
+
+
+@pytest.mark.django_db
+class TestUserProfileModels:
+
+    def test_profile_creation(self):
+        User.objects.create(username='vybornyy', password='vybornyy')
+        assert Profile.objects.get(user__username='vybornyy')
+
+        with pytest.raises(RuntimeError):
+            User.objects.bulk_create([User(username='simusik', password='simusik')])
+        

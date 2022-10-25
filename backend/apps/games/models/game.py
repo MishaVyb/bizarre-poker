@@ -142,9 +142,6 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
     def __str__(self) -> str:
         return StrColors.underline(self.__repr__())
 
-    def get_absolute_url(self):
-        return reverse("games:game", kwargs={"pk": self.pk})
-
     def select_players(
         self,
         source: Sequence[Player] | None = None,
@@ -165,7 +162,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         return `self`
         """
         if force_prefetching:
-            lookup = 'user___profile'
+            lookup = 'user__profile'
             default_source = self.players_manager.prefetch_related(lookup).all()
         else:
             default_source = self.players_manager.all()
@@ -197,7 +194,7 @@ class Game(UpdateMethodMixin, FullCleanSavingMixin, CreatedModifiedModel):
         # using selectr_related through players_manager, not prefetch_related
         # because anyway we will cashe qs, so it`s better make 1 query then 3
         # (1- for players 2- for users 3- for user.profiles)
-        qs = self.players_manager.select_related('user___profile')
+        qs = self.players_manager.select_related('user__profile')
 
         # just update selected players at this game instance
         # in this case we need force_cashing for index acsessing

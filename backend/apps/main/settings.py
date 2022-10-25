@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    'rest_framework_swagger',
     'drf_yasg',
     # custom:
     'api.apps.ApiConfig',
@@ -87,7 +86,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'main.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
@@ -185,6 +183,7 @@ SWAGGER_SETTINGS = {
 
 DJOSER = {
     'SERIALIZERS': {
+        'user_create': 'api.serializers.CustomUserCreateSerializer',
         'current_user': 'api.serializers.CustomUserSerializer',
     },
 }

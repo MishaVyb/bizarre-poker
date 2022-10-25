@@ -10,7 +10,7 @@ from games.services import actions, stages
 from games.services.cards import Card
 from games.services.processors import AutoProcessor
 from rest_framework import status
-from users.models import User
+from users.models import Profile, User
 
 from tests.base import APIGameProperties
 
@@ -348,3 +348,24 @@ class TestGameAPI(APIGameProperties):
         self.assert_response('', 'vybornyy', 'POST', 'playersPreform', status.HTTP_403_FORBIDDEN)
 
 
+@pytest.mark.django_db
+@pytest.mark.usefixtures(
+    'setup_clients',
+)
+class TestUsersAPI(APIGameProperties):
+    def test_user_profile_creation(self):
+        self.assert_response(
+            '',
+            'anonymous',
+            'POST',
+            'users',
+            status.HTTP_201_CREATED,
+            username='new_user',
+            password='rest_api',
+        )
+        assert Profile.objects.get(user__username='new_user')
+
+    def test_and_me_endpoint(self):
+        self.assert_response('', 'vybornyy', 'GET', 'users/me', status.HTTP_200_OK)
+        assert set(self.response_data) == {'id', 'is_staff', 'profile', 'username'}
+        assert set(self.response_data['profile']) == {'bank'}

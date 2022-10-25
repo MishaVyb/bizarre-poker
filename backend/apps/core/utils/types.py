@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, OrderedDict, Protocol, TypeVar, Union, runtime_checkable
+from typing import Any, OrderedDict, Protocol, Type, TypeAlias, TypeVar, Union, runtime_checkable
 
 _JSON_SUPPORTED = str | int | bool | float | None | list | dict | OrderedDict
 
@@ -14,13 +14,12 @@ JSON = dict[str, Any] | list[Any]
 NONE_ATTRIBUTE = type('_NoneAttributeClass', (object,), {})
 """Class for represent absence of value at defaults. Wnen None can't be used. """
 
-# [FIXME]
-# class _NotProvidedClass:
-#     """Class for represent absence of value at defaults. Wnen None can't be used."""
-#     pass
 
-NOT_PROVIDED = type('_NotProvidedClass', (object,), {})
-"""Class for represent absence of value at defaults. Wnen None can't be used."""
+class _NotProvidedClass:
+    """Class for represent absence of value at defaults. Wnen None can't be used."""
+    pass
+
+NOT_PROVIDED: TypeAlias = _NotProvidedClass
 
 @runtime_checkable
 class Comparable(Protocol):

@@ -97,12 +97,22 @@ class ChangedFieldsLoggingMixin(_TYPE_MODEL):
     class Meta:
         abstract = True
 
+class CleanManagerMixin():
+
+    def bulk_create(self, *args, **kwargs):
+        raise RuntimeError(
+            'If FullCleanSavingMixin are used, it depricates create objects by '
+            '`bulk_create` method. Because in that way cleans methods won`t call. '
+        )
+
 
 class FullCleanSavingMixin(_TYPE_MODEL):
     _presave_flag = False
 
+
     def presave(self):
-        """Set pre-save flag True.
+        """
+        Set pre-save flag True.
 
         Not calling for real save. Do it yourself later, before ending cureent request
         handling.
@@ -110,9 +120,22 @@ class FullCleanSavingMixin(_TYPE_MODEL):
         self._presave_flag = True
 
     def init_clean(self):
+        """
+        Called before first objects saving (when pk is None).
+        """
+        pass
+
+    def post_init_clean(self):
+        """
+        Called after first objects saving. When pk has defined and model instance could
+        be use in related relationships.
+        """
         pass
 
     def clean(self):
+        """
+        Called every time before model saving, exept first time savings.
+        """
         pass
 
     def save(
@@ -128,17 +151,10 @@ class FullCleanSavingMixin(_TYPE_MODEL):
             if not self._presave_flag:
                 return
 
-        # pk is None for first game saving (just after creation)
-        # so validation won't work because of failing ralated ForigenKey fields
-        # we need to call save before to define pk
-
-        # Note:
-        # To change any initial values before saving use init_value(..) method.
-        # Anyway call full_clean(..) after saving just to be shure
         if not self.pk:
             self.init_clean()
             super().save(force_insert, force_update, using, update_fields)
-            self.full_clean()  # just to be shure that init data is valid
+            self.post_init_clean()
         else:
             self.full_clean()
             super().save(force_insert, force_update, using, update_fields)
@@ -150,21 +166,19 @@ class ExtendedSavingMixin(FullCleanSavingMixin, ChangedFieldsLoggingMixin):
 
 
 class CreatedModifiedModel(models.Model):
-    """Abstract model with auto filled created and modified date.
+    """
+    Abstract model with auto filled created and modified date.
 
     Ordering by creation date ascending.
     """
 
     created = models.DateTimeField('creation data', auto_now_add=True, db_index=True)
     modified = models.DateTimeField('modification data', auto_now=True, db_index=True)
-    """Automatically set the field to now every time the object is saved by calling
+    """
+    Automatically set the field to now every time the object is saved by calling
     save() method. Notice, that it is not getting affect by calling update() method.
     """
 
     class Meta:
         abstract = True
-
-        # WARNING!
-        # do not use descending ordering, it makes tests fall down
-        # and breks down others not obvious dependencies
         ordering = ['created']

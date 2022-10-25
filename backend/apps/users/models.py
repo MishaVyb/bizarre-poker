@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Type, TypeAlias, TypeVar, overload
 
-
+from django.contrib.auth.models import UserManager
 from django.contrib.auth.models import User as _DjangoUserModel
 from django.db import models
-from core.models import CreatedModifiedModel, FullCleanSavingMixin
+from core.models import CleanManagerMixin, CreatedModifiedModel, FullCleanSavingMixin
 from core.utils.types import NOT_PROVIDED
 
 
@@ -17,17 +17,13 @@ if TYPE_CHECKING:
 
 _T = TypeVar('_T')
 
+class UserProxyManager(CleanManagerMixin, UserManager[_T]):
+    pass
 
 class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
     players: PlayerManager[Player]
-    _profile: Profile
-
-    @property
-    def profile(self):
-        # [FIXME]
-        if not hasattr(self, '_profile'):
-            Profile.objects.create(user=self)
-        return self._profile
+    profile: Profile
+    objects: UserProxyManager[UserProxy] = UserProxyManager()
 
     REQUIRED_FIELDS = ['profile', 'is_staff']
 
@@ -36,7 +32,7 @@ class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
         ...
 
     @overload
-    def player_at(self, game: Game, default: _T | Type[NOT_PROVIDED]) -> Player | _T:
+    def player_at(self, game: Game, default: _T | NOT_PROVIDED) -> Player | _T:
         ...
 
     def player_at(
@@ -47,10 +43,10 @@ class UserProxy(FullCleanSavingMixin, _DjangoUserModel):
         try:
             return game.players.get(user=self)
         except StopIteration:
-            return default
+            return default  # type: ignore
 
-    def clean(self):
-        pass
+    def post_init_clean(self):
+        Profile.objects.create(user=self)
 
     class Meta:
         proxy = True
@@ -63,10 +59,10 @@ class Profile(FullCleanSavingMixin, CreatedModifiedModel):
     """
 
     user: UserProxy = models.OneToOneField(
-        UserProxy, on_delete=models.CASCADE, related_name='_profile'
+        UserProxy, on_delete=models.CASCADE, related_name='profile'
     )
     bank: int = models.PositiveIntegerField(default=1000)
-    """Users money account in cents. Default is 10.00$."""
+    """Users money account. Default is 1000$."""
 
     def __str__(self) -> str:
         return f'{self.user.username}`s profile'
@@ -75,12 +71,12 @@ class Profile(FullCleanSavingMixin, CreatedModifiedModel):
         pass
 
 
-User = UserProxy
+User: TypeAlias = UserProxy
 """
 Alias to custom `proxy` model which extends DjangoUserModel behaviour.
 """
 
-DjangoUserModel = _DjangoUserModel
+DjangoUserModel: TypeAlias = _DjangoUserModel
 """
 Alias to `real` (not proxy) user model for any reason.
 """

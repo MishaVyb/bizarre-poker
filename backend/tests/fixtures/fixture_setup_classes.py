@@ -9,7 +9,7 @@ from games.models.player import PlayerPreform
 from games.services.cards import Decks
 from rest_framework import status
 from rest_framework.test import APIClient
-from users.models import User
+from users.models import Profile, User
 
 from tests.base import APIGameProperties, BaseGameProperties
 from tests.test_api import TestGameAPI
@@ -29,6 +29,7 @@ def assert_base_class(instance: BaseGameProperties, _type: Type[_T] = BaseGamePr
 # Arrange base test data
 ########################################################################################
 
+
 @pytest.fixture
 def setup_users(request: pytest.FixtureRequest):
     # this fixture is used as enter point to all class fixutres,
@@ -37,13 +38,12 @@ def setup_users(request: pytest.FixtureRequest):
     self: BaseGameProperties = assert_base_class(request.instance)
 
     for username in self.usernames:
-        user: User = User.objects.create(
+        User.objects.create_user(
             username=username,
             password=username,
             is_staff=username in self.staff_users,
         )
-        user.set_password(user.username)  # othrwise password won't be supplyed
-        user.save()
+
 
 @pytest.fixture
 def setup_participant(
@@ -51,9 +51,7 @@ def setup_participant(
 ):
     self = assert_base_class(request.instance, APIGameProperties)
 
-    user = User.objects.create(username='participant', password='participant')
-    user.set_password(user.username)
-    user.save()
+    user = User.objects.create_user(username='participant', password='participant')
     PlayerPreform.objects.create(user=user, game=self.game)
 
 
@@ -63,6 +61,7 @@ def setup_game(
 ):
     self: BaseGameProperties = assert_base_class(request.instance)
     self.game_pk = Game(players=self.users.values(), commit=True).pk
+
 
 @pytest.fixture
 def apply_game(
@@ -97,8 +96,6 @@ def setup_deck_get_expected_combos(request: pytest.FixtureRequest, table_and_han
     ):
         yield data['expected_combos'], data['rate_groups']
     self.game.config.deck.Config.allow_mutation = False
-
-
 
 
 @pytest.fixture
@@ -145,14 +142,13 @@ def setup_clients(request: pytest.FixtureRequest):
         client = APIClient()
         client.login(username=user.username, password=user.username)
         self.clients[user.username] = client
-        # continue
 
         # chek user auth
         message = (
             'Authetication failed. Check is set_password(..) was called '
             'and check auth backends: SessionAuthetication should be aplyed.'
         )
-        self.assert_response('chek user auth', user.username, 'POST', 'games', status.HTTP_201_CREATED, message)
+        self.assert_response('chek user auth', user.username, 'GET', 'users/me', status.HTTP_200_OK, message)
 
     # this fixture is final so new line for more readable logging
     print('\n')

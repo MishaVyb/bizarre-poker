@@ -26,11 +26,11 @@ class GameManager(models.Manager[_T]):
         # [1] to know other players bank wich is max possible value for bet (VaBank)
         # [2] to chance players bank when placing bet or taking benefint
         #
-        # and 'players_manager__user___profile'.
+        # and 'players_manager__user__profile'.
         prefetch_lookups = (
             'players_manager',
             'players_manager__user',
-            'players_manager__user___profile',
+            'players_manager__user__profile',
         )
         return super().prefetch_related(*prefetch_lookups)
 

@@ -1,7 +1,6 @@
 from api.views import GamesViewSet, PlayersPreformViewSet, PlayersViewSet, ActionsViewSet
 from django.urls import include, path, re_path, reverse_lazy
 from rest_framework.routers import DefaultRouter
-from rest_framework.authtoken.views import obtain_auth_token
 from django.views.generic.base import RedirectView
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -18,7 +17,7 @@ schema_view = get_schema_view(
         title="Bizarre Poker API",
         default_version='v1',
         description="Internal REST API to link fronted and backend parts of app.",
-        terms_of_service="https://www.google.com/policies/terms/",
+        terms_of_service="https://github.com/MishaVyb/bizarre-poker",
         contact=openapi.Contact(email="vbrn.mv@gmail.com"),
         license=openapi.License(name="BSD License"),
     ),

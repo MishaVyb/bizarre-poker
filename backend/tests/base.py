@@ -73,6 +73,10 @@ class APIGameProperties(BaseGameProperties):
 
     urls = {
         # fmt: off
+        # create user and get user detail
+        'users': '/api/v1/auth/users/',
+        'users/me': '/api/v1/auth/users/me/',
+
         # create, delete, retrive, list, delete
         'games': '/api/v1/games/',
         'game_detail': '/api/v1/games/{game_pk}/',

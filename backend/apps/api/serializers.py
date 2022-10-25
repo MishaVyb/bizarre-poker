@@ -1,5 +1,5 @@
 
-from djoser.serializers import UserSerializer
+from djoser.serializers import UserSerializer, UserCreateSerializer
 from games.models import Game, Player
 from games.models.player import PlayerPreform
 from games.services.actions import ActionPrototype
@@ -7,6 +7,7 @@ from games.services.cards import Card, JokerCard
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 from users.models import Profile, User
+from django.db import transaction
 
 from apps.api import validators
 from djoser.conf import settings
@@ -29,6 +30,23 @@ class CustomUserSerializer(UserSerializer):
             settings.LOGIN_FIELD,
         )
 
+
+class CustomUserCreateSerializer(UserCreateSerializer):
+    """
+    Extend default to provide User as our ProxyUser model.
+    Otherwise Profile won't create.
+    """
+
+    class Meta(UserCreateSerializer.Meta):
+        model = User
+
+    def perform_create(self, validated_data):
+        with transaction.atomic():
+            user = User.objects.create_user(**validated_data)
+            if settings.SEND_ACTIVATION_EMAIL:
+                user.is_active = False
+                user.save(update_fields=["is_active"])
+        return user
 
 
 class ActionSerializer(serializers.Serializer):
