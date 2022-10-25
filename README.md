@@ -348,13 +348,13 @@ Just click `join` button. Notice that `host` of the game has to approve your par
 
 ### 2. Game page. Small hints.
 
-- join other players or kick out them (if you are `host` and only between game rounds)
+- Join other players or kick out them (if you are `host` and only between game rounds). <br>
   <img width="394" alt="Screenshot 2022-10-23 at 16 42 05" src="https://user-images.githubusercontent.com/103563736/197395738-db2598b3-53a1-4139-80ec-ce5a62829609.png">
 
-- see your combination detail by clicling on combo name
+- See your combination detail by clicling on combo name. <br>
   <img width="411" alt="Screenshot 2022-10-23 at 16 45 59" src="https://user-images.githubusercontent.com/103563736/197395834-ac6589c0-45c6-4798-beb7-9e44297e5342.png">
 
-- and don't hessitate playing alone. If you are logged in as `admin` user, it is avaliable perform action for another players.
+- And don't hessitate playing alone. If you are logged in as `admin` user, it is avaliable perform action for another players. <br>
   <img width="329" alt="Screenshot 2022-10-23 at 16 48 33" src="https://user-images.githubusercontent.com/103563736/197395935-de630c39-3fa7-48e8-9823-59a72e6456ed.png">
 
 
