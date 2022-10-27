@@ -8,8 +8,8 @@ const ENDPOINTS = {
 
   players: '/api/v1/games/{game_pk}/players/',
   playersDetail: '/api/v1/games/{game_pk}/players/{username}/',
-  playersMe: '/api/v1/games/{game_pk}/players/me',
-  playersOther: '/api/v1/games/{game_pk}/players/other',
+  playersMe: '/api/v1/games/{game_pk}/players/me/',
+  playersOther: '/api/v1/games/{game_pk}/players/other/',
 
   playersPreforms: '/api/v1/games/{game_pk}/playersPreforms/',
 
