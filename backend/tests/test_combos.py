@@ -5,12 +5,15 @@ from copy import deepcopy
 from typing import Callable
 
 import pytest
+from core.utils.functools import init_logger
 from games.configurations.configurations import DEFAULT_CONFIG
 from games.services.cards import CardList, Stacks
 from games.services.combos import (Combo, ComboKind, ComboKindList,
                                    ComboStacks, Conditions)
 
 from tests.tools import param_kwargs_list
+
+logger = init_logger(__name__)
 
 DEFAULT_COMBOS = ComboKindList(
     [
@@ -435,8 +438,8 @@ def test_combokind_bool(cases: dict[str, Stacks], expected: bool):
             left_cardlist=['2|H', '2|S'] + ['Ace|D'],
             right_cardlist=['3|H', '3|S'] + ['10|D'],
             comparison_kind=operator.eq,
-            comparison_stacks=operator.gt,
-            comparison_combo=operator.gt,
+            comparison_stacks=operator.lt,
+            comparison_combo=operator.lt,
         ),
     ],
 )

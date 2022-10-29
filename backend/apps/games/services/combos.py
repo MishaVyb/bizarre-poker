@@ -19,6 +19,7 @@ from games.services import combo_trackers
 if TYPE_CHECKING:
     from games.models.player import Player
 
+
 logger = init_logger(__name__, logging.WARNING)
 
 Conditions: TypeAlias = dict[str, tuple[int, ...]]
@@ -247,17 +248,20 @@ class ComboStacks:
         if not isinstance(other, ComboStacks) or not self.__comparison_permition(other):
             return NotImplemented
 
-        # [NOTE]
         # we won`t use self.source attribute, because it contains not processed at
-        # tracking jokers (they are not mirrored).
-        # [1] comare cases
-        # [2] compare other
-        #
+        # tracking jokers (they are not mirrored)
+        all_cases_equal = True
         for key in self.cases:
-            if not self.cases[key] < other.cases[key]:
+            if self.cases[key] > other.cases[key]:
                 return False
-        if not self.leftovers < other.leftovers:
-            return False
+            elif self.cases[key] == other.cases[key]:
+                continue
+            all_cases_equal = False
+
+        # extra case
+        if all_cases_equal:
+            logger.debug('all_cases_equal -> compare leftovers')
+            return self.leftovers < other.leftovers
 
         return True
 

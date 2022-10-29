@@ -1,0 +1,185 @@
+{
+    "id": 3,
+    "players": [
+        "simusik",
+        "barticheg",
+        "vybornyy"
+    ],
+    "players_preforms": [
+        "werhner.herzeg",
+        "arthur.morgan",
+        "vybornyy2"
+    ],
+    "table": [
+        {
+            "rank": 13,
+            "suit": 3,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "K♥️"
+        },
+        {
+            "rank": 5,
+            "suit": 1,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "5♣️"
+        },
+        {
+            "rank": 7,
+            "suit": 4,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "7♠️"
+        },
+        {
+            "rank": 2,
+            "suit": 3,
+            "is_joker": false,
+            "is_mirror": null,
+            "string": "2♥️"
+        }
+    ],
+    "stage": {
+        "name": "TearDownStage",
+        "performer": "vybornyy",
+        "status": "wait while vybornyy confirm ending this game"
+    },
+    "config": {
+        "name": "classic",
+        "small_blind": 5,
+        "big_blind": 10,
+        "bet_multiplicity": 5,
+        "deal_cards_amounts": [
+            2
+        ],
+        "flops_amounts": [
+            3,
+            1,
+            1
+        ]
+    },
+    "bank_total": 0,
+    "host": "vybornyy",
+    "created": "2022-10-25T20:33:59.028078Z",
+    "modified": "2022-10-27T12:51:56.239350Z",
+    "bank": 0,
+    "actions_history": [
+        {
+            "class": "TearDownStage",
+            "performer": null,
+            "message": "game round is over",
+            "value": "None"
+        },
+        {
+            "class": "StartAction",
+            "performer": "vybornyy",
+            "message": "vybornyy makes this game begins",
+            "value": "None"
+        },
+        {
+            "class": "SetupStage",
+            "performer": null,
+            "message": "game begins",
+            "value": "None"
+        },
+        {
+            "class": "DealCardsStage_1",
+            "performer": null,
+            "message": "deal 2 cards to players",
+            "value": "None"
+        },
+        {
+            "class": "PlaceBlind",
+            "performer": "barticheg",
+            "message": "barticheg place small blind",
+            "value": 5
+        },
+        {
+            "class": "PlaceBlind",
+            "performer": "vybornyy",
+            "message": "vybornyy place big blind",
+            "value": 10
+        },
+        {
+            "class": "PlacingBlindsStage",
+            "performer": null,
+            "message": "blinds are accepted",
+            "value": "None"
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "simusik",
+            "message": "simusik reply to bet",
+            "value": 10
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "barticheg",
+            "message": "barticheg reply to bet",
+            "value": 5
+        },
+        {
+            "class": "BiddingsStage_1",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": "None"
+        },
+        {
+            "class": "FlopStage_1",
+            "performer": null,
+            "message": "flop 3 cards on game table",
+            "value": "None"
+        },
+        {
+            "class": "PlaceBetCheck",
+            "performer": "barticheg",
+            "message": "barticheg says check",
+            "value": 0
+        },
+        {
+            "class": "PlaceBetVaBank",
+            "performer": "vybornyy",
+            "message": "vybornyy placed all in (vabank)",
+            "value": 570
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "simusik",
+            "message": "simusik reply to bet",
+            "value": 570
+        },
+        {
+            "class": "PlaceBetReply",
+            "performer": "barticheg",
+            "message": "barticheg reply to bet",
+            "value": 570
+        },
+        {
+            "class": "BiddingsStage_2",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": "None"
+        },
+        {
+            "class": "FlopStage_2",
+            "performer": null,
+            "message": "flop 1 cards on game table",
+            "value": "None"
+        },
+        {
+            "class": "BiddingsStage_3",
+            "performer": null,
+            "message": "bets are accepted",
+            "value": "None"
+        },
+        {
+            "class": "OpposingStage",
+            "performer": null,
+            "message": "simusik has one pair and wins 1740",
+            "value": "None"
+        }
+    ],
+    "begins": true,
+    "rounds_counter": 2
+}
