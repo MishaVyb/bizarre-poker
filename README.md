@@ -397,8 +397,11 @@ See [LICENSE.txt][license-url] for more information.
 
 ## Contact
 
-Misha Vybornyy: vbrn.mv@gmail.com <br>
-Project Link: [https://github.com/MishaVyb/bizarre-poker/](https://github.com/MishaVyb/bizarre-poker/)
+Misha Vybornyy:
+
+[![Gmail Badge](https://img.shields.io/badge/-misha.vybornyy@gmail.com-c14438?style=flat&logo=Gmail&logoColor=white&link=mailto:vbrn.mv@gmail.com)](mailto:vbrn.mv@gmail.com)
+[![Telegram Badge](https://img.shields.io/badge/-mishaviborniy-blue?style=social&logo=telegram&link=https://t.me/mishaviborniy)](https://t.me/mishaviborniy) <p align='left'>
+ 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
