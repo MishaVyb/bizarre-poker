@@ -96,10 +96,11 @@ Did you mess sometimes with broken feelings? This game perfectly suits you. In c
 This is a simple guide how to build up an application locally. Just follow this steps.
 
 ## Prerequisites
-*Make sure that you have installed this on your machine.*
-* python 3.10.4
-* pip
-* npm
+
+* python **3.10.4**
+* pip 22.2.2
+* node 16.15.1
+* npm 8.11.0
 
 ## Installation
 
@@ -169,6 +170,8 @@ Look at default [data][default-data-url] prepared for informational purposes. Yo
 ```sh
 $ python manage.py apply_data <path_to_json_data_file>
 ```
+
+Don't confused with built in django command `./manage.py loaddata dump.json`. The purpose is the same, but it's more easy to configurate custom json data file.
 
 ## Configurations
 Go to [configurations][configurations-module-url] module. You can describe new config `json` file or change provided. For exaple, we want simple game where players get their cards and compare combinations - that's all. No `Biddings` stages. No `flop`.
@@ -339,7 +342,7 @@ It is recomended to use  <a href="#Data">default data</a> described above and ma
 > username: vybornyy <br>
 > password: vybornyy
 
-But it's not neccassery. **Do everything you want**.
+Or sign up as new user, if you want.
 
 ### 2. Join games.
 Just click `join` button. Notice that `host` of the game has to approve your participation. Or you can create new game. In that way you will be `host` player.
